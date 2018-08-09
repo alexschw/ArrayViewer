@@ -24,12 +24,14 @@ def filltoequal(lil):
 def validate(data):
     """ Data validation. Replace lists of numbers with np.ndarray."""
     if isinstance(data, dict):
-        # List of global variables (should not be shown)
+        # List of global variables (that should not be shown)
         glob = []
         for subdat in data:
+            # global variables start with two underscores
             if subdat[:2] == "__":
                 glob.append(subdat)
                 continue
+            # Run the validation again for each subelement in the dict
             data[subdat] = validate(data[subdat])
         # Remove global variables
         for g in glob:
@@ -41,11 +43,13 @@ def validate(data):
                 data = filltoequal(data)
             data = np.array(data)
     elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
+        # Create a dictionary from matlab structs
         dct = {}
         for key in data._fieldnames:
             exec("dct[key] = validate(data.%s)"%key)
         data = dct
     elif isinstance(data, np.ndarray) and data.dtype == "O":
+        # Create numpy arrays from matlab cell types
         ndata = []
         for subdat in data:
             ndata.append(validate(subdat))
@@ -56,7 +60,7 @@ def validate(data):
     return data
 
 class ViewerWindow(QtGui.QMainWindow):
-    """ MainWindow of the application """
+    """ The main window of the array viewer """
     def __init__(self, parent=None):
         """ Initialize the window """
         super(self.__class__, self).__init__(parent)
@@ -67,7 +71,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self.reshapeBox = ReshapeDialog(self)
 
         # General Options
-        self.resize(800, 600)
+#        self.resize(800, 600)
         self.setWindowTitle("Array Viewer")
 
         CWgt = QtGui.QWidget(self)
@@ -79,7 +83,7 @@ class ViewerWindow(QtGui.QMainWindow):
         QFra.setSizePolicy(QSP.Expanding, QSP.Expanding)
         vLayout.addWidget(QFra)
         hLayout2 = QtGui.QHBoxLayout()
-        vLayout2 = QtGui.QVBoxLayout()        
+        vLayout2 = QtGui.QVBoxLayout()
         hLayout = QtGui.QHBoxLayout(QFra)
         hLayout.addLayout(vLayout2)
 
@@ -118,9 +122,11 @@ class ViewerWindow(QtGui.QMainWindow):
         for n in xrange(6):
             label = QtGui.QLabel()
             label.setText("0")
+            label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
             lineedit = QtGui.QLineEdit()
             lineedit.editingFinished.connect(self.draw_data)
+            lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
         vLayout.addLayout(self.Shape)
 
@@ -149,17 +155,21 @@ class ViewerWindow(QtGui.QMainWindow):
         menuStart.addAction(btnReshape)
         btnReshape.setText("Reshape")
         btnReshape.setShortcut("Ctrl+R")
-        btnReshape.activated.connect(self.reshape)
+        btnReshape.activated.connect(self.reshape_dialog)
 
     def __getitem__(self, item):
         """ Gets the current data """
+        if self._data == {}:
+            return np.array(0)
         if item in [0, "data", ""]:
             return reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]]
         else:
-            return repr(self)
+            return np.array(0)
 
     def __setitem__(self, _, newData):
         """ Sets the current data to the new data """
+        if self._data == {}:
+            return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
 
     def add_data(self, fname):
@@ -207,7 +217,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self.keys.append(key)
         self.update_tree()
 
-    def reshape(self):
+    def reshape_dialog(self):
         """ Open the reshape box to reshape the current data """
         self[0] = self.reshapeBox.reshape_array(self[0])
         self.update_shape(self[0].shape)
@@ -224,9 +234,10 @@ class ViewerWindow(QtGui.QMainWindow):
     def save_chart(self):
         """ Saves the currently shown chart as a file. """
         figure = self.Graph.figure()
+        ftypes = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
         if figure:
             fname = QtGui.QFileDialog.getSaveFileName(self, 'Save Image',
-                  './figure.png', 'Image file (*.png *.jpg);;PDF file (*.pdf)')
+                                                      './figure.png', ftypes)
             if fname:
                 figure.savefig(str(fname))
 

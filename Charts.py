@@ -51,6 +51,9 @@ class GraphWidget(QtGui.QWidget):
     def clear(self):
         """ Clear the figure """
         self._figure.clf()
+        
+    def figure(self):
+        return self._figure
 
     def renewPlot(self, data, shape_str, ui):
         """ Draw given data. """
@@ -128,7 +131,7 @@ class ReshapeDialog(QtGui.QDialog):
             self.txtCurrent.setText(str(data.shape))
             self.txtNew.setText("")
             # If "OK" is pressed
-            if self.exec_():
+            if data.shape and self.exec_():
                 # Get the shape sting and split it
                 sStr = str(self.txtNew.text())
                 shape = np.array(sStr.strip("()[]").split(","), dtype=int)
