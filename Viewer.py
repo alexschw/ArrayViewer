@@ -15,7 +15,7 @@ import numpy as np
 import PyQt4.QtGui as QtGui
 from PyQt4.QtGui import QSizePolicy as QSP
 from PyQt4.QtCore import QRect
-from Charts import GraphWidget, ReshapeDialog
+from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 
 def filltoequal(lil):
     """ Fill a list of lists. Append smaller lists with nan """
@@ -69,6 +69,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self._data = {}
         self.cText = []
         self.reshapeBox = ReshapeDialog(self)
+        self.newDataBox = NewDataDialog(self)
 
         # General Options
 #        self.resize(800, 600)
@@ -157,6 +158,12 @@ class ViewerWindow(QtGui.QMainWindow):
         btnReshape.setShortcut("Ctrl+R")
         btnReshape.activated.connect(self.reshape_dialog)
 
+        btnNewData = QtGui.QAction(menubar)
+        menuStart.addAction(btnNewData)
+        btnNewData.setText("New Data")
+        btnNewData.setShortcut("Ctrl+N")
+        btnNewData.activated.connect(self.new_data_dialog)
+
     def __getitem__(self, item):
         """ Gets the current data """
         if self._data == {}:
@@ -221,6 +228,17 @@ class ViewerWindow(QtGui.QMainWindow):
         """ Open the reshape box to reshape the current data """
         self[0] = self.reshapeBox.reshape_array(self[0])
         self.update_shape(self[0].shape)
+
+    def new_data_dialog(self):
+        """ Open the new data dialog box to construct new data """
+        key, _data = self.newDataBox.newData(self[0])
+        if key == 1:
+            self[0] = _data
+            self.update_shape(self[0].shape)
+        elif key != 0:
+            self._data[key] = {"Value":_data}
+            self.keys.append(key)
+            self.update_tree()
 
     def load_data_dialog(self):
         """ Open file-dialog to choose one or multiple files. """

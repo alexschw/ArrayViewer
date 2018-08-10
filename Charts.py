@@ -2,15 +2,15 @@
 # GraphWidget and ReshapeDialog for the ArrayViewer
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
-from PyQt4.QtCore import Qt, QObject, SIGNAL
+import re
+import numpy as np
 from PyQt4.QtGui import QSizePolicy as QSP
-from PyQt4.QtGui import QDialogButtonBox as QDBB
-from PyQt4.QtGui import QWidget, QVBoxLayout, QLabel, QDialog, QGridLayout, QLineEdit
+from PyQt4.QtGui import QDialogButtonBox as DBB
+from PyQt4 import QtGui, QtCore
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-import numpy as np
 
-def flat_with_padding(Arr, padding=1, fill=np.nan):
+def flatPad(Arr, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
     Arr = np.reshape(Arr, Arr.shape[:2]+(-1, ))
@@ -31,7 +31,7 @@ def flat_with_padding(Arr, padding=1, fill=np.nan):
     pA2D = np.append(A1, np.append(A0, pA2D, axis=0), axis=1)
     return pA2D
 
-class GraphWidget(QWidget):
+class GraphWidget(QtGui.QWidget):
     """ Draws the data graph """
     def __init__(self, parent=None):
         """Initialize the figure. """
@@ -46,9 +46,9 @@ class GraphWidget(QWidget):
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
-        self._layout = QVBoxLayout(self)
+        self._layout = QtGui.QVBoxLayout(self)
         self._layout.addWidget(self._canvas)
-        self._txt = QLabel(self)
+        self._txt = QtGui.QLabel(self)
         self._txt.setText('')
         self._layout.addWidget(self._txt)
 
@@ -97,13 +97,13 @@ class GraphWidget(QWidget):
                 ax.imshow(cutout, interpolation='none', aspect='auto')
             # higher-dimensional cutouts will first be flattened
             elif cutout.squeeze().ndim >= 3:
-                ax.imshow(flat_with_padding(cutout), interpolation='none', aspect='auto')
+                ax.imshow(flatPad(cutout), interpolation='none', aspect='auto')
             # Set the minimum and maximum values from the data
             ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
             ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
         self._canvas.draw()
 
-class ReshapeDialog(QDialog):
+class ReshapeDialog(QtGui.QDialog):
     """ A Dialog for Reshaping the Array """
     def __init__(self, parent=None):
         super(ReshapeDialog, self).__init__(parent)
@@ -111,28 +111,26 @@ class ReshapeDialog(QDialog):
         # Setup the basic window
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
-        gridLayout = QGridLayout(self)
+        gridLayout = QtGui.QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
-        curShape = QLabel(self)
+        curShape = QtGui.QLabel(self)
         curShape.setText("current shape")
         gridLayout.addWidget(curShape, 0, 0, 1, 1)
-        self.txtCurrent = QLineEdit(self)
+        self.txtCurrent = QtGui.QLineEdit(self)
         self.txtCurrent.setEnabled(False)
         gridLayout.addWidget(self.txtCurrent, 0, 1, 1, 1)
-        newShape = QLabel(self)
+        newShape = QtGui.QLabel(self)
         newShape.setText("new shape")
         gridLayout.addWidget(newShape, 1, 0, 1, 1)
-        self.txtNew = QLineEdit(self)
+        self.txtNew = QtGui.QLineEdit(self)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
-        self.buttonBox = QDBB(self)
-        self.buttonBox.setOrientation(Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QDBB.Cancel|QDBB.Ok)
+        self.buttonBox = DBB(DBB.Cancel|DBB.Ok, QtCore.Qt.Horizontal)
         gridLayout.addWidget(self.buttonBox, 3, 1, 1, 1)
-        QObject.connect(self.buttonBox, SIGNAL("accepted()"), self.accept)
-        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
+        self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
+        self.buttonBox.button(DBB.Ok).clicked.connect(self.accept)
 
     def reshape_array(self, data):
         """ Reshape the currently selected array """
@@ -144,6 +142,8 @@ class ReshapeDialog(QDialog):
             if data.shape and self.exec_():
                 # Get the shape sting and split it
                 sStr = str(self.txtNew.text())
+                if sStr == "":
+                    continue
                 shape = np.array(sStr.strip("()[]").split(","), dtype=int)
                 # Try if the array could be reshaped that way
                 try:
@@ -155,3 +155,62 @@ class ReshapeDialog(QDialog):
             # If "CANCEL" is pressed
             else:
                 return data
+
+class NewDataDialog(QtGui.QDialog):
+    """ A Dialog for Creating new Data """
+    def __init__(self, parent=None):
+        super(NewDataDialog, self).__init__(parent)
+
+        # Setup the basic window
+        self.resize(400, 150)
+        self.setWindowTitle("Create new data or change the current one")
+        Layout = QtGui.QVBoxLayout(self)
+        self.data = []
+
+        # Add the current and new shape boxes and their labels
+        label = QtGui.QLabel(self)
+        label.setText("current shape")
+        Layout.addWidget(label)
+        self.history = QtGui.QTextEdit(self)
+        self.history.setEnabled(False)
+        Layout.addWidget(self.history)
+        self.cmd = QtGui.QLineEdit(self)
+        Layout.addWidget(self.cmd)
+
+        # Add a button Box with "OK" and "Cancel"-Buttons
+        self.buttonBox = DBB(DBB.Cancel|DBB.Ok|DBB.Save, QtCore.Qt.Horizontal)
+        Layout.addWidget(self.buttonBox)
+        self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
+        self.buttonBox.button(DBB.Ok).clicked.connect(self.on_accept)
+        self.buttonBox.button(DBB.Save).clicked.connect(self.on_save)
+
+    def on_accept(self):
+        """ Try to run the command and append the history on pressing 'OK' """
+        try:
+            exec("self."+self.cmd.text())
+        except:
+            self.cmd.setText("")
+            return -1
+        self.history.append(self.cmd.text())
+        self.cmd.setText("")
+
+    def on_save(self):
+        """ Return the object currently in the textBox to the Viewer """
+        if self.cmd.text() == "" or re.findall(r"\=", self.cmd.text()):
+            return -1
+        else:
+            exec("self.returnVal = self.%s"%self.cmd.text())
+            self.accept()
+
+    def newData(self, data):
+        """ Generate New Data (maybe using the currently selected array) """
+        self.data = data
+        self.history.clear()
+        while True:
+            # Open a dialog to reshape
+            self.cmd.setText("")
+            # If "Save" is pressed
+            if self.exec_():
+                return self.cmd.text(), self.returnVal
+            else:
+                return 0, []
