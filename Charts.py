@@ -2,8 +2,10 @@
 # GraphWidget and ReshapeDialog for the ArrayViewer
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
-from PyQt4 import QtGui, QtCore
+from PyQt4.QtCore import Qt, QObject, SIGNAL
 from PyQt4.QtGui import QSizePolicy as QSP
+from PyQt4.QtGui import QDialogButtonBox as QDBB
+from PyQt4.QtGui import QWidget, QVBoxLayout, QLabel, QDialog, QGridLayout, QLineEdit
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 import numpy as np
@@ -29,30 +31,33 @@ def flat_with_padding(Arr, padding=1, fill=np.nan):
     pA2D = np.append(A1, np.append(A0, pA2D, axis=0), axis=1)
     return pA2D
 
-class GraphWidget(QtGui.QWidget):
+class GraphWidget(QWidget):
     """ Draws the data graph """
     def __init__(self, parent=None):
         """Initialize the figure. """
         super(GraphWidget, self).__init__(parent)
 
+        # Setup the canvas, figure and axes
         self._figure = Figure(facecolor='white')
         self._canvas = FigureCanvasQTAgg(self._figure)
         self._canvas.ax = self._figure.add_axes([.15, .15, .75, .75])
         self._canvas.canvas = self._canvas.ax.figure.canvas
         self._canvas.setSizePolicy(QSP.Expanding, QSP.Expanding)
-        #self._canvas.mpl_connect('motion_notify_event', self._canvas._onmove)
 
-        self._layout = QtGui.QVBoxLayout(self)
+        # Add a label Text that may be changed in later Versions to display the
+        # position and value below the mouse pointer
+        self._layout = QVBoxLayout(self)
         self._layout.addWidget(self._canvas)
-        self._txt = QtGui.QLabel(self)
-        self._txt.setText('WOW')
+        self._txt = QLabel(self)
+        self._txt.setText('')
         self._layout.addWidget(self._txt)
 
     def clear(self):
         """ Clear the figure """
         self._figure.clf()
-        
+
     def figure(self):
+        """ Return the local figure variable """
         return self._figure
 
     def renewPlot(self, data, shape_str, ui):
@@ -98,31 +103,36 @@ class GraphWidget(QtGui.QWidget):
             ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
         self._canvas.draw()
 
-class ReshapeDialog(QtGui.QDialog):
+class ReshapeDialog(QDialog):
     """ A Dialog for Reshaping the Array """
     def __init__(self, parent=None):
         super(ReshapeDialog, self).__init__(parent)
+
+        # Setup the basic window
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
-        gridLayout = QtGui.QGridLayout(self)
-        lblPath = QtGui.QLabel(self)
-        lblPath.setText("current shape")
-        gridLayout.addWidget(lblPath, 0, 0, 1, 1)
-        self.txtCurrent = QtGui.QLineEdit(self)
+        gridLayout = QGridLayout(self)
+
+        # Add the current and new shape boxes and their labels
+        curShape = QLabel(self)
+        curShape.setText("current shape")
+        gridLayout.addWidget(curShape, 0, 0, 1, 1)
+        self.txtCurrent = QLineEdit(self)
         self.txtCurrent.setEnabled(False)
         gridLayout.addWidget(self.txtCurrent, 0, 1, 1, 1)
-        lblScript = QtGui.QLabel(self)
-        lblScript.setText("new shape")
-        gridLayout.addWidget(lblScript, 1, 0, 1, 1)
-        self.txtNew = QtGui.QLineEdit(self)
+        newShape = QLabel(self)
+        newShape.setText("new shape")
+        gridLayout.addWidget(newShape, 1, 0, 1, 1)
+        self.txtNew = QLineEdit(self)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
-        self.buttonBox = QtGui.QDialogButtonBox(self)
-        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
-        gridLayout.addWidget(self.buttonBox, 3, 1, 1, 1)
 
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), self.accept)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), self.reject)
+        # Add a button Box with "OK" and "Cancel"-Buttons
+        self.buttonBox = QDBB(self)
+        self.buttonBox.setOrientation(Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QDBB.Cancel|QDBB.Ok)
+        gridLayout.addWidget(self.buttonBox, 3, 1, 1, 1)
+        QObject.connect(self.buttonBox, SIGNAL("accepted()"), self.accept)
+        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
 
     def reshape_array(self, data):
         """ Reshape the currently selected array """
