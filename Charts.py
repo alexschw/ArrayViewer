@@ -169,13 +169,17 @@ class NewDataDialog(QtGui.QDialog):
 
         # Add the current and new shape boxes and their labels
         label = QtGui.QLabel(self)
-        label.setText("current shape")
+        label.setText("Use self.data to reference the current data")
         Layout.addWidget(label)
         self.history = QtGui.QTextEdit(self)
         self.history.setEnabled(False)
         Layout.addWidget(self.history)
         self.cmd = QtGui.QLineEdit(self)
         Layout.addWidget(self.cmd)
+        self.err = QtGui.QLineEdit(self)
+        self.err.setEnabled(False)
+        self.err.setStyleSheet("color: rgb(255, 0, 0);")
+        Layout.addWidget(self.err)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
         self.buttonBox = DBB(DBB.Cancel|DBB.Ok|DBB.Save, QtCore.Qt.Horizontal)
@@ -187,8 +191,9 @@ class NewDataDialog(QtGui.QDialog):
     def on_accept(self):
         """ Try to run the command and append the history on pressing 'OK' """
         try:
-            exec("self."+self.cmd.text())
-        except:
+            exec("self."+str(self.cmd.text()))
+        except Exception as err:
+            self.err.setText(err.message)            
             self.cmd.setText("")
             return -1
         self.history.append(self.cmd.text())
