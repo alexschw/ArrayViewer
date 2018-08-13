@@ -166,6 +166,7 @@ class NewDataDialog(QtGui.QDialog):
         self.setWindowTitle("Create new data or change the current one")
         Layout = QtGui.QVBoxLayout(self)
         self.data = []
+        self.lastText = ""
 
         # Add the current and new shape boxes and their labels
         label = QtGui.QLabel(self)
@@ -197,12 +198,16 @@ class NewDataDialog(QtGui.QDialog):
             self.cmd.setText("")
             return -1
         self.history.append(self.cmd.text())
+        self.lastText = str(self.cmd.text())
         self.cmd.setText("")
 
     def on_save(self):
         """ Return the object currently in the textBox to the Viewer """
-        if self.cmd.text() == "" or re.findall(r"\=", self.cmd.text()):
+        if re.findall(r"\=", self.cmd.text()):
             return -1
+        elif self.cmd.text() == "":
+            exec("self.returnVal = self.%s"%re.split(r"\=",self.lastText)[0])
+            self.accept()
         else:
             exec("self.returnVal = self.%s"%self.cmd.text())
             self.accept()
@@ -216,6 +221,9 @@ class NewDataDialog(QtGui.QDialog):
             self.cmd.setText("")
             # If "Save" is pressed
             if self.exec_():
-                return self.cmd.text(), self.returnVal
+                if self.cmd.text() == "":
+                    return 1, self.returnVal
+                else:
+                    return str(self.cmd.text()), self.returnVal
             else:
                 return 0, []
