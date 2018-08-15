@@ -194,7 +194,7 @@ class NewDataDialog(QtGui.QDialog):
         try:
             exec("self."+str(self.cmd.text()))
         except Exception as err:
-            self.err.setText(err.message)            
+            self.err.setText(err.message)
             self.cmd.setText("")
             return -1
         self.history.append(self.cmd.text())
@@ -206,7 +206,7 @@ class NewDataDialog(QtGui.QDialog):
         if re.findall(r"\=", self.cmd.text()):
             return -1
         elif self.cmd.text() == "":
-            exec("self.returnVal = self.%s"%re.split(r"\=",self.lastText)[0])
+            exec("self.returnVal = self.%s"%re.split(r"\=", self.lastText)[0])
             self.accept()
         else:
             exec("self.returnVal = self.%s"%self.cmd.text())

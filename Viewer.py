@@ -278,7 +278,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 current = current.parent()
                 self.cText.insert(0, str(current.text(0)))
             # Update the shape widgets based on the datatype
-            if isinstance(self[0], (int, float, str, list)):
+            if isinstance(self[0], (int, float, str, unicode, list)):
                 self.update_shape([0])
             else:
                 self.update_shape(self[0].shape)
