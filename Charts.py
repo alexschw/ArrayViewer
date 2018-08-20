@@ -31,6 +31,14 @@ def flatPad(Arr, padding=1, fill=np.nan):
     pA2D = np.append(A1, np.append(A0, pA2D, axis=0), axis=1)
     return pA2D
 
+def getShapeFromStr(string):
+    """
+    Returns an array with the elements of the string. All brackets are
+    removed as well as empty elements in the array.
+    """
+    strList = filter(lambda n: bool(n), string.strip("()[]").split(","))
+    return np.array(strList, dtype=int)
+
 class GraphWidget(QtGui.QWidget):
     """ Draws the data graph """
     def __init__(self, parent=None):
@@ -122,8 +130,13 @@ class ReshapeDialog(QtGui.QDialog):
         gridLayout.addWidget(self.txtCurrent, 0, 1, 1, 1)
         newShape = QtGui.QLabel(self)
         newShape.setText("new shape")
+
         gridLayout.addWidget(newShape, 1, 0, 1, 1)
         self.txtNew = QtGui.QLineEdit(self)
+        self.txtNew.textEdited.connect(self.keyPress)
+        self.shCmpl = QtGui.QCompleter([])
+        self.shCmpl.setCompletionMode(QtGui.QCompleter.InlineCompletion)
+        self.txtNew.setCompleter(self.shCmpl)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
@@ -132,11 +145,23 @@ class ReshapeDialog(QtGui.QDialog):
         self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
         self.buttonBox.button(DBB.Ok).clicked.connect(self.accept)
 
+    def keyPress(self, keyEv):
+        """ Whenever a key is pressed check for comma and set autofill data"""
+        if keyEv and keyEv[-1] == ',':
+            shape = getShapeFromStr(str(keyEv))
+            if self.prodShape%shape.prod() == 0:
+                rest = self.prodShape/shape.prod()
+                self.shCmpl.model().setStringList([keyEv+str(rest)])
+            else:
+                self.shCmpl.model().setStringList([keyEv+" Not fitting"])
+        return keyEv
+
     def reshape_array(self, data):
         """ Reshape the currently selected array """
         while True:
             # Open a dialog to reshape
             self.txtCurrent.setText(str(data.shape))
+            self.prodShape = np.array(data.shape).prod()
             self.txtNew.setText("")
             # If "OK" is pressed
             if data.shape and self.exec_():
@@ -144,12 +169,12 @@ class ReshapeDialog(QtGui.QDialog):
                 sStr = str(self.txtNew.text())
                 if sStr == "":
                     continue
-                shape = np.array(sStr.strip("()[]").split(","), dtype=int)
                 # Try if the array could be reshaped that way
                 try:
-                    data = np.reshape(data, shape)
+                    data = np.reshape(data, getShapeFromStr(sStr))
                 # If it could not be reshaped, get another user input
                 except ValueError:
+                    print "Data could not be reshaped!"
                     continue
                 return data
             # If "CANCEL" is pressed

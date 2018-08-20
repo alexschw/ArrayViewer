@@ -69,7 +69,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self._data = {}
         self.cText = []
         self.reshapeBox = ReshapeDialog(self)
-        self.newDataBox = NewDataDialog(self)
+        self.newDataBox = NewDataDialog()
 
         # General Options
 #        self.resize(800, 600)
