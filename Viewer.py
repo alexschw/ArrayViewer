@@ -12,7 +12,7 @@ import re
 import h5py
 import scipy.io
 import numpy as np
-import PyQt4.QtGui as QtGui
+from PyQt4 import QtGui
 from PyQt4.QtGui import QSizePolicy as QSP
 from PyQt4.QtCore import QRect
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
@@ -197,8 +197,8 @@ class ViewerWindow(QtGui.QMainWindow):
             else:
                 self.keys.remove(key)
         # Check if the File is bigger than 1 GB, than it will not be loaded
-        if os.path.getsize(fname) > 1e9:
-            print "File bigger than 1GB. Not loading!"
+        if os.path.getsize(fname) > 4e9:
+            print "File bigger than 4GB. Not loading!"
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
