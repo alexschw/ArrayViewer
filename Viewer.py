@@ -84,6 +84,7 @@ class ViewerWindow(QtGui.QMainWindow):
         QFra.setSizePolicy(QSP.Expanding, QSP.Expanding)
         vLayout.addWidget(QFra)
         hLayout2 = QtGui.QHBoxLayout()
+        hLayout3 = QtGui.QHBoxLayout()
         vLayout2 = QtGui.QVBoxLayout()
         hLayout = QtGui.QHBoxLayout(QFra)
         hLayout.addLayout(vLayout2)
@@ -110,6 +111,16 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Transp.setText("Transpose")
         self.Transp.stateChanged.connect(self.draw_data)
         vLayout2.addWidget(self.Transp)
+
+        # Add the Permute Field
+        self.Prmt = QtGui.QLineEdit(QFra)
+        self.Prmt.setText("")
+        hLayout3.addWidget(self.Prmt)
+        self.PrmtBtn = QtGui.QPushButton(QFra)
+        self.PrmtBtn.setText("Permute")
+        self.PrmtBtn.released.connect(self.permute_data)
+        hLayout3.addWidget(self.PrmtBtn)
+        vLayout2.addLayout(hLayout3)
 
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(QFra)
@@ -223,6 +234,19 @@ class ViewerWindow(QtGui.QMainWindow):
         self._data[key] = data
         self.keys.append(key)
         self.update_tree()
+
+    def permute_data(self):
+        """ Check the input in the permute box and reshape the array """
+        content = str(self.Prmt.text()).strip("([])").replace(" ","")
+        chkstr = content.split(",")
+        chkstr.sort()
+        if not chkstr == [str(_a) for _a in xrange(self[0].ndim)]:
+            print "Shape is not matching dimensions. Aborting!"
+            return
+        new_order = tuple(np.array(content.split(","),dtype="i"))
+        self[0] = np.transpose(self[0],new_order)
+        self.update_shape(self[0].shape)
+        print "Permuted to", self[0].shape
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data """
