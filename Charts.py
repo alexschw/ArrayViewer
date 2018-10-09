@@ -37,8 +37,7 @@ def getShapeFromStr(string):
     Returns an array with the elements of the string. All brackets are
     removed as well as empty elements in the array.
     """
-    strList = filter(lambda n: bool(n), string.strip("()[]").split(","))
-    return np.array(strList, dtype=int)
+    return np.array(filter(None, string.strip("()[]").split(",")), dtype=int)
 
 class GraphWidget(QtGui.QWidget):
     """ Draws the data graph """

@@ -19,7 +19,8 @@ from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 
 def filltoequal(lil):
     """ Fill a list of lists. Append smaller lists with nan """
-    return [[xi.append(np.nan) for _ in xrange(max(map(len, lil))-len(xi))] for xi in lil]
+    maxlen = max(map(len, lil))
+    [[xi.append(np.nan) for _ in xrange(maxlen-len(xi))] for xi in lil]
 
 def validate(data):
     """ Data validation. Replace lists of numbers with np.ndarray."""
@@ -40,7 +41,7 @@ def validate(data):
         if data != [] and not isinstance(data[0], str):
             # not all elements in the list have the same length
             if isinstance(data[0], list) and len(set(map(len, data))) != 1:
-                data = filltoequal(data)
+                filltoequal(data)
             data = np.array(data)
     elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
         # Create a dictionary from matlab structs
@@ -246,14 +247,14 @@ class ViewerWindow(QtGui.QMainWindow):
 
     def permute_data(self):
         """ Check the input in the permute box and reshape the array """
-        content = str(self.Prmt.text()).strip("([])").replace(" ","")
+        content = str(self.Prmt.text()).strip("([])").replace(" ", "")
         chkstr = content.split(",")
         chkstr.sort()
-        if not chkstr == [str(_a) for _a in xrange(self[0].ndim)]:
+        if chkstr != [str(_a) for _a in xrange(self[0].ndim)]:
             print "Shape is not matching dimensions. Aborting!"
             return
-        new_order = tuple(np.array(content.split(","),dtype="i"))
-        self[0] = np.transpose(self[0],new_order)
+        new_order = tuple(np.array(content.split(","), dtype="i"))
+        self[0] = np.transpose(self[0], new_order)
         self.update_shape(self[0].shape)
         print "Permuted to", self[0].shape
 
@@ -313,8 +314,10 @@ class ViewerWindow(QtGui.QMainWindow):
             # Update the shape widgets based on the datatype
             if isinstance(self[0], (int, float, str, unicode, list)):
                 self.update_shape([0])
+                self.Prmt.setText("")
             else:
                 self.update_shape(self[0].shape)
+                self.Prmt.setText(str(range(self[0].ndim)))
             self.draw_data()
 
 
