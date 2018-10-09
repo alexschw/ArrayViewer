@@ -81,7 +81,6 @@ class ViewerWindow(QtGui.QMainWindow):
 
         # Get the general Frame/Box Structure
         QFra = QtGui.QFrame(CWgt)
-        QFra.setSizePolicy(QSP.Expanding, QSP.Expanding)
         vLayout.addWidget(QFra)
         hLayout2 = QtGui.QHBoxLayout()
         hLayout3 = QtGui.QHBoxLayout()
@@ -115,6 +114,7 @@ class ViewerWindow(QtGui.QMainWindow):
         # Add the Permute Field
         self.Prmt = QtGui.QLineEdit(QFra)
         self.Prmt.setText("")
+        self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         hLayout3.addWidget(self.Prmt)
         self.PrmtBtn = QtGui.QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
@@ -149,7 +149,6 @@ class ViewerWindow(QtGui.QMainWindow):
         menuStart = QtGui.QMenu(menubar)
         menuStart.setTitle("Start")
         menubar.addAction(menuStart.menuAction())
-        self.setMenuBar(menubar)
 
         btnLoadData = QtGui.QAction(menubar)
         menuStart.addAction(btnLoadData)
@@ -174,6 +173,16 @@ class ViewerWindow(QtGui.QMainWindow):
         btnNewData.setText("New Data")
         btnNewData.setShortcut("Ctrl+N")
         btnNewData.activated.connect(self.new_data_dialog)
+
+        menuGraph = QtGui.QMenu(menubar)
+        menuGraph.setTitle("Graph")
+        menubar.addAction(menuGraph.menuAction())
+        self.setMenuBar(menubar)
+
+        btnNewData = QtGui.QAction(menubar)
+        menuGraph.addAction(btnNewData)
+        btnNewData.setText("Colorbar")
+        btnNewData.activated.connect(self.Graph.colorbar)
 
     def __getitem__(self, item):
         """ Gets the current data """
@@ -307,6 +316,7 @@ class ViewerWindow(QtGui.QMainWindow):
             else:
                 self.update_shape(self[0].shape)
             self.draw_data()
+
 
     def get_shape_str(self):
         """ Get a shape string from the QLineEditWidgets """

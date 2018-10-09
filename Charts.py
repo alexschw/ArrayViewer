@@ -9,6 +9,7 @@ from PyQt4.QtGui import QDialogButtonBox as DBB
 from PyQt4 import QtGui, QtCore
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from matplotlib.ticker import MultipleLocator as TickMultLoc
 
 def flatPad(Arr, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
@@ -51,6 +52,8 @@ class GraphWidget(QtGui.QWidget):
         self._canvas.ax = self._figure.add_axes([.15, .15, .75, .75])
         self._canvas.canvas = self._canvas.ax.figure.canvas
         self._canvas.setSizePolicy(QSP.Expanding, QSP.Expanding)
+        self._img = None
+        self._cb = None
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
@@ -62,11 +65,25 @@ class GraphWidget(QtGui.QWidget):
 
     def clear(self):
         """ Clear the figure """
+        if self._cb is not None:
+            self._cb.remove()
+            self._cb = None
         self._figure.clf()
 
     def figure(self):
         """ Return the local figure variable """
         return self._figure
+
+    def colorbar(self):
+        """ Add a colorbar to the graph or remove it, if it is existing """
+        if self._img is None:
+            return
+        if self._cb is None:
+            self._cb = self._figure.colorbar(self._img)
+        else:
+            self._cb.remove()
+            self._cb = None
+        self._canvas.draw()
 
     def renewPlot(self, data, shape_str, ui):
         """ Draw given data. """
@@ -102,10 +119,18 @@ class GraphWidget(QtGui.QWidget):
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow
             elif cutout.squeeze().ndim == 2:
-                ax.imshow(cutout, interpolation='none', aspect='auto')
+                self._img = ax.imshow(cutout, interpolation='none', aspect='auto')
             # higher-dimensional cutouts will first be flattened
             elif cutout.squeeze().ndim >= 3:
-                ax.imshow(flatPad(cutout), interpolation='none', aspect='auto')
+                nPad = cutout.shape[0] // 100 + 1
+                dat = flatPad(cutout, nPad)
+                self._img = ax.imshow(dat, interpolation='none', aspect='auto')
+                ax.xaxis.set_major_locator(TickMultLoc(cutout.shape[0]+nPad))
+                ax.yaxis.set_major_locator(TickMultLoc(cutout.shape[1]+nPad))
+            # Reset the colorbar. A better solution would be possible, if the
+            # axes were not cleared everytime.
+            self.colorbar()
+            self.colorbar()
             # Set the minimum and maximum values from the data
             ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
             ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
@@ -119,6 +144,7 @@ class ReshapeDialog(QtGui.QDialog):
         # Setup the basic window
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
+        self.prodShape = 0
         gridLayout = QtGui.QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
