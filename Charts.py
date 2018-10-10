@@ -51,6 +51,7 @@ class GraphWidget(QtGui.QWidget):
         self._canvas.ax = self._figure.add_axes([.15, .15, .75, .75])
         self._canvas.canvas = self._canvas.ax.figure.canvas
         self._canvas.setSizePolicy(QSP.Expanding, QSP.Expanding)
+        self._clim = (0, 1)
         self._img = None
         self._cb = None
 
@@ -73,15 +74,20 @@ class GraphWidget(QtGui.QWidget):
         """ Return the local figure variable """
         return self._figure
 
-    def colorbar(self):
+    def colorbar(self, minmax=None):
         """ Add a colorbar to the graph or remove it, if it is existing """
         if self._img is None:
             return
         if self._cb is None:
             self._cb = self._figure.colorbar(self._img)
         else:
-            self._cb.remove()
-            self._cb = None
+            if minmax != None:
+                self._cb.set_clim(vmin=minmax[0]*(self._clim[1]-self._clim[0])+self._clim[0],
+                                  vmax=minmax[1]*self._clim[1])
+                self._cb.draw_all()
+            else:
+                self._cb.remove()
+                self._cb = None
         self._canvas.draw()
 
     def renewPlot(self, data, shape_str, ui):
@@ -130,6 +136,7 @@ class GraphWidget(QtGui.QWidget):
             # axes were not cleared everytime.
             self.colorbar()
             self.colorbar()
+            self._clim = (cutout.min(), cutout.max())
             # Set the minimum and maximum values from the data
             ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
             ui.txtMax.setText('max :' + "%0.5f"%cutout.max())

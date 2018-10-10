@@ -16,6 +16,7 @@ from PyQt4 import QtGui
 from PyQt4.QtGui import QSizePolicy as QSP
 from PyQt4.QtCore import QRect
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
+from Slider import rangeSlider
 
 def filltoequal(lil):
     """ Fill a list of lists. Append smaller lists with nan """
@@ -127,6 +128,12 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Graph = GraphWidget(QFra)
         self.Graph.setSizePolicy(QSP.Expanding, QSP.Expanding)
         hLayout.addWidget(self.Graph)
+
+        # Add the Color Slider
+        self.Sldr = rangeSlider(QFra)
+        self.Sldr.setSizePolicy(QSP.Fixed, QSP.Expanding)
+        self.Sldr.sliderReleased.connect(self.update_colorbar)
+        hLayout.addWidget(self.Sldr)
 
         self._initMenu()
 
@@ -298,6 +305,10 @@ class ViewerWindow(QtGui.QMainWindow):
         shape = self.get_shape_str()
         if shape or self[0].shape == (1,):
             self.Graph.renewPlot(self[0], shape, self)
+
+    def update_colorbar(self):
+        """ Update the values of the colorbar according to the slider value """
+        self.Graph.colorbar(self.Sldr.value())
 
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed """
