@@ -87,11 +87,9 @@ class ViewerWindow(QtGui.QMainWindow):
         # Get the general Frame/Box Structure
         QFra = QtGui.QFrame(CWgt)
         vLayout.addWidget(QFra)
-        hLayout2 = QtGui.QHBoxLayout()
-        hLayout3 = QtGui.QHBoxLayout()
-        vLayout2 = QtGui.QVBoxLayout()
+        grLayout = QtGui.QGridLayout()
         hLayout = QtGui.QHBoxLayout(QFra)
-        hLayout.addLayout(vLayout2)
+        hLayout.addLayout(grLayout)
 
         # Add the Tree Widget
         self.Tree = QtGui.QTreeWidget(QFra)
@@ -99,33 +97,31 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Tree.headerItem().setText(0, "1")
         self.Tree.header().setVisible(False)
         self.Tree.currentItemChanged.connect(self.change_tree)
-        vLayout2.addWidget(self.Tree)
+        grLayout.addWidget(self.Tree, 0, 0, 1, -1)
 
         # Add the min and max labels
         self.txtMin = QtGui.QLabel(QFra)
         self.txtMin.setText("min : ")
-        hLayout2.addWidget(self.txtMin)
+        grLayout.addWidget(self.txtMin, 1, 0)
         self.txtMax = QtGui.QLabel(QFra)
         self.txtMax.setText("max : ")
-        hLayout2.addWidget(self.txtMax)
-        vLayout2.addLayout(hLayout2)
+        grLayout.addWidget(self.txtMax, 1, 1)
 
         # Add the "Transpose"-Checkbox
         self.Transp = QtGui.QCheckBox(QFra)
         self.Transp.setText("Transpose")
         self.Transp.stateChanged.connect(self.draw_data)
-        vLayout2.addWidget(self.Transp)
+        grLayout.addWidget(self.Transp, 2, 0)
 
         # Add the Permute Field
         self.Prmt = QtGui.QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
-        hLayout3.addWidget(self.Prmt)
+        grLayout.addWidget(self.Prmt, 3, 0)
         self.PrmtBtn = QtGui.QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
         self.PrmtBtn.released.connect(self.permute_data)
-        hLayout3.addWidget(self.PrmtBtn)
-        vLayout2.addLayout(hLayout3)
+        grLayout.addWidget(self.PrmtBtn, 3, 1)
 
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(QFra)
