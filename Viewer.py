@@ -113,6 +113,12 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Transp.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Transp, 2, 0)
 
+        # Add the "Plot2D"-Checkbox
+        self.Plot2D = QtGui.QCheckBox(QFra)
+        self.Plot2D.setText("Use plot for 2D graphs")
+        self.Plot2D.stateChanged.connect(self.draw_data)
+        grLayout.addWidget(self.Plot2D, 2, 1)
+
         # Add the Permute Field
         self.Prmt = QtGui.QLineEdit(QFra)
         self.Prmt.setText("")

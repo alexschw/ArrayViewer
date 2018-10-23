@@ -127,10 +127,13 @@ class GraphWidget(QtGui.QWidget):
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
-            # 2D-cutout will be shown using imshow
+            # 2D-cutout will be shown using imshow or plot
             elif cutout.squeeze().ndim == 2:
-                self._img = ax.imshow(cutout, interpolation='none',
-                                      aspect='auto')
+                if ui.Plot2D.checkState():
+                    ax.plot(cutout)
+                else:
+                    self._img = ax.imshow(cutout, interpolation='none',
+                                          aspect='auto')
             # higher-dimensional cutouts will first be flattened
             elif cutout.squeeze().ndim >= 3:
                 nPad = cutout.shape[0] // 100 + 1
