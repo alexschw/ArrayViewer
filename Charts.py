@@ -11,26 +11,28 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
 
+
 def flatPad(Arr, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
-    Arr = np.reshape(Arr, Arr.shape[:2]+(-1, ))
+    Arr = np.reshape(Arr, Arr.shape[:2] + (-1, ))
     # Get the most equal division of the last dimension
-    for n in xrange(int(np.sqrt(Arr.shape[2])), Arr.shape[2]+1):
+    for n in xrange(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
         if Arr.shape[2]%n == 0:
-            rows = Arr.shape[2]/n
+            rows = Arr.shape[2] / n
             break
     # Add the padding to the right and bottom of the arrays
-    A0 = np.ones([padding, Arr.shape[1], Arr.shape[2]])*fill
-    A1 = np.ones([Arr.shape[0]+padding, padding, Arr.shape[2]])*fill
+    A0 = np.ones([padding, Arr.shape[1], Arr.shape[2]]) * fill
+    A1 = np.ones([Arr.shape[0] + padding, padding, Arr.shape[2]]) * fill
     pArr = np.append(np.append(Arr, A0, axis=0), A1, axis=1)
     # Stack the arrays according to the precalculated number of rows
     pA2D = np.hstack(np.split(np.hstack(pArr.T).T, rows)).T
     # Add the padding to the left and top of the arrays
-    A0 = np.ones([padding, pA2D.shape[1]])*fill
-    A1 = np.ones([pA2D.shape[0]+padding, padding])*fill
+    A0 = np.ones([padding, pA2D.shape[1]]) * fill
+    A1 = np.ones([pA2D.shape[0] + padding, padding]) * fill
     pA2D = np.append(A1, np.append(A0, pA2D, axis=0), axis=1)
     return pA2D
+
 
 def getShapeFromStr(string):
     """
@@ -38,6 +40,7 @@ def getShapeFromStr(string):
     removed as well as empty elements in the array.
     """
     return np.array(filter(None, string.strip("()[]").split(",")), dtype=int)
+
 
 class GraphWidget(QtGui.QWidget):
     """ Draws the data graph """
@@ -81,9 +84,11 @@ class GraphWidget(QtGui.QWidget):
         if self._cb is None:
             self._cb = self._figure.colorbar(self._img)
         else:
-            if minmax != None:
-                self._cb.set_clim(vmin=minmax[0]*(self._clim[1]-self._clim[0])+self._clim[0],
-                                  vmax=minmax[1]*self._clim[1])
+            if minmax is not None:
+                self._cb.set_clim(
+                    vmin=minmax[0] * (self._clim[1] - self._clim[0])
+                    + self._clim[0], vmax=minmax[1] * self._clim[1]
+                )
                 self._cb.draw_all()
             else:
                 self._cb.remove()
@@ -124,14 +129,15 @@ class GraphWidget(QtGui.QWidget):
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow
             elif cutout.squeeze().ndim == 2:
-                self._img = ax.imshow(cutout, interpolation='none', aspect='auto')
+                self._img = ax.imshow(cutout, interpolation='none',
+                                      aspect='auto')
             # higher-dimensional cutouts will first be flattened
             elif cutout.squeeze().ndim >= 3:
                 nPad = cutout.shape[0] // 100 + 1
                 dat = flatPad(cutout, nPad)
                 self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-                ax.xaxis.set_major_locator(TickMultLoc(cutout.shape[0]+nPad))
-                ax.yaxis.set_major_locator(TickMultLoc(cutout.shape[1]+nPad))
+                ax.xaxis.set_major_locator(TickMultLoc(cutout.shape[0] + nPad))
+                ax.yaxis.set_major_locator(TickMultLoc(cutout.shape[1] + nPad))
             # Reset the colorbar. A better solution would be possible, if the
             # axes were not cleared everytime.
             self.colorbar()
@@ -141,6 +147,7 @@ class GraphWidget(QtGui.QWidget):
             ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
             ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
         self._canvas.draw()
+
 
 class ReshapeDialog(QtGui.QDialog):
     """ A Dialog for Reshaping the Array """
@@ -182,10 +189,10 @@ class ReshapeDialog(QtGui.QDialog):
         if keyEv and keyEv[-1] == ',':
             shape = getShapeFromStr(str(keyEv))
             if self.prodShape%shape.prod() == 0:
-                rest = self.prodShape/shape.prod()
-                self.shCmpl.model().setStringList([keyEv+str(rest)])
+                rest = self.prodShape / shape.prod()
+                self.shCmpl.model().setStringList([keyEv + str(rest)])
             else:
-                self.shCmpl.model().setStringList([keyEv+" Not fitting"])
+                self.shCmpl.model().setStringList([keyEv + " Not fitting"])
         return keyEv
 
     def reshape_array(self, data):
@@ -212,6 +219,7 @@ class ReshapeDialog(QtGui.QDialog):
             # If "CANCEL" is pressed
             else:
                 return data
+
 
 class NewDataDialog(QtGui.QDialog):
     """ A Dialog for Creating new Data """
@@ -249,7 +257,7 @@ class NewDataDialog(QtGui.QDialog):
     def on_accept(self):
         """ Try to run the command and append the history on pressing 'OK' """
         try:
-            exec("self."+str(self.cmd.text()))
+            exec("self." + str(self.cmd.text()))
         except Exception as err:
             self.err.setText(err.message)
             self.cmd.setText("")

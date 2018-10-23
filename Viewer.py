@@ -18,10 +18,12 @@ from PyQt4.QtCore import QRect
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 
+
 def filltoequal(lil):
     """ Fill a list of lists. Append smaller lists with nan """
     maxlen = max(map(len, lil))
-    [[xi.append(np.nan) for _ in xrange(maxlen-len(xi))] for xi in lil]
+    [[xi.append(np.nan) for _ in xrange(maxlen - len(xi))] for xi in lil]
+
 
 def validate(data):
     """ Data validation. Replace lists of numbers with np.ndarray."""
@@ -57,16 +59,17 @@ def validate(data):
             ndata.append(validate(subdat))
         data = np.array(ndata)
     elif not isinstance(data, (np.ndarray, int, float, str, unicode, tuple)):
-        print "DataType ("+type(data)+") not recognized. Skipping"
+        print "DataType (" + type(data) + ") not recognized. Skipping"
         return None
     return data
+
 
 class ViewerWindow(QtGui.QMainWindow):
     """ The main window of the array viewer """
     def __init__(self, parent=None):
         """ Initialize the window """
         super(self.__class__, self).__init__(parent)
-            # set class variables
+        # set class variables
         self.keys = []
         self._data = {}
         self.cText = []
@@ -214,7 +217,7 @@ class ViewerWindow(QtGui.QMainWindow):
         filename = splitted[-1]
         key = str(folder + " - " + filename)
         # Show warning if data exists
-        if self._data.has_key(key):
+        if key in self._data:
             msg = QtGui.QMessageBox()
             msg.setText("Data(%s) exists. Do you want to overwrite it?"%key)
             msg.setIcon(QtGui.QMessageBox.Warning)
@@ -224,7 +227,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 return
             else:
                 self.keys.remove(key)
-        # Check if the File is bigger than 1 GB, than it will not be loaded
+        # Check if the File is bigger than 4 GB, than it will not be loaded
         if os.path.getsize(fname) > 4e9:
             print "File bigger than 4GB. Not loading!"
             return False
@@ -236,14 +239,14 @@ class ViewerWindow(QtGui.QMainWindow):
             data = validate(scipy.io.loadmat(str(fname), squeeze_me=True,
                                              struct_as_record=False))
         elif fname[-4:] == '.npy':
-            data = {'Value':np.load(open(str(fname)))}
+            data = {'Value': np.load(open(str(fname)))}
         elif fname[-5:] == '.data':
             data = validate(cPickle.load(open(str(fname))))
         elif fname[-4:] == '.txt':
             lines = open(fname).readlines()
             numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
             lil = [re.findall(numberRegEx, line) for line in lines]
-            data = {'Value':np.array(lil, dtype=float)}
+            data = {'Value': np.array(lil, dtype=float)}
         else:
             print 'File type not recognized!'
             return False
@@ -277,7 +280,7 @@ class ViewerWindow(QtGui.QMainWindow):
             self[0] = _data
             self.update_shape(self[0].shape)
         elif key != 0:
-            self._data[key] = {"Value":_data}
+            self._data[key] = {"Value": _data}
             self.keys.append(key)
             self.update_tree()
 
@@ -319,7 +322,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 return 0
             # Get the currently selected FigureCanvasQTAggd data recursively
             self.cText = [str(current.text(0))]
-            while current.parent() != None:
+            while current.parent() is not None:
                 current = current.parent()
                 self.cText.insert(0, str(current.text(0)))
             # Update the shape widgets based on the datatype
@@ -331,11 +334,10 @@ class ViewerWindow(QtGui.QMainWindow):
                 self.Prmt.setText(str(range(self[0].ndim)))
             self.draw_data()
 
-
     def get_shape_str(self):
         """ Get a shape string from the QLineEditWidgets """
         shapeStr = "["
-        nNonScalar = 0 # number of non scalar values
+        nNonScalar = 0  # number of non scalar values
         # For all (non-hidden) widgets
         for n in xrange(self.Shape.columnCount()):
             if self.Shape.itemAtPosition(1, n).widget().isHidden():
@@ -352,11 +354,11 @@ class ViewerWindow(QtGui.QMainWindow):
                 elif int(txt) < -maxt:
                     txt = str(-maxt)
                     self.Shape.itemAtPosition(1, n).widget().setText(txt)
-                shapeStr += txt+','
+                shapeStr += txt + ','
             else:
                 shapeStr += ":,"
                 nNonScalar += 1
-        shapeStr = shapeStr[:-1]+"]"
+        shapeStr = shapeStr[:-1] + "]"
         return shapeStr
 
     def update_shape(self, shape):
@@ -393,6 +395,7 @@ class ViewerWindow(QtGui.QMainWindow):
             itemList.append(item)
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
+
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
