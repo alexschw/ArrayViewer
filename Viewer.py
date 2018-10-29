@@ -57,7 +57,15 @@ def validate(data):
         ndata = []
         for subdat in data:
             ndata.append(validate(subdat))
-        data = np.array(ndata)
+        return np.array(ndata)
+    elif isinstance(data, h5py._hl.files.File) \
+            or isinstance(data, h5py._hl.group.Group):
+        dct = {}
+        for key in data:
+            dct[key] = validate(data[key])
+        return dct
+    elif isinstance(data, h5py._hl.dataset.Dataset):
+        return np.array(data)
     elif not isinstance(data, (np.ndarray, int, float, str, unicode, tuple)):
         print "DataType (" + type(data) + ") not recognized. Skipping"
         return None
@@ -238,8 +246,13 @@ class ViewerWindow(QtGui.QMainWindow):
             f = h5py.File(str(fname))
             data = dict([(n, np.array(f[n])) for n in f])
         elif fname[-4:] == '.mat':
-            data = validate(scipy.io.loadmat(str(fname), squeeze_me=True,
-                                             struct_as_record=False))
+            try:
+                # old matlab versions
+                data = validate(scipy.io.loadmat(str(fname), squeeze_me=True,
+                                                 struct_as_record=False))
+            except NotImplementedError:
+                # v7.3
+                data = validate(h5py.File(str(fname)))
         elif fname[-4:] == '.npy':
             data = {'Value': np.load(open(str(fname)))}
         elif fname[-5:] == '.data':
