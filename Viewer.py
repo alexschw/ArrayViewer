@@ -400,7 +400,7 @@ class ViewerWindow(QtGui.QMainWindow):
         itemList = []
         for i in self.keys:
             item = QtGui.QTreeWidgetItem([i])
-            for j in self._data[i].keys():
+            for j in sorted(self._data[i].keys()):
                 item.addChild(QtGui.QTreeWidgetItem([j]))
             for j in xrange(item.childCount()):
                 data = self._data[i][str(item.child(j).text(0))]
