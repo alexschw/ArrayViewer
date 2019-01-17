@@ -95,6 +95,12 @@ class GraphWidget(QtGui.QWidget):
                 self._cb = None
         self._canvas.draw()
 
+    def colormap(self, mapname):
+        if self._img is None:
+            return
+        self._img.set_cmap(mapname)
+        self._canvas.draw()
+
     def renewPlot(self, data, shape_str, ui):
         """ Draw given data. """
         ax = self._figure.gca()

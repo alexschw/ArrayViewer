@@ -200,10 +200,37 @@ class ViewerWindow(QtGui.QMainWindow):
         menubar.addAction(menuGraph.menuAction())
         self.setMenuBar(menubar)
 
-        btnNewData = QtGui.QAction(menubar)
-        menuGraph.addAction(btnNewData)
-        btnNewData.setText("Colorbar")
-        btnNewData.activated.connect(self.Graph.colorbar)
+        btnColorbar = QtGui.QAction(menubar)
+        menuGraph.addAction(btnColorbar)
+        btnColorbar.setText("Colorbar")
+        btnColorbar.activated.connect(self.Graph.colorbar)
+
+        menuGraph.addSeparator()
+
+        btnCmJet = QtGui.QAction(menubar)
+        menuGraph.addAction(btnCmJet)
+        btnCmJet.setText("Colormap 'jet'")
+        btnCmJet.activated.connect(lambda: self.Graph.colormap('jet'))
+
+        btnCmGray = QtGui.QAction(menubar)
+        menuGraph.addAction(btnCmGray)
+        btnCmGray.setText("Colormap 'gray'")
+        btnCmGray.activated.connect(lambda: self.Graph.colormap('gray'))
+
+        btnCmHot = QtGui.QAction(menubar)
+        menuGraph.addAction(btnCmHot)
+        btnCmHot.setText("Colormap 'hot'")
+        btnCmHot.activated.connect(lambda: self.Graph.colormap('hot'))
+
+        btnCmBwr = QtGui.QAction(menubar)
+        menuGraph.addAction(btnCmBwr)
+        btnCmBwr.setText("Colormap 'bwr'")
+        btnCmBwr.activated.connect(lambda: self.Graph.colormap('bwr'))
+
+        btnCmViridis = QtGui.QAction(menubar)
+        menuGraph.addAction(btnCmViridis)
+        btnCmViridis.setText("Colormap 'viridis'")
+        btnCmViridis.activated.connect(lambda: self.Graph.colormap('viridis'))
 
     def __getitem__(self, item):
         """ Gets the current data """
