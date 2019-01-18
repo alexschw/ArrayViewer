@@ -1,10 +1,11 @@
+#!/usr/bin/env python3
 """
 # Array Viewer
 # View arrays from different sources in the viewer. Reshape them etc.
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import sys
-import cPickle
+import pickle
 from operator import getitem
 
 import os.path
@@ -21,8 +22,8 @@ from Slider import rangeSlider
 
 def filltoequal(lil):
     """ Fill a list of lists. Append smaller lists with nan """
-    maxlen = max(map(len, lil))
-    [[xi.append(np.nan) for _ in xrange(maxlen - len(xi))] for xi in lil]
+    maxlen = max(list(map(len, lil)))
+    [[xi.append(np.nan) for _ in range(maxlen - len(xi))] for xi in lil]
 
 
 def validate(data):
@@ -66,8 +67,8 @@ def validate(data):
         return dct
     elif isinstance(data, h5py._hl.dataset.Dataset):
         return np.array(data)
-    elif not isinstance(data, (np.ndarray, int, float, str, unicode, tuple)):
-        print "DataType (" + type(data) + ") not recognized. Skipping"
+    elif not isinstance(data, (np.ndarray, int, float, str, tuple)):
+        print("DataType (", type(data), ") not recognized. Skipping")
         return None
     return data
 
@@ -152,7 +153,7 @@ class ViewerWindow(QtGui.QMainWindow):
 
         # Shape Widget
         self.Shape = QtGui.QGridLayout()
-        for n in xrange(6):
+        for n in range(6):
             label = QtGui.QLabel()
             label.setText("0")
             label.hide()
@@ -266,7 +267,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 self.keys.remove(key)
         # Check if the File is bigger than 4 GB, than it will not be loaded
         if os.path.getsize(fname) > 4e9:
-            print "File bigger than 4GB. Not loading!"
+            print("File bigger than 4GB. Not loading!")
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
@@ -283,14 +284,14 @@ class ViewerWindow(QtGui.QMainWindow):
         elif fname[-4:] == '.npy':
             data = {'Value': np.load(open(str(fname)))}
         elif fname[-5:] == '.data':
-            data = validate(cPickle.load(open(str(fname))))
+            data = validate(pickle.load(open(str(fname))))
         elif fname[-4:] == '.txt':
             lines = open(fname).readlines()
             numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
             lil = [re.findall(numberRegEx, line) for line in lines]
             data = {'Value': np.array(lil, dtype=float)}
         else:
-            print 'File type not recognized!'
+            print('File type not recognized!')
             return False
 
         self._data[key] = data
@@ -302,13 +303,13 @@ class ViewerWindow(QtGui.QMainWindow):
         content = str(self.Prmt.text()).strip("([])").replace(" ", "")
         chkstr = content.split(",")
         chkstr.sort()
-        if chkstr != [str(_a) for _a in xrange(self[0].ndim)]:
-            print "Shape is not matching dimensions. Aborting!"
+        if chkstr != [str(_a) for _a in range(self[0].ndim)]:
+            print("Shape is not matching dimensions. Aborting!")
             return
         new_order = tuple(np.array(content.split(","), dtype="i"))
         self[0] = np.transpose(self[0], new_order)
         self.update_shape(self[0].shape)
-        print "Permuted to", self[0].shape
+        print("Permuted to", self[0].shape)
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data """
@@ -373,7 +374,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 self.Prmt.setText("")
             else:
                 self.update_shape(self[0].shape)
-                self.Prmt.setText(str(range(self[0].ndim)))
+                self.Prmt.setText(str(list(range(self[0].ndim))))
             self.draw_data()
 
     def get_shape_str(self):
@@ -381,7 +382,7 @@ class ViewerWindow(QtGui.QMainWindow):
         shapeStr = "["
         nNonScalar = 0  # number of non scalar values
         # For all (non-hidden) widgets
-        for n in xrange(self.Shape.columnCount()):
+        for n in range(self.Shape.columnCount()):
             if self.Shape.itemAtPosition(1, n).widget().isHidden():
                 break
             # Get the text and the maximum value within the dimension
@@ -406,15 +407,15 @@ class ViewerWindow(QtGui.QMainWindow):
     def update_shape(self, shape):
         """ Update the shape widgets in the window based on the new data """
         # Show a number of widgets equal to the dimension, hide the others
-        for n in xrange(self.Shape.columnCount()):
-            for m in xrange(self.Shape.rowCount()):
+        for n in range(self.Shape.columnCount()):
+            for m in range(self.Shape.rowCount()):
                 wgt = self.Shape.itemAtPosition(m, n)
                 if n < len(shape):
                     wgt.widget().show()
                 else:
                     wgt.widget().hide()
         # Initialize the Values of those widgets. Could not be done previously
-        for n in xrange(len(shape)):
+        for n in range(len(shape)):
             self.Shape.itemAtPosition(0, n).widget().setText(str(shape[n]))
             # Just show the first two dimensions in the beginning
             if n > 1:
@@ -429,10 +430,10 @@ class ViewerWindow(QtGui.QMainWindow):
             item = QtGui.QTreeWidgetItem([i])
             for j in sorted(self._data[i].keys()):
                 item.addChild(QtGui.QTreeWidgetItem([j]))
-            for j in xrange(item.childCount()):
+            for j in range(item.childCount()):
                 data = self._data[i][str(item.child(j).text(0))]
                 if isinstance(data, dict):
-                    for k in data.keys():
+                    for k in list(data.keys()):
                         item.child(j).addChild(QtGui.QTreeWidgetItem([k]))
             itemList.append(item)
         self.Tree.clear()

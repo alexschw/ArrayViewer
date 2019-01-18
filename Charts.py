@@ -17,7 +17,7 @@ def flatPad(Arr, padding=1, fill=np.nan):
     # Reshape the array to 3D
     Arr = np.reshape(Arr, Arr.shape[:2] + (-1, ))
     # Get the most equal division of the last dimension
-    for n in xrange(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
+    for n in range(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
         if Arr.shape[2]%n == 0:
             rows = Arr.shape[2] / n
             break
@@ -39,7 +39,7 @@ def getShapeFromStr(string):
     Returns an array with the elements of the string. All brackets are
     removed as well as empty elements in the array.
     """
-    return np.array(filter(None, string.strip("()[]").split(",")), dtype=int)
+    return np.array([_f for _f in string.strip("()[]").split(",") if _f], dtype=int)
 
 
 class GraphWidget(QtGui.QWidget):
@@ -222,7 +222,7 @@ class ReshapeDialog(QtGui.QDialog):
                     data = np.reshape(data, getShapeFromStr(sStr))
                 # If it could not be reshaped, get another user input
                 except ValueError:
-                    print "Data could not be reshaped!"
+                    print("Data could not be reshaped!")
                     continue
                 return data
             # If "CANCEL" is pressed

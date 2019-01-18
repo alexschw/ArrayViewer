@@ -44,7 +44,7 @@ class rangeSlider(QtGui.QWidget):
 
     def print_val(self):
         """ Prints the tuple of the current value of both sliders """
-        print self.value()
+        print(self.value())
 
     def maxRestict(self, value):
         """ Restricts the maximum slider to be more than the minimum slider """
