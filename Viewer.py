@@ -356,9 +356,6 @@ class ViewerWindow(QtGui.QMainWindow):
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     window = ViewerWindow()
-    f = open('test.log','a')
-    f.writelines(sys.argv)
-    f.close()
     for new_file in sys.argv[1:]:
         window.loader.load.emit(os.path.abspath(new_file))
     window.show()
