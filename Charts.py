@@ -108,7 +108,9 @@ class GraphWidget(QtGui.QWidget):
         # Reset the minimum and maximum text
         ui.txtMin.setText('min :')
         ui.txtMax.setText('max :')
-        if isinstance(data, (str, unicode, list, float, int)):
+        if data is None:
+            return
+        elif isinstance(data, (str, unicode, list, float, int)):
             # Print strings or lists of strings to the graph directly
             ax.text(0.0, 1.0, data)
             ax.axis('off')
