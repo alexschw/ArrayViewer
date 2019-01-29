@@ -5,73 +5,16 @@
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import sys
-import pickle
 from operator import getitem
 
 import os.path
-import re
-import h5py
-import scipy.io
 import numpy as np
 from PyQt4 import QtGui
 from PyQt4.QtGui import QSizePolicy as QSP
-from PyQt4.QtCore import QRect
+from PyQt4.QtCore import QRect, QThread, pyqtSlot
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
-
-
-def filltoequal(lil):
-    """ Fill a list of lists. Append smaller lists with nan """
-    maxlen = max(list(map(len, lil)))
-    [[xi.append(np.nan) for _ in range(maxlen - len(xi))] for xi in lil]
-
-
-def validate(data):
-    """ Data validation. Replace lists of numbers with np.ndarray."""
-    if isinstance(data, dict):
-        # List of global variables (that should not be shown)
-        glob = []
-        for subdat in data:
-            # global variables start with two underscores
-            if subdat[:2] == "__":
-                glob.append(subdat)
-                continue
-            # Run the validation again for each subelement in the dict
-            data[subdat] = validate(data[subdat])
-        # Remove global variables
-        for g in glob:
-            data.pop(g)
-    elif isinstance(data, list):
-        if data != [] and not isinstance(data[0], str):
-            # not all elements in the list have the same length
-            if isinstance(data[0], list) and len(set(map(len, data))) != 1:
-                filltoequal(data)
-            data = np.array(data)
-    elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
-        # Create a dictionary from matlab structs
-        dct = {}
-        for key in data._fieldnames:
-            exec("dct[key] = validate(data.%s)"%key)
-        data = dct
-    elif isinstance(data, np.ndarray) and data.dtype == "O":
-        # Create numpy arrays from matlab cell types
-        ndata = []
-        for subdat in data:
-            ndata.append(validate(subdat))
-        return np.array(ndata)
-    elif isinstance(data, h5py._hl.files.File) \
-            or isinstance(data, h5py._hl.group.Group):
-        dct = {}
-        for key in data:
-            dct[key] = validate(data[key])
-        return dct
-    elif isinstance(data, h5py._hl.dataset.Dataset):
-        return np.array(data)
-    elif not isinstance(data, (np.ndarray, int, float, str, tuple)):
-        print("DataType (", type(data), ") not recognized. Skipping")
-        return None
-    return data
-
+from Data import Loader
 
 class ViewerWindow(QtGui.QMainWindow):
     """ The main window of the array viewer """
@@ -84,9 +27,16 @@ class ViewerWindow(QtGui.QMainWindow):
         self.cText = []
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
+        
+        # set the loader from a separate class        
+        self.loader = Loader()
+        self.loadThread = QThread()
+        self.loader.doneLoading.connect(self.on_done_loading)
+        self.loader.moveToThread(self.loadThread)
+        self.loadThread.start()
+        self.lMsg = 'loading...'
 
         # General Options
-#        self.resize(800, 600)
         self.setWindowTitle("Array Viewer")
 
         CWgt = QtGui.QWidget(self)
@@ -236,11 +186,11 @@ class ViewerWindow(QtGui.QMainWindow):
     def __getitem__(self, item):
         """ Gets the current data """
         if self._data == {}:
-            return np.array(0)
+            return None
         if item in [0, "data", ""]:
             return reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]]
         else:
-            return np.array(0)
+            return None
 
     def __setitem__(self, _, newData):
         """ Sets the current data to the new data """
@@ -248,52 +198,10 @@ class ViewerWindow(QtGui.QMainWindow):
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
 
-    def add_data(self, fname):
-        """ Add a new data to the dataset. Ask if the data already exists. """
-        splitted = fname.split("/")
-        folder = splitted[-2]
-        filename = splitted[-1]
-        key = str(folder + " - " + filename)
-        # Show warning if data exists
-        if key in self._data:
-            msg = QtGui.QMessageBox()
-            msg.setText("Data(%s) exists. Do you want to overwrite it?"%key)
-            msg.setIcon(QtGui.QMessageBox.Warning)
-            msg.setStandardButtons(QtGui.QMessageBox.No|QtGui.QMessageBox.Yes)
-            msg.setDefaultButton(QtGui.QMessageBox.Yes)
-            if msg.exec_() != QtGui.QMessageBox.Yes:
-                return
-            else:
-                self.keys.remove(key)
-        # Check if the File is bigger than 4 GB, than it will not be loaded
-        if os.path.getsize(fname) > 4e9:
-            print("File bigger than 4GB. Not loading!")
-            return False
-        # Load the different data types
-        if fname[-5:] == '.hdf5':
-            f = h5py.File(str(fname))
-            data = dict([(n, np.array(f[n])) for n in f])
-        elif fname[-4:] == '.mat':
-            try:
-                # old matlab versions
-                data = validate(scipy.io.loadmat(str(fname), squeeze_me=True,
-                                                 struct_as_record=False))
-            except NotImplementedError:
-                # v7.3
-                data = validate(h5py.File(str(fname)))
-        elif fname[-4:] == '.npy':
-            data = {'Value': np.load(open(str(fname)))}
-        elif fname[-5:] == '.data':
-            data = validate(pickle.load(open(str(fname))))
-        elif fname[-4:] == '.txt':
-            lines = open(fname).readlines()
-            numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
-            lil = [re.findall(numberRegEx, line) for line in lines]
-            data = {'Value': np.array(lil, dtype=float)}
-        else:
-            print('File type not recognized!')
-            return False
-
+    @pyqtSlot(dict, str)
+    def on_done_loading(self, data, key):
+        """ Set the data into the global _data list once loaded. """
+        key = str(key)
         self._data[key] = data
         self.keys.append(key)
         self.update_tree()
@@ -332,9 +240,13 @@ class ViewerWindow(QtGui.QMainWindow):
         ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
         title = 'Open data file'
         fnames = QtGui.QFileDialog.getOpenFileNames(self, title, '.', ftypes)
-        # For all files
-        for fname in fnames:
-            self.add_data(fname)
+        if fnames:
+            loadItem = QtGui.QTreeWidgetItem([self.lMsg])
+            loadItem.setForeground(0, QtGui.QColor("grey"))
+            self.Tree.addTopLevelItem(loadItem)
+            # For all files
+            for fname in fnames:
+                self.loader.load.emit(fname)
 
     def save_chart(self):
         """ Saves the currently shown chart as a file. """
@@ -358,7 +270,8 @@ class ViewerWindow(QtGui.QMainWindow):
 
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed """
-        if current and current != previous and previous:
+        if (current and current != previous and previous and
+            current.text(0) != self.lMsg):
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
@@ -443,5 +356,10 @@ class ViewerWindow(QtGui.QMainWindow):
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     window = ViewerWindow()
+    f = open('test.log','a')
+    f.writelines(sys.argv)
+    f.close()
+    for new_file in sys.argv[1:]:
+        window.loader.load.emit(os.path.abspath(new_file))
     window.show()
-    app.exec_()
+    sys.exit(app.exec_())
