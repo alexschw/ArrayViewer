@@ -15,21 +15,21 @@ import numpy as np
 from PyQt4 import QtGui
 from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot
 
-class Loader(QObject):  
+class Loader(QObject):
     doneLoading = pyqtSignal(dict, str)
-    load = pyqtSignal(str)   
-    
+    load = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super(QObject, self).__init__(parent)
         self.keys = []
         self.fname = ''
         self.load.connect(self.add_data)
-    
+
     def filltoequal(self, lil):
         """ Fill a list of lists. Append smaller lists with nan """
         maxlen = max(list(map(len, lil)))
         [[xi.append(np.nan) for _ in range(maxlen - len(xi))] for xi in lil]
-    
+
     def validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
         if isinstance(data, dict):
@@ -94,9 +94,10 @@ class Loader(QObject):
                 return
             else:
                 self.keys.remove(key)
-        # Check if the File is bigger than 4 GB, than it will not be loaded
-        if os.path.getsize(fname) > 4e9:
-            print("File bigger than 4GB. Not loading!")
+        # Check if the File is bigger than 15 GB, than it will not be loaded
+        if os.path.getsize(fname) > 15e9:
+            print("File bigger than 15GB. Not loading!")
+            self.doneLoading.emit({},'')
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':

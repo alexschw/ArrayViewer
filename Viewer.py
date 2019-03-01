@@ -25,10 +25,11 @@ class ViewerWindow(QtGui.QMainWindow):
         self.keys = []
         self._data = {}
         self.cText = []
+        self.slices = {}
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
-        
-        # set the loader from a separate class        
+
+        # set the loader from a separate class
         self.loader = Loader()
         self.loadThread = QThread()
         self.loader.doneLoading.connect(self.on_done_loading)
@@ -109,6 +110,7 @@ class ViewerWindow(QtGui.QMainWindow):
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
             lineedit = QtGui.QLineEdit()
+            lineedit.editingFinished.connect(self.set_slice)
             lineedit.editingFinished.connect(self.draw_data)
             lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
@@ -185,7 +187,7 @@ class ViewerWindow(QtGui.QMainWindow):
 
     def __getitem__(self, item):
         """ Gets the current data """
-        if self._data == {}:
+        if not self._data or not self.cText:
             return None
         if item in [0, "data", ""]:
             return reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]]
@@ -194,16 +196,43 @@ class ViewerWindow(QtGui.QMainWindow):
 
     def __setitem__(self, _, newData):
         """ Sets the current data to the new data """
-        if self._data == {}:
+        if not self._data:
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
+
+    def slice_key(self):
+        """ Return the slice key for the current dataset """
+        return '/'.join(self.cText)
+
+    def load_slice(self):
+        """ Returns the perviously seleced slice for the current array """
+        if not self._data:
+            return None
+        if self.slice_key() in self.slices:
+            return self.slices[self.slice_key()]
+        else:
+            return None
+
+    def set_slice(self):
+        """ Get the current slice in the window and save it in a dict. """
+        if isinstance(self[0], (int, float, str, unicode, list)):
+            return
+        curr_slice = []
+        # For all (non-hidden) widgets
+        for n in range(self.Shape.columnCount()):
+            if self.Shape.itemAtPosition(1, n).widget().isHidden():
+                break
+            # Get the text and the maximum value within the dimension
+            curr_slice.append(self.Shape.itemAtPosition(1, n).widget().text())
+        self.slices[self.slice_key()] = curr_slice
 
     @pyqtSlot(dict, str)
     def on_done_loading(self, data, key):
         """ Set the data into the global _data list once loaded. """
         key = str(key)
-        self._data[key] = data
-        self.keys.append(key)
+        if key != "":
+            self._data[key] = data
+            self.keys.append(key)
         self.update_tree()
 
     def permute_data(self):
@@ -216,12 +245,17 @@ class ViewerWindow(QtGui.QMainWindow):
             return
         new_order = tuple(np.array(content.split(","), dtype="i"))
         self[0] = np.transpose(self[0], new_order)
+        if self.slice_key() in self.slices:
+           self.slices[self.slice_key()] = [
+                   self.slices[self.slice_key()][i] for i in new_order]
         self.update_shape(self[0].shape)
         print("Permuted to", self[0].shape)
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data """
         self[0] = self.reshapeBox.reshape_array(self[0])
+        if self.slice_key() in self.slices:
+           del self.slices[self.slice_key()]
         self.update_shape(self[0].shape)
 
     def new_data_dialog(self):
@@ -283,11 +317,11 @@ class ViewerWindow(QtGui.QMainWindow):
                 self.cText.insert(0, str(current.text(0)))
             # Update the shape widgets based on the datatype
             if isinstance(self[0], (int, float, str, unicode, list)):
-                self.update_shape([0])
-                self.Prmt.setText("")
+                self.update_shape([0], False)
+                self.PrmtBtn.setEnabled(False)
             else:
                 self.update_shape(self[0].shape)
-                self.Prmt.setText(str(list(range(self[0].ndim))))
+                self.PrmtBtn.setEnabled(True)
             self.draw_data()
 
     def get_shape_str(self):
@@ -317,7 +351,7 @@ class ViewerWindow(QtGui.QMainWindow):
         shapeStr = shapeStr[:-1] + "]"
         return shapeStr
 
-    def update_shape(self, shape):
+    def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data """
         # Show a number of widgets equal to the dimension, hide the others
         for n in range(self.Shape.columnCount()):
@@ -328,13 +362,21 @@ class ViewerWindow(QtGui.QMainWindow):
                 else:
                     wgt.widget().hide()
         # Initialize the Values of those widgets. Could not be done previously
+        if load_slice:
+            curr_slice=self.load_slice()
+            self.Prmt.setText(str(list(range(self[0].ndim))))
+        else:
+            self.Prmt.setText("")
         for n in range(len(shape)):
             self.Shape.itemAtPosition(0, n).widget().setText(str(shape[n]))
-            # Just show the first two dimensions in the beginning
-            if n > 1:
-                self.Shape.itemAtPosition(1, n).widget().setText("0")
+            if load_slice and curr_slice:
+                self.Shape.itemAtPosition(1, n).widget().setText(curr_slice[n])
             else:
-                self.Shape.itemAtPosition(1, n).widget().clear()
+                # Just show the first two dimensions in the beginning
+                if n > 1:
+                    self.Shape.itemAtPosition(1, n).widget().setText("0")
+                else:
+                    self.Shape.itemAtPosition(1, n).widget().clear()
 
     def update_tree(self):
         """ Add new data to TreeWidget """
