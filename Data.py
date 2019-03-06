@@ -12,7 +12,6 @@ import re
 import h5py
 import scipy.io
 import numpy as np
-from PyQt4 import QtGui
 from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot
 
 class Loader(QObject):
@@ -21,7 +20,6 @@ class Loader(QObject):
 
     def __init__(self, parent=None):
         super(QObject, self).__init__(parent)
-        self.keys = []
         self.fname = ''
         self.load.connect(self.add_data)
 
@@ -76,24 +74,11 @@ class Loader(QObject):
             return None
         return data
 
-    @pyqtSlot(str)
+    @pyqtSlot(str, str)
     def add_data(self, fname):
         """ Add a new data to the dataset. Ask if the data already exists. """
         splitted = fname.split("/")
-        folder = splitted[-2]
-        filename = splitted[-1]
-        key = str(folder + " - " + filename)
-        # Show warning if data exists
-        if key in self.keys:
-            msg = QtGui.QMessageBox()
-            msg.setText("Data(%s) exists. Do you want to overwrite it?"%key)
-            msg.setIcon(QtGui.QMessageBox.Warning)
-            msg.setStandardButtons(QtGui.QMessageBox.No|QtGui.QMessageBox.Yes)
-            msg.setDefaultButton(QtGui.QMessageBox.Yes)
-            if msg.exec_() != QtGui.QMessageBox.Yes:
-                return
-            else:
-                self.keys.remove(key)
+        key = str(splitted[-2] + " - " + splitted[-1])
         # Check if the File is bigger than 15 GB, than it will not be loaded
         if os.path.getsize(fname) > 15e9:
             print("File bigger than 15GB. Not loading!")
@@ -124,4 +109,4 @@ class Loader(QObject):
             print('File type not recognized!')
             return False
 
-        self.doneLoading.emit(data,key)
+        self.doneLoading.emit(data, key)

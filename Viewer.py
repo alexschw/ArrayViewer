@@ -58,6 +58,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Tree.header().setVisible(False)
         self.Tree.currentItemChanged.connect(self.change_tree)
         grLayout.addWidget(self.Tree, 0, 0, 1, -1)
+        self.Tree.contextMenuEvent = self.dropdown
 
         # Add the min and max labels
         self.txtMin = QtGui.QLabel(QFra)
@@ -200,6 +201,31 @@ class ViewerWindow(QtGui.QMainWindow):
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
 
+    def dropdown(self, _):
+        """ Add a context menu """
+        if self.Tree.currentItem():
+            self.contextMenu = QtGui.QMenu(self)
+            delData = QtGui.QAction(self.contextMenu)
+            delData.setText("Delete Data")
+            delData.triggered.connect(lambda: self.delete_data())
+            self.contextMenu.addAction(delData)
+            self.contextMenu.popup(QtGui.QCursor.pos())
+
+    def delete_data(self):
+        """ Delete the selected data. """
+        citem = self.Tree.currentItem()
+        dText = [str(citem.text(0))]
+        if dText[0] == self.lMsg:
+            return
+        while citem.parent() is not None:
+            citem = citem.parent()
+            dText.insert(0, str(citem.text(0)))
+        citem = self.Tree.currentItem()
+        del reduce(getitem, dText[:-1], self._data)[dText[-1]]
+        if len(dText) == 1:
+            self.keys.remove(dText[0])
+        (citem.parent() or self.Tree.invisibleRootItem()).removeChild(citem)
+
     def slice_key(self):
         """ Return the slice key for the current dataset """
         return '/'.join(self.cText)
@@ -277,9 +303,23 @@ class ViewerWindow(QtGui.QMainWindow):
         if fnames:
             loadItem = QtGui.QTreeWidgetItem([self.lMsg])
             loadItem.setForeground(0, QtGui.QColor("grey"))
-            self.Tree.addTopLevelItem(loadItem)
             # For all files
             for fname in fnames:
+                # Check if the data already exists
+                splitted = fname.split("/")
+                key = str(splitted[-2] + " - " + splitted[-1])
+                # Show warning if data exists
+                if key in self.keys:
+                    msg = QtGui.QMessageBox(QtGui.QMessageBox.Warning,
+                        "Warning",
+                        "Data(%s) exists. Do you want to overwrite it?"%key,
+                        buttons=(QtGui.QMessageBox.Yes|QtGui.QMessageBox.No))
+                    msg.setDefaultButton(QtGui.QMessageBox.Yes)
+                    if msg.exec_() != QtGui.QMessageBox.Yes:
+                        return
+                    else:
+                        self.keys.remove(key)
+                self.Tree.addTopLevelItem(loadItem)
                 self.loader.load.emit(fname)
 
     def save_chart(self):
