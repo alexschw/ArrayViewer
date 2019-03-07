@@ -58,6 +58,8 @@ class GraphWidget(QtGui.QWidget):
         self._clim = (0, 1)
         self._img = None
         self._cb = None
+        self._has_cb = False
+        self._colormap = 'viridis'
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
@@ -69,18 +71,27 @@ class GraphWidget(QtGui.QWidget):
 
     def clear(self):
         """ Clear the figure. """
-        if self._cb is not None:
-            self._cb.remove()
-            self._cb = None
+        self._cb = None
         self._figure.clf()
 
     def figure(self):
         """ Return the local figure variable. """
         return self._figure
 
+    def toggle_colorbar(self):
+        """ Toggle the state of the colorbar """
+        self._has_cb = not self._has_cb
+        self.colorbar()
+
     def colorbar(self, minmax=None):
         """ Add a colorbar to the graph or remove it, if it is existing. """
         if self._img is None:
+            return
+        if not self._has_cb:
+            if self._cb:
+                self._cb.remove()
+                self._cb = None
+                self._canvas.draw()
             return
         if self._cb is None:
             self._cb = self._figure.colorbar(self._img)
@@ -96,11 +107,13 @@ class GraphWidget(QtGui.QWidget):
                 self._cb = None
         self._canvas.draw()
 
-    def colormap(self, mapname):
+    def colormap(self, mapname=None):
         """ Replace colormap with the given one. """
+        if mapname:
+            self._colormap = mapname
         if self._img is None:
             return
-        self._img.set_cmap(mapname)
+        self._img.set_cmap(self._colormap)
         self._canvas.draw()
 
     def renewPlot(self, data, shape_str, ui):
@@ -154,7 +167,7 @@ class GraphWidget(QtGui.QWidget):
             # Reset the colorbar. A better solution would be possible, if the
             # axes were not cleared everytime.
             self.colorbar()
-            self.colorbar()
+            self.colormap()
             self._clim = (cutout.min(), cutout.max())
             # Set the minimum and maximum values from the data
             ui.txtMin.setText('min :' + "%0.5f"%cutout.min())

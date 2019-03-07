@@ -185,7 +185,7 @@ class ViewerWindow(QtGui.QMainWindow):
         btnColorbar = QtGui.QAction(menubar)
         menuGraph.addAction(btnColorbar)
         btnColorbar.setText("Colorbar")
-        btnColorbar.activated.connect(self.Graph.colorbar)
+        btnColorbar.activated.connect(self.Graph.toggle_colorbar)
 
         menuGraph.addSeparator()
 
@@ -268,14 +268,15 @@ class ViewerWindow(QtGui.QMainWindow):
             if item.checkState(1) == Qt.Checked:
                 text = self.get_obj_trace(item)
                 if checkedItems == 0:
-                    text0 = '/'.join(text)
+                    text0 = '[0] '+'/'.join(text)
                     item0 = self[text]
                 else:
-                    text1 = '/'.join(text)
+                    text1 = '[1] '+'/'.join(text)
                     item1 = self[text]
                 checkedItems += 1
         if checkedItems == 2 and item0.shape == item1.shape:
-            self._data["Diff"] = {text0:item0, text1:item1, "Diff":item0-item1}
+            self._data["Diff"] = {text0:item0, text1:item1,
+                      "~> Diff [0]-[1]":item0-item1}
             self.keys.append("Diff")
             self.Tree.setColumnHidden(1, True)
             self.diffBtn.hide()
