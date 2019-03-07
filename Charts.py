@@ -91,9 +91,7 @@ class GraphWidget(QtGui.QWidget):
             if self._cb:
                 self._cb.remove()
                 self._cb = None
-                self._canvas.draw()
-            return
-        if self._cb is None:
+        elif self._cb is None:
             self._cb = self._figure.colorbar(self._img)
         else:
             if minmax is not None:
@@ -102,9 +100,6 @@ class GraphWidget(QtGui.QWidget):
                     + self._clim[0], vmax=minmax[1] * self._clim[1]
                 )
                 self._cb.draw_all()
-            else:
-                self._cb.remove()
-                self._cb = None
         self._canvas.draw()
 
     def colormap(self, mapname=None):
