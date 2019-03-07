@@ -3,13 +3,13 @@
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import re
-import numpy as np
 from PyQt4.QtGui import QSizePolicy as QSP
 from PyQt4.QtGui import QDialogButtonBox as DBB
 from PyQt4 import QtGui, QtCore
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
+import numpy as np
 
 
 def flatPad(Arr, padding=1, fill=np.nan):
@@ -43,9 +43,9 @@ def getShapeFromStr(string):
 
 
 class GraphWidget(QtGui.QWidget):
-    """ Draws the data graph """
+    """ Draws the data graph. """
     def __init__(self, parent=None):
-        """Initialize the figure. """
+        """ Initialize the figure. """
         super(GraphWidget, self).__init__(parent)
 
         # Setup the canvas, figure and axes
@@ -54,6 +54,7 @@ class GraphWidget(QtGui.QWidget):
         self._canvas.ax = self._figure.add_axes([.15, .15, .75, .75])
         self._canvas.canvas = self._canvas.ax.figure.canvas
         self._canvas.setSizePolicy(QSP.Expanding, QSP.Expanding)
+        self.noPrintTypes = parent.parent().parent().noPrintTypes
         self._clim = (0, 1)
         self._img = None
         self._cb = None
@@ -67,18 +68,18 @@ class GraphWidget(QtGui.QWidget):
         self._layout.addWidget(self._txt)
 
     def clear(self):
-        """ Clear the figure """
+        """ Clear the figure. """
         if self._cb is not None:
             self._cb.remove()
             self._cb = None
         self._figure.clf()
 
     def figure(self):
-        """ Return the local figure variable """
+        """ Return the local figure variable. """
         return self._figure
 
     def colorbar(self, minmax=None):
-        """ Add a colorbar to the graph or remove it, if it is existing """
+        """ Add a colorbar to the graph or remove it, if it is existing. """
         if self._img is None:
             return
         if self._cb is None:
@@ -96,6 +97,7 @@ class GraphWidget(QtGui.QWidget):
         self._canvas.draw()
 
     def colormap(self, mapname):
+        """ Replace colormap with the given one. """
         if self._img is None:
             return
         self._img.set_cmap(mapname)
@@ -110,7 +112,7 @@ class GraphWidget(QtGui.QWidget):
         ui.txtMax.setText('max :')
         if data is None:
             return
-        elif isinstance(data, (str, unicode, list, float, int)):
+        elif isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             ax.text(0.0, 1.0, data)
             ax.axis('off')
@@ -161,8 +163,9 @@ class GraphWidget(QtGui.QWidget):
 
 
 class ReshapeDialog(QtGui.QDialog):
-    """ A Dialog for Reshaping the Array """
+    """ A Dialog for Reshaping the Array. """
     def __init__(self, parent=None):
+        """ Initialize. """
         super(ReshapeDialog, self).__init__(parent)
 
         # Setup the basic window
@@ -196,7 +199,7 @@ class ReshapeDialog(QtGui.QDialog):
         self.buttonBox.button(DBB.Ok).clicked.connect(self.accept)
 
     def keyPress(self, keyEv):
-        """ Whenever a key is pressed check for comma and set autofill data"""
+        """ Whenever a key is pressed check for comma and set autofill data."""
         if keyEv and keyEv[-1] == ',':
             shape = getShapeFromStr(str(keyEv))
             if self.prodShape%shape.prod() == 0:
@@ -207,7 +210,7 @@ class ReshapeDialog(QtGui.QDialog):
         return keyEv
 
     def reshape_array(self, data):
-        """ Reshape the currently selected array """
+        """ Reshape the currently selected array. """
         while True:
             # Open a dialog to reshape
             self.txtCurrent.setText(str(data.shape))
@@ -233,8 +236,9 @@ class ReshapeDialog(QtGui.QDialog):
 
 
 class NewDataDialog(QtGui.QDialog):
-    """ A Dialog for Creating new Data """
+    """ A Dialog for Creating new Data. """
     def __init__(self, parent=None):
+        """ Initialize. """
         super(NewDataDialog, self).__init__(parent)
 
         # Setup the basic window
@@ -266,7 +270,7 @@ class NewDataDialog(QtGui.QDialog):
         self.buttonBox.button(DBB.Save).clicked.connect(self.on_save)
 
     def on_accept(self):
-        """ Try to run the command and append the history on pressing 'OK' """
+        """ Try to run the command and append the history on pressing 'OK'. """
         try:
             exec("self." + str(self.cmd.text()))
         except Exception as err:
@@ -278,7 +282,7 @@ class NewDataDialog(QtGui.QDialog):
         self.cmd.setText("")
 
     def on_save(self):
-        """ Return the object currently in the textBox to the Viewer """
+        """ Return the object currently in the textBox to the Viewer. """
         if re.findall(r"\=", self.cmd.text()):
             return -1
         elif self.cmd.text() == "":
@@ -289,7 +293,7 @@ class NewDataDialog(QtGui.QDialog):
             self.accept()
 
     def newData(self, data):
-        """ Generate New Data (maybe using the currently selected array) """
+        """ Generate New Data (maybe using the currently selected array). """
         self.data = data
         self.history.clear()
         while True:

@@ -17,9 +17,9 @@ from Slider import rangeSlider
 from Data import Loader
 
 class ViewerWindow(QtGui.QMainWindow):
-    """ The main window of the array viewer """
+    """ The main window of the array viewer. """
     def __init__(self, parent=None):
-        """ Initialize the window """
+        """ Initialize the window. """
         super(self.__class__, self).__init__(parent)
         # set class variables
         self.keys = []
@@ -140,7 +140,7 @@ class ViewerWindow(QtGui.QMainWindow):
         vLayout.addLayout(self.Shape)
 
     def _initMenu(self):
-        """ Setup the menu bar """
+        """ Setup the menu bar. """
         menubar = QtGui.QMenuBar(self)
         menubar.setGeometry(QRect(0, 0, 800, 10))
         menuStart = QtGui.QMenu(menubar)
@@ -215,7 +215,7 @@ class ViewerWindow(QtGui.QMainWindow):
         btnCmViridis.activated.connect(lambda: self.Graph.colormap('viridis'))
 
     def __getitem__(self, item):
-        """ Gets the current data """
+        """ Gets the current data. """
         if not self._data or not self.cText:
             return None
         if item in [0, "data", ""]:
@@ -224,13 +224,13 @@ class ViewerWindow(QtGui.QMainWindow):
             return reduce(getitem, item[:-1], self._data)[item[-1]]
 
     def __setitem__(self, _, newData):
-        """ Sets the current data to the new data """
+        """ Sets the current data to the new data. """
         if not self._data:
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
 
     def get_obj_trace(self, item):
-        """ Returns the trace to a given item in the TreeView """
+        """ Returns the trace to a given item in the TreeView. """
         dText = [str(item.text(0))]
         while item.parent() is not None:
             item = item.parent()
@@ -238,7 +238,7 @@ class ViewerWindow(QtGui.QMainWindow):
         return dText
 
     def dropdown(self, _):
-        """ Add a context menu """
+        """ Add a context menu. """
         if self.Tree.currentItem():
             self.contextMenu.popup(QtGui.QCursor.pos())
 
@@ -255,7 +255,7 @@ class ViewerWindow(QtGui.QMainWindow):
         (citem.parent() or self.Tree.invisibleRootItem()).removeChild(citem)
 
     def start_diff(self):
-        """ Start the diff view """
+        """ Start the diff view. """
         self.diffBtn.show()
         self.Tree.setColumnHidden(1, False)
         for item in self.checkableItems:
@@ -282,11 +282,11 @@ class ViewerWindow(QtGui.QMainWindow):
             self.update_tree()
 
     def slice_key(self):
-        """ Return the slice key for the current dataset """
+        """ Return the slice key for the current dataset. """
         return '/'.join(self.cText)
 
     def load_slice(self):
-        """ Returns the perviously seleced slice for the current array """
+        """ Returns the perviously seleced slice for the current array. """
         if not self._data:
             return None
         if self.slice_key() in self.slices:
@@ -317,7 +317,7 @@ class ViewerWindow(QtGui.QMainWindow):
         self.update_tree()
 
     def permute_data(self):
-        """ Check the input in the permute box and reshape the array """
+        """ Check the input in the permute box and reshape the array. """
         content = str(self.Prmt.text()).strip("([])").replace(" ", "")
         chkstr = content.split(",")
         chkstr.sort()
@@ -333,14 +333,14 @@ class ViewerWindow(QtGui.QMainWindow):
         print("Permuted to", self[0].shape)
 
     def reshape_dialog(self):
-        """ Open the reshape box to reshape the current data """
+        """ Open the reshape box to reshape the current data. """
         self[0] = self.reshapeBox.reshape_array(self[0])
         if self.slice_key() in self.slices:
             del self.slices[self.slice_key()]
         self.update_shape(self[0].shape)
 
     def new_data_dialog(self):
-        """ Open the new data dialog box to construct new data """
+        """ Open the new data dialog box to construct new data. """
         key, _data = self.newDataBox.newData(self[0])
         if key == 1:
             self[0] = _data
@@ -388,17 +388,17 @@ class ViewerWindow(QtGui.QMainWindow):
                 figure.savefig(str(fname))
 
     def draw_data(self):
-        """ Draw the selected data """
+        """ Draw the selected data. """
         shape = self.get_shape_str()
         if shape or self[0].shape == (1,):
             self.Graph.renewPlot(self[0], shape, self)
 
     def update_colorbar(self):
-        """ Update the values of the colorbar according to the slider value """
+        """ Update the values of the colorbar according to the slider value."""
         self.Graph.colorbar(self.Sldr.value())
 
     def change_tree(self, current, previous):
-        """ Draw chart, if the selection has changed """
+        """ Draw chart, if the selection has changed. """
         if (current and current != previous and previous and
                 current.text(0) != self.lMsg):
             self.Graph.clear()
@@ -417,7 +417,7 @@ class ViewerWindow(QtGui.QMainWindow):
             self.draw_data()
 
     def get_shape_str(self):
-        """ Get a shape string from the QLineEditWidgets """
+        """ Get a shape string from the QLineEditWidgets. """
         shapeStr = "["
         nNonScalar = 0  # number of non scalar values
         # For all (non-hidden) widgets
@@ -444,7 +444,7 @@ class ViewerWindow(QtGui.QMainWindow):
         return shapeStr
 
     def update_shape(self, shape, load_slice=True):
-        """ Update the shape widgets in the window based on the new data """
+        """ Update the shape widgets in the window based on the new data. """
         # Show a number of widgets equal to the dimension, hide the others
         for n in range(self.Shape.columnCount()):
             for m in range(self.Shape.rowCount()):
@@ -471,7 +471,7 @@ class ViewerWindow(QtGui.QMainWindow):
                     self.Shape.itemAtPosition(1, n).widget().clear()
 
     def update_tree(self):
-        """ Add new data to TreeWidget """
+        """ Add new data to TreeWidget. """
         itemList = []
         self.checkableItems = []
         for i in self.keys:

@@ -11,20 +11,22 @@ import os
 import re
 import h5py
 import scipy.io
-import numpy as np
 from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot
+import numpy as np
 
 class Loader(QObject):
+    """ Seperate Loader to simultaneously load data. """
     doneLoading = pyqtSignal(dict, str)
     load = pyqtSignal(str)
 
     def __init__(self, parent=None):
+        """ Initialize the Loader. """
         super(QObject, self).__init__(parent)
         self.fname = ''
         self.load.connect(self.add_data)
 
     def filltoequal(self, lil):
-        """ Fill a list of lists. Append smaller lists with nan """
+        """ Fill a list of lists. Append smaller lists with nan. """
         maxlen = max(list(map(len, lil)))
         [[xi.append(np.nan) for _ in range(maxlen - len(xi))] for xi in lil]
 
@@ -82,7 +84,7 @@ class Loader(QObject):
         # Check if the File is bigger than 15 GB, than it will not be loaded
         if os.path.getsize(fname) > 15e9:
             print("File bigger than 15GB. Not loading!")
-            self.doneLoading.emit({},'')
+            self.doneLoading.emit({}, '')
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
@@ -91,8 +93,9 @@ class Loader(QObject):
         elif fname[-4:] == '.mat':
             try:
                 # old matlab versions
-                data = self.validate(scipy.io.loadmat(str(fname), squeeze_me=True,
-                                                 struct_as_record=False))
+                data = self.validate(scipy.io.loadmat(str(fname),
+                                                      squeeze_me=True,
+                                                      struct_as_record=False))
             except NotImplementedError:
                 # v7.3
                 data = self.validate(h5py.File(str(fname)))
