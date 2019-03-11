@@ -442,7 +442,7 @@ class ViewerWindow(QtGui.QMainWindow):
                 shapeStr += ":,"
                 nNonScalar += 1
         shapeStr = shapeStr[:-1] + "]"
-        return shapeStr
+        return str(shapeStr)
 
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """

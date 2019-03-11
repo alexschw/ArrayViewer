@@ -111,7 +111,7 @@ class GraphWidget(QtGui.QWidget):
         self._img.set_cmap(self._colormap)
         self._canvas.draw()
 
-    def renewPlot(self, data, shape_str, ui):
+    def renewPlot(self, data, s, ui):
         """ Draw given data. """
         ax = self._figure.gca()
         ax.clear()
@@ -131,29 +131,50 @@ class GraphWidget(QtGui.QWidget):
         else:
             # Cut out the chosen piece of the array and plot it
             cutout = np.array([])
-            exec("cutout = data%s"%shape_str)
+            exec("cutout = data%s.squeeze()"%s)
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.checkState():
                 cutout = np.swapaxes(cutout, 0, 1)
             # Graph an 1D-cutout
-            if cutout.squeeze().ndim == 0:
+            if cutout.ndim == 0:
                 ax.set_ylim([0, 1])
                 ax.text(0, 1.0, cutout)
                 ax.axis('off')
-            if cutout.squeeze().ndim == 1:
+            if cutout.ndim == 1:
                 ax.plot(cutout)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow or plot
-            elif cutout.squeeze().ndim == 2:
+            elif cutout.ndim == 2:
                 if ui.Plot2D.checkState():
                     ax.plot(cutout)
                 else:
                     self._img = ax.imshow(cutout, interpolation='none',
                                           aspect='auto')
+                # Calculate the ticks for the plot by checking the limits
+                limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
+                lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
+                lim[lim == ''] = '0'
+                lim = lim.astype(float)
+                if not ui.Transp.checkState():
+                    lim = lim[(1,0),:]
+                # Set the x-ticks
+                loc = ax.xaxis.get_major_locator()()
+                d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0,2]+lim[0,0]
+                if all(d.astype(int) == d.astype(float)):
+                    ax.set_xticklabels(d.astype(int))
+                else:
+                    ax.set_xticklabels(d.astype(float))
+                # Set the y-ticks
+                loc = ax.yaxis.get_major_locator()()
+                d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1,2]+lim[1,0]
+                if all(d.astype(int) == d.astype(float)):
+                    ax.set_yticklabels(d.astype(int))
+                else:
+                    ax.set_yticklabels(d.astype(float))
             # higher-dimensional cutouts will first be flattened
-            elif cutout.squeeze().ndim >= 3:
+            elif cutout.ndim >= 3:
                 nPad = cutout.shape[0] // 100 + 1
                 dat = flatPad(cutout, nPad)
                 self._img = ax.imshow(dat, interpolation='none', aspect='auto')
