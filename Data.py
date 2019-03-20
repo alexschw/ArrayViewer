@@ -5,13 +5,16 @@ Created on Mon Jan 28 15:24:19 2019
 
 @author: alexschw
 """
-import pickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 import os
 import re
 import h5py
 import scipy.io
-from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 import numpy as np
 
 class Loader(QObject):
@@ -71,12 +74,12 @@ class Loader(QObject):
             return dct
         elif isinstance(data, h5py._hl.dataset.Dataset):
             return np.array(data)
-        elif not isinstance(data, (np.ndarray, int, float, str, unicode, tuple)):
+        elif not isinstance(data, (np.ndarray, int, float, str, type(u''), tuple)):
             print("DataType (", type(data), ") not recognized. Skipping")
             return None
         return data
 
-    @pyqtSlot(str, str)
+    @pyqtSlot(str)
     def add_data(self, fname):
         """ Add a new data to the dataset. Ask if the data already exists. """
         splitted = fname.split("/")
@@ -99,9 +102,16 @@ class Loader(QObject):
                 # v7.3
                 data = self.validate(h5py.File(str(fname)))
         elif fname[-4:] == '.npy':
-            data = {'Value': np.load(open(str(fname)))}
+            try:
+                data = {'Value': np.load(str(fname))}
+            except UnicodeDecodeError:
+                data = {'Value': np.load(str(fname), encoding='latin1')}
         elif fname[-5:] == '.data':
-            data = self.validate(pickle.load(open(str(fname))))
+            try:
+                f = pickle.load(open(str(fname)))
+            except UnicodeDecodeError:
+                f = pickle.load(open(str(fname),'rb'), encoding='latin1')
+            data = self.validate(f)
         elif fname[-4:] == '.txt':
             lines = open(fname).readlines()
             numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'

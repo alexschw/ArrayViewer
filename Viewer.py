@@ -5,18 +5,19 @@
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import sys
+from functools import reduce
 from operator import getitem
 
 import os.path
-from PyQt4 import QtGui
-from PyQt4.QtGui import QSizePolicy as QSP
-from PyQt4.QtCore import QRect, Qt, QThread, pyqtSlot
+from PyQt5 import QtGui, QtWidgets
+from PyQt5.QtWidgets import QSizePolicy as QSP
+from PyQt5.QtCore import QRect, Qt, QThread, pyqtSlot
 import numpy as np
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 from Data import Loader
 
-class ViewerWindow(QtGui.QMainWindow):
+class ViewerWindow(QtWidgets.QMainWindow):
     """ The main window of the array viewer. """
     def __init__(self, parent=None):
         """ Initialize the window. """
@@ -27,7 +28,8 @@ class ViewerWindow(QtGui.QMainWindow):
         self.cText = []
         self.slices = {}
         self.checkableItems = []
-        self.noPrintTypes = (int, float, str, unicode, list)
+        self.diffNo = 0
+        self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
 
@@ -42,24 +44,24 @@ class ViewerWindow(QtGui.QMainWindow):
         # General Options
         self.setWindowTitle("Array Viewer")
 
-        CWgt = QtGui.QWidget(self)
+        CWgt = QtWidgets.QWidget(self)
         self.setCentralWidget(CWgt)
-        vLayout = QtGui.QVBoxLayout(CWgt)
+        vLayout = QtWidgets.QVBoxLayout(CWgt)
 
         # Get the general Frame/Box Structure
-        QFra = QtGui.QFrame(CWgt)
+        QFra = QtWidgets.QFrame(CWgt)
         vLayout.addWidget(QFra)
-        grLayout = QtGui.QGridLayout()
-        hLayout = QtGui.QHBoxLayout(QFra)
+        grLayout = QtWidgets.QGridLayout()
+        hLayout = QtWidgets.QHBoxLayout(QFra)
         hLayout.addLayout(grLayout)
 
         # Add the Tree Widget
-        self.Tree = QtGui.QTreeWidget(QFra)
+        self.Tree = QtWidgets.QTreeWidget(QFra)
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
-        self.Tree.header().setResizeMode(0, QtGui.QHeaderView.Stretch)
-        self.Tree.header().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+        self.Tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.Tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
         self.Tree.header().setStretchLastSection(False)
         self.Tree.header().setVisible(False)
         self.Tree.setColumnWidth(1, 10)
@@ -69,38 +71,38 @@ class ViewerWindow(QtGui.QMainWindow):
         self.Tree.contextMenuEvent = self.dropdown
 
         # Add a hidden Diff Button
-        self.diffBtn = QtGui.QPushButton(QFra)
+        self.diffBtn = QtWidgets.QPushButton(QFra)
         self.diffBtn.setText("Calculate the difference")
         self.diffBtn.released.connect(self.calc_diff)
         self.diffBtn.hide()
         grLayout.addWidget(self.diffBtn, 1, 0, 1, -1)
 
         # Add the min and max labels
-        self.txtMin = QtGui.QLabel(QFra)
+        self.txtMin = QtWidgets.QLabel(QFra)
         self.txtMin.setText("min : ")
         grLayout.addWidget(self.txtMin, 2, 0)
-        self.txtMax = QtGui.QLabel(QFra)
+        self.txtMax = QtWidgets.QLabel(QFra)
         self.txtMax.setText("max : ")
         grLayout.addWidget(self.txtMax, 2, 1)
 
         # Add the "Transpose"-Checkbox
-        self.Transp = QtGui.QCheckBox(QFra)
+        self.Transp = QtWidgets.QCheckBox(QFra)
         self.Transp.setText("Transpose")
         self.Transp.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Transp, 3, 0)
 
         # Add the "Plot2D"-Checkbox
-        self.Plot2D = QtGui.QCheckBox(QFra)
+        self.Plot2D = QtWidgets.QCheckBox(QFra)
         self.Plot2D.setText("Use plot for 2D graphs")
         self.Plot2D.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Plot2D, 3, 1)
 
         # Add the Permute Field
-        self.Prmt = QtGui.QLineEdit(QFra)
+        self.Prmt = QtWidgets.QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         grLayout.addWidget(self.Prmt, 4, 0)
-        self.PrmtBtn = QtGui.QPushButton(QFra)
+        self.PrmtBtn = QtWidgets.QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
         self.PrmtBtn.released.connect(self.permute_data)
         grLayout.addWidget(self.PrmtBtn, 4, 1)
@@ -117,8 +119,8 @@ class ViewerWindow(QtGui.QMainWindow):
         hLayout.addWidget(self.Sldr)
 
         # Add a context menu
-        self.contextMenu = QtGui.QMenu(self)
-        delData = QtGui.QAction(self.contextMenu)
+        self.contextMenu = QtWidgets.QMenu(self)
+        delData = QtWidgets.QAction(self.contextMenu)
         delData.setText("Delete Data")
         delData.triggered.connect(self.delete_data)
         self.contextMenu.addAction(delData)
@@ -126,13 +128,13 @@ class ViewerWindow(QtGui.QMainWindow):
         self._initMenu()
 
         # Shape Widget
-        self.Shape = QtGui.QGridLayout()
+        self.Shape = QtWidgets.QGridLayout()
         for n in range(6):
-            label = QtGui.QLabel()
+            label = QtWidgets.QLabel()
             label.setText("0")
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
-            lineedit = QtGui.QLineEdit()
+            lineedit = QtWidgets.QLineEdit()
             lineedit.editingFinished.connect(self.set_slice)
             lineedit.editingFinished.connect(self.draw_data)
             lineedit.hide()
@@ -141,78 +143,78 @@ class ViewerWindow(QtGui.QMainWindow):
 
     def _initMenu(self):
         """ Setup the menu bar. """
-        menubar = QtGui.QMenuBar(self)
+        menubar = QtWidgets.QMenuBar(self)
         menubar.setGeometry(QRect(0, 0, 800, 10))
-        menuStart = QtGui.QMenu(menubar)
+        menuStart = QtWidgets.QMenu(menubar)
         menuStart.setTitle("Start")
         menubar.addAction(menuStart.menuAction())
 
-        btnLoadData = QtGui.QAction(menubar)
+        btnLoadData = QtWidgets.QAction(menubar)
         menuStart.addAction(btnLoadData)
         btnLoadData.setText("Load data")
         btnLoadData.setShortcut("Ctrl+O")
-        btnLoadData.activated.connect(self.load_data_dialog)
+        btnLoadData.triggered.connect(self.load_data_dialog)
 
-        btnSave = QtGui.QAction(menubar)
+        btnSave = QtWidgets.QAction(menubar)
         menuStart.addAction(btnSave)
         btnSave.setText("Save")
         btnSave.setShortcut("Ctrl+S")
-        btnSave.activated.connect(self.save_chart)
+        btnSave.triggered.connect(self.save_chart)
 
-        btnReshape = QtGui.QAction(menubar)
+        btnReshape = QtWidgets.QAction(menubar)
         menuStart.addAction(btnReshape)
         btnReshape.setText("Reshape")
         btnReshape.setShortcut("Ctrl+R")
-        btnReshape.activated.connect(self.reshape_dialog)
+        btnReshape.triggered.connect(self.reshape_dialog)
 
-        btnNewData = QtGui.QAction(menubar)
+        btnNewData = QtWidgets.QAction(menubar)
         menuStart.addAction(btnNewData)
         btnNewData.setText("New Data")
         btnNewData.setShortcut("Ctrl+N")
-        btnNewData.activated.connect(self.new_data_dialog)
+        btnNewData.triggered.connect(self.new_data_dialog)
 
-        btnNewData = QtGui.QAction(menubar)
+        btnNewData = QtWidgets.QAction(menubar)
         menuStart.addAction(btnNewData)
         btnNewData.setText("Difference")
         btnNewData.setShortcut("Ctrl+D")
-        btnNewData.activated.connect(self.start_diff)
+        btnNewData.triggered.connect(self.start_diff)
 
-        menuGraph = QtGui.QMenu(menubar)
+        menuGraph = QtWidgets.QMenu(menubar)
         menuGraph.setTitle("Graph")
         menubar.addAction(menuGraph.menuAction())
         self.setMenuBar(menubar)
 
-        btnColorbar = QtGui.QAction(menubar)
+        btnColorbar = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnColorbar)
         btnColorbar.setText("Colorbar")
-        btnColorbar.activated.connect(self.Graph.toggle_colorbar)
+        btnColorbar.triggered.connect(self.Graph.toggle_colorbar)
 
         menuGraph.addSeparator()
 
-        btnCmJet = QtGui.QAction(menubar)
+        btnCmJet = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnCmJet)
         btnCmJet.setText("Colormap 'jet'")
-        btnCmJet.activated.connect(lambda: self.Graph.colormap('jet'))
+        btnCmJet.triggered.connect(lambda: self.Graph.colormap('jet'))
 
-        btnCmGray = QtGui.QAction(menubar)
+        btnCmGray = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnCmGray)
         btnCmGray.setText("Colormap 'gray'")
-        btnCmGray.activated.connect(lambda: self.Graph.colormap('gray'))
+        btnCmGray.triggered.connect(lambda: self.Graph.colormap('gray'))
 
-        btnCmHot = QtGui.QAction(menubar)
+        btnCmHot = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnCmHot)
         btnCmHot.setText("Colormap 'hot'")
-        btnCmHot.activated.connect(lambda: self.Graph.colormap('hot'))
+        btnCmHot.triggered.connect(lambda: self.Graph.colormap('hot'))
 
-        btnCmBwr = QtGui.QAction(menubar)
+        btnCmBwr = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnCmBwr)
         btnCmBwr.setText("Colormap 'bwr'")
-        btnCmBwr.activated.connect(lambda: self.Graph.colormap('bwr'))
+        btnCmBwr.triggered.connect(lambda: self.Graph.colormap('bwr'))
 
-        btnCmViridis = QtGui.QAction(menubar)
+        btnCmViridis = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnCmViridis)
         btnCmViridis.setText("Colormap 'viridis'")
-        btnCmViridis.activated.connect(lambda: self.Graph.colormap('viridis'))
+        btnCmViridis.triggered.connect(lambda: self.Graph.colormap('viridis'))
 
     def __getitem__(self, item):
         """ Gets the current data. """
@@ -275,9 +277,10 @@ class ViewerWindow(QtGui.QMainWindow):
                     item1 = self[text]
                 checkedItems += 1
         if checkedItems == 2 and item0.shape == item1.shape:
-            self._data["Diff"] = {text0:item0, text1:item1,
+            self._data["Diff "+str(self.diffNo)] = {text0:item0, text1:item1,
                       "~> Diff [0]-[1]":item0-item1}
-            self.keys.append("Diff")
+            self.keys.append("Diff "+str(self.diffNo))
+            self.diffNo += 1
             self.Tree.setColumnHidden(1, True)
             self.diffBtn.hide()
             self.update_tree()
@@ -355,25 +358,27 @@ class ViewerWindow(QtGui.QMainWindow):
         """ Open file-dialog to choose one or multiple files. """
         ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
         title = 'Open data file'
-        fnames = QtGui.QFileDialog.getOpenFileNames(self, title, '.', ftypes)
+        fnames = QtWidgets.QFileDialog.getOpenFileNames(self, title, '.', ftypes)
         if fnames:
             # For all files
+            if isinstance(fnames[0], list):
+                fnames = fnames[0]
             for fname in fnames:
                 # Check if the data already exists
                 splitted = fname.split("/")
                 key = str(splitted[-2] + " - " + splitted[-1])
                 # Show warning if data exists
                 if key in self.keys:
-                    msg = QtGui.QMessageBox(QtGui.QMessageBox.Warning,
+                    msg = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                         "Warning",
                         "Data(%s) exists. Do you want to overwrite it?"%key,
-                        buttons=(QtGui.QMessageBox.Yes|QtGui.QMessageBox.No))
-                    msg.setDefaultButton(QtGui.QMessageBox.Yes)
-                    if msg.exec_() != QtGui.QMessageBox.Yes:
+                        buttons=(QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No))
+                    msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
+                    if msg.exec_() != QtWidgets.QMessageBox.Yes:
                         return
                     else:
                         self.keys.remove(key)
-                loadItem = QtGui.QTreeWidgetItem([self.lMsg])
+                loadItem = QtWidgets.QTreeWidgetItem([self.lMsg])
                 loadItem.setForeground(0, QtGui.QColor("grey"))
                 self.Tree.addTopLevelItem(loadItem)
                 self.loader.load.emit(fname)
@@ -383,7 +388,7 @@ class ViewerWindow(QtGui.QMainWindow):
         figure = self.Graph.figure()
         ftypes = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
         if figure:
-            fname = QtGui.QFileDialog.getSaveFileName(self, 'Save Image',
+            fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Image',
                                                       './figure.png', ftypes)
             if fname:
                 figure.savefig(str(fname))
@@ -476,14 +481,14 @@ class ViewerWindow(QtGui.QMainWindow):
         itemList = []
         self.checkableItems = []
         for i in self.keys:
-            item = QtGui.QTreeWidgetItem([i])
+            item = QtWidgets.QTreeWidgetItem([i])
             for j in sorted(self._data[i].keys()):
-                item.addChild(QtGui.QTreeWidgetItem([j]))
+                item.addChild(QtWidgets.QTreeWidgetItem([j]))
             for j in range(item.childCount()):
                 data = self._data[i][str(item.child(j).text(0))]
                 if isinstance(data, dict):
                     for n, k in enumerate(list(data.keys())):
-                        item.child(j).addChild(QtGui.QTreeWidgetItem([k]))
+                        item.child(j).addChild(QtWidgets.QTreeWidgetItem([k]))
                         if not isinstance(data[k], self.noPrintTypes):
                             cItem = item.child(j).child(n)
                             cItem.setCheckState(1, Qt.Unchecked)
@@ -497,7 +502,7 @@ class ViewerWindow(QtGui.QMainWindow):
 
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     window = ViewerWindow()
     for new_file in sys.argv[1:]:
         window.loader.load.emit(os.path.abspath(new_file))

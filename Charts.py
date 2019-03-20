@@ -3,9 +3,9 @@
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import re
-from PyQt4.QtGui import QSizePolicy as QSP
-from PyQt4.QtGui import QDialogButtonBox as DBB
-from PyQt4 import QtGui, QtCore
+from PyQt5.QtWidgets import QSizePolicy as QSP
+from PyQt5.QtWidgets import QDialogButtonBox as DBB
+from PyQt5 import QtCore, QtWidgets
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
@@ -42,7 +42,7 @@ def getShapeFromStr(string):
     return np.array([_f for _f in string.strip("()[]").split(",") if _f], dtype=int)
 
 
-class GraphWidget(QtGui.QWidget):
+class GraphWidget(QtWidgets.QWidget):
     """ Draws the data graph. """
     def __init__(self, parent=None):
         """ Initialize the figure. """
@@ -63,9 +63,9 @@ class GraphWidget(QtGui.QWidget):
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
-        self._layout = QtGui.QVBoxLayout(self)
+        self._layout = QtWidgets.QVBoxLayout(self)
         self._layout.addWidget(self._canvas)
-        self._txt = QtGui.QLabel(self)
+        self._txt = QtWidgets.QLabel(self)
         self._txt.setText('')
         self._layout.addWidget(self._txt)
 
@@ -131,7 +131,7 @@ class GraphWidget(QtGui.QWidget):
         else:
             # Cut out the chosen piece of the array and plot it
             cutout = np.array([])
-            exec("cutout = data%s.squeeze()"%s)
+            cutout = eval("data%s.squeeze()"%s)
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.checkState():
                 cutout = np.swapaxes(cutout, 0, 1)
@@ -184,14 +184,15 @@ class GraphWidget(QtGui.QWidget):
             # axes were not cleared everytime.
             self.colorbar()
             self.colormap()
-            self._clim = (cutout.min(), cutout.max())
-            # Set the minimum and maximum values from the data
-            ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
-            ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
+            if cutout.size > 0:
+                self._clim = (cutout.min(), cutout.max())
+                # Set the minimum and maximum values from the data
+                ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
+                ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
         self._canvas.draw()
 
 
-class ReshapeDialog(QtGui.QDialog):
+class ReshapeDialog(QtWidgets.QDialog):
     """ A Dialog for Reshaping the Array. """
     def __init__(self, parent=None):
         """ Initialize. """
@@ -201,23 +202,23 @@ class ReshapeDialog(QtGui.QDialog):
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
         self.prodShape = 0
-        gridLayout = QtGui.QGridLayout(self)
+        gridLayout = QtWidgets.QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
-        curShape = QtGui.QLabel(self)
+        curShape = QtWidgets.QLabel(self)
         curShape.setText("current shape")
         gridLayout.addWidget(curShape, 0, 0, 1, 1)
-        self.txtCurrent = QtGui.QLineEdit(self)
+        self.txtCurrent = QtWidgets.QLineEdit(self)
         self.txtCurrent.setEnabled(False)
         gridLayout.addWidget(self.txtCurrent, 0, 1, 1, 1)
-        newShape = QtGui.QLabel(self)
+        newShape = QtWidgets.QLabel(self)
         newShape.setText("new shape")
 
         gridLayout.addWidget(newShape, 1, 0, 1, 1)
-        self.txtNew = QtGui.QLineEdit(self)
+        self.txtNew = QtWidgets.QLineEdit(self)
         self.txtNew.textEdited.connect(self.keyPress)
-        self.shCmpl = QtGui.QCompleter([])
-        self.shCmpl.setCompletionMode(QtGui.QCompleter.InlineCompletion)
+        self.shCmpl = QtWidgets.QCompleter([])
+        self.shCmpl.setCompletionMode(QtWidgets.QCompleter.InlineCompletion)
         self.txtNew.setCompleter(self.shCmpl)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
@@ -264,7 +265,7 @@ class ReshapeDialog(QtGui.QDialog):
                 return data
 
 
-class NewDataDialog(QtGui.QDialog):
+class NewDataDialog(QtWidgets.QDialog):
     """ A Dialog for Creating new Data. """
     def __init__(self, parent=None):
         """ Initialize. """
@@ -273,20 +274,20 @@ class NewDataDialog(QtGui.QDialog):
         # Setup the basic window
         self.resize(400, 150)
         self.setWindowTitle("Create new data or change the current one")
-        Layout = QtGui.QVBoxLayout(self)
+        Layout = QtWidgets.QVBoxLayout(self)
         self.data = []
         self.lastText = ""
 
         # Add the current and new shape boxes and their labels
-        label = QtGui.QLabel(self)
+        label = QtWidgets.QLabel(self)
         label.setText("Use self.data to reference the current data")
         Layout.addWidget(label)
-        self.history = QtGui.QTextEdit(self)
+        self.history = QtWidgets.QTextEdit(self)
         self.history.setEnabled(False)
         Layout.addWidget(self.history)
-        self.cmd = QtGui.QLineEdit(self)
+        self.cmd = QtWidgets.QLineEdit(self)
         Layout.addWidget(self.cmd)
-        self.err = QtGui.QLineEdit(self)
+        self.err = QtWidgets.QLineEdit(self)
         self.err.setEnabled(False)
         self.err.setStyleSheet("color: rgb(255, 0, 0);")
         Layout.addWidget(self.err)
@@ -328,6 +329,7 @@ class NewDataDialog(QtGui.QDialog):
         while True:
             # Open a dialog to reshape
             self.cmd.setText("")
+            self.cmd.setFocus()
             # If "Save" is pressed
             if self.exec_():
                 if self.cmd.text() == "":

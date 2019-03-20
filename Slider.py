@@ -1,8 +1,8 @@
 import sys
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtCore, QtWidgets
 
 
-class rangeSlider(QtGui.QWidget):
+class rangeSlider(QtWidgets.QWidget):
     """ Combination of two sliders that return a range tuple """
     sliderReleased = QtCore.pyqtSignal()
 
@@ -14,8 +14,8 @@ class rangeSlider(QtGui.QWidget):
         self._minVal = minmax[0]
         self._scaling = 1.0 * (minmax[1] - minmax[0]) / self._nSteps
         # Setup the (sub-)widgets
-        self.minSlide = QtGui.QSlider(self)
-        self.maxSlide = QtGui.QSlider(self)
+        self.minSlide = QtWidgets.QSlider(self)
+        self.maxSlide = QtWidgets.QSlider(self)
         self.minSlide.setRange(0, self._nSteps)
         self.maxSlide.setRange(0, self._nSteps)
         self.minSlide.setTickPosition(self.minSlide.TicksRight)
@@ -28,7 +28,7 @@ class rangeSlider(QtGui.QWidget):
         self.maxSlide.setTickInterval(self._nSteps / 10)
         self.minSlide.valueChanged.connect(self.minRestict)
         self.maxSlide.valueChanged.connect(self.maxRestict)
-        self.Layout = QtGui.QHBoxLayout(self)
+        self.Layout = QtWidgets.QHBoxLayout(self)
         self.Layout.setSpacing(0)
         self.Layout.addWidget(self.minSlide)
         self.Layout.addWidget(self.maxSlide)
@@ -58,16 +58,16 @@ class rangeSlider(QtGui.QWidget):
 
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
-    window = QtGui.QMainWindow()
+    app = QtWidgets.QApplication(sys.argv)
+    window = QtWidgets.QMainWindow()
     window.resize(100, 600)
     window.setWindowTitle("")
-    CWgt = QtGui.QWidget(window)
+    CWgt = QtWidgets.QWidget(window)
     window.setCentralWidget(CWgt)
-    QFra = QtGui.QVBoxLayout(CWgt)
+    QFra = QtWidgets.QVBoxLayout(CWgt)
     rangeSld = rangeSlider(window, [-1, 1])
     QFra.addWidget(rangeSld)
-    pushBtn = QtGui.QPushButton()
+    pushBtn = QtWidgets.QPushButton()
     rangeSld.sliderReleased.connect(rangeSld.print_val)
     QFra.addWidget(pushBtn)
     window.show()
