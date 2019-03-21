@@ -88,8 +88,7 @@ class Loader(QObject):
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
-            f = h5py.File(str(fname))
-            data = dict([(n, np.array(f[n])) for n in f])
+            data = self.validate(h5py.File(str(fname)))
         elif fname[-4:] == '.mat':
             try:
                 # old matlab versions
