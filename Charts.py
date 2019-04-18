@@ -3,9 +3,12 @@
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 import re
-from PyQt5.QtWidgets import QSizePolicy as QSP
+from itertools import combinations
+from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
+                             QLineEdit, QSizePolicy, QTextEdit, QVBoxLayout,
+                             QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
@@ -42,7 +45,7 @@ def getShapeFromStr(string):
     return np.array([_f for _f in string.strip("()[]").split(",") if _f], dtype=int)
 
 
-class GraphWidget(QtWidgets.QWidget):
+class GraphWidget(QWidget):
     """ Draws the data graph. """
     def __init__(self, parent=None):
         """ Initialize the figure. """
@@ -50,10 +53,10 @@ class GraphWidget(QtWidgets.QWidget):
 
         # Setup the canvas, figure and axes
         self._figure = Figure(facecolor='white')
-        self._canvas = FigureCanvasQTAgg(self._figure)
-        self._canvas.ax = self._figure.add_axes([.15, .15, .75, .75])
-        self._canvas.canvas = self._canvas.ax.figure.canvas
-        self._canvas.setSizePolicy(QSP.Expanding, QSP.Expanding)
+        self._canv = FigureCanvasQTAgg(self._figure)
+        self._canv.ax = self._figure.add_axes([.15, .15, .75, .75])
+        self._canv.canvas = self._canv.ax.figure.canvas
+        self._canv.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.noPrintTypes = parent.parent().parent().noPrintTypes
         self._clim = (0, 1)
         self._img = None
@@ -63,9 +66,9 @@ class GraphWidget(QtWidgets.QWidget):
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
-        self._layout = QtWidgets.QVBoxLayout(self)
-        self._layout.addWidget(self._canvas)
-        self._txt = QtWidgets.QLabel(self)
+        self._layout = QVBoxLayout(self)
+        self._layout.addWidget(self._canv)
+        self._txt = QLabel(self)
         self._txt.setText('')
         self._layout.addWidget(self._txt)
 
@@ -100,7 +103,7 @@ class GraphWidget(QtWidgets.QWidget):
                     + self._clim[0], vmax=minmax[1] * self._clim[1]
                 )
                 self._cb.draw_all()
-        self._canvas.draw()
+        self._canv.draw()
 
     def colormap(self, mapname=None):
         """ Replace colormap with the given one. """
@@ -109,7 +112,7 @@ class GraphWidget(QtWidgets.QWidget):
         if self._img is None:
             return
         self._img.set_cmap(self._colormap)
-        self._canvas.draw()
+        self._canv.draw()
 
     def renewPlot(self, data, s, ui):
         """ Draw given data. """
@@ -189,10 +192,10 @@ class GraphWidget(QtWidgets.QWidget):
                 # Set the minimum and maximum values from the data
                 ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
                 ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
-        self._canvas.draw()
+        self._canv.draw()
 
 
-class ReshapeDialog(QtWidgets.QDialog):
+class ReshapeDialog(QDialog):
     """ A Dialog for Reshaping the Array. """
     def __init__(self, parent=None):
         """ Initialize. """
@@ -202,23 +205,23 @@ class ReshapeDialog(QtWidgets.QDialog):
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
         self.prodShape = 0
-        gridLayout = QtWidgets.QGridLayout(self)
+        gridLayout = QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
-        curShape = QtWidgets.QLabel(self)
+        curShape = QLabel(self)
         curShape.setText("current shape")
         gridLayout.addWidget(curShape, 0, 0, 1, 1)
-        self.txtCurrent = QtWidgets.QLineEdit(self)
+        self.txtCurrent = QLineEdit(self)
         self.txtCurrent.setEnabled(False)
         gridLayout.addWidget(self.txtCurrent, 0, 1, 1, 1)
-        newShape = QtWidgets.QLabel(self)
+        newShape = QLabel(self)
         newShape.setText("new shape")
 
         gridLayout.addWidget(newShape, 1, 0, 1, 1)
-        self.txtNew = QtWidgets.QLineEdit(self)
+        self.txtNew = QLineEdit(self)
         self.txtNew.textEdited.connect(self.keyPress)
-        self.shCmpl = QtWidgets.QCompleter([])
-        self.shCmpl.setCompletionMode(QtWidgets.QCompleter.InlineCompletion)
+        self.shCmpl = QCompleter([])
+        self.shCmpl.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
         self.txtNew.setCompleter(self.shCmpl)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
@@ -233,11 +236,35 @@ class ReshapeDialog(QtWidgets.QDialog):
         if keyEv and keyEv[-1] == ',':
             shape = getShapeFromStr(str(keyEv))
             if self.prodShape%shape.prod() == 0:
-                rest = self.prodShape / shape.prod()
-                self.shCmpl.model().setStringList([keyEv + str(rest)])
+                rest = self.prodShape // shape.prod()
+                self.shCmpl.model().setStringList(self.suggestion(keyEv, rest))
             else:
                 self.shCmpl.model().setStringList([keyEv + " Not fitting"])
         return keyEv
+
+    def suggestion(self, previous_val, value):
+        """ Returns all possible factors """
+        pfactors = []
+        divisor = 2
+        while value > 1:
+            while value % divisor == 0:
+                pfactors.append(divisor)
+                value /= divisor
+            divisor += 1
+            if divisor * divisor > value:
+                if value > 1:
+                    pfactors.append(value)
+                break
+        factors = []
+        for n in range(1, len(pfactors) + 1):
+            for x in combinations(pfactors, n):
+                y = 1
+                for a in x:
+                    y = y * a
+                factors.append(int(y))
+        factors = list(set(factors))
+        factors.sort(reverse=True)
+        return [previous_val + "{0},".format(i) for i in factors]
 
     def reshape_array(self, data):
         """ Reshape the currently selected array. """
@@ -265,7 +292,7 @@ class ReshapeDialog(QtWidgets.QDialog):
                 return data
 
 
-class NewDataDialog(QtWidgets.QDialog):
+class NewDataDialog(QDialog):
     """ A Dialog for Creating new Data. """
     def __init__(self, parent=None):
         """ Initialize. """
@@ -274,20 +301,20 @@ class NewDataDialog(QtWidgets.QDialog):
         # Setup the basic window
         self.resize(400, 150)
         self.setWindowTitle("Create new data or change the current one")
-        Layout = QtWidgets.QVBoxLayout(self)
+        Layout = QVBoxLayout(self)
         self.data = []
         self.lastText = ""
 
         # Add the current and new shape boxes and their labels
-        label = QtWidgets.QLabel(self)
+        label = QLabel(self)
         label.setText("Use self.data to reference the current data")
         Layout.addWidget(label)
-        self.history = QtWidgets.QTextEdit(self)
+        self.history = QTextEdit(self)
         self.history.setEnabled(False)
         Layout.addWidget(self.history)
-        self.cmd = QtWidgets.QLineEdit(self)
+        self.cmd = QLineEdit(self)
         Layout.addWidget(self.cmd)
-        self.err = QtWidgets.QLineEdit(self)
+        self.err = QLineEdit(self)
         self.err.setEnabled(False)
         self.err.setStyleSheet("color: rgb(255, 0, 0);")
         Layout.addWidget(self.err)

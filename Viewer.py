@@ -17,6 +17,7 @@ from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 from Data import Loader
 
+
 class ViewerWindow(QtWidgets.QMainWindow):
     """ The main window of the array viewer. """
     def __init__(self, parent=None):
@@ -270,16 +271,18 @@ class ViewerWindow(QtWidgets.QMainWindow):
             if item.checkState(1) == Qt.Checked:
                 text = self.get_obj_trace(item)
                 if checkedItems == 0:
-                    text0 = '[0] '+'/'.join(text)
+                    text0 = '[0] ' + '/'.join(text)
                     item0 = self[text]
                 else:
-                    text1 = '[1] '+'/'.join(text)
+                    text1 = '[1] ' + '/'.join(text)
                     item1 = self[text]
                 checkedItems += 1
         if checkedItems == 2 and item0.shape == item1.shape:
-            self._data["Diff "+str(self.diffNo)] = {text0:item0, text1:item1,
-                      "~> Diff [0]-[1]":item0-item1}
-            self.keys.append("Diff "+str(self.diffNo))
+            self._data["Diff " + str(self.diffNo)] = {text0: item0,
+                                                      text1: item1,
+                                                      "~> Diff [0]-[1]":
+                                                      item0 - item1}
+            self.keys.append("Diff " + str(self.diffNo))
             self.diffNo += 1
             self.Tree.setColumnHidden(1, True)
             self.diffBtn.hide()
@@ -369,10 +372,10 @@ class ViewerWindow(QtWidgets.QMainWindow):
                 key = str(splitted[-2] + " - " + splitted[-1])
                 # Show warning if data exists
                 if key in self.keys:
+                    txt = "Data(%s) exists. Do you want to overwrite it?"%key
+                    btns = (QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
                     msg = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                        "Warning",
-                        "Data(%s) exists. Do you want to overwrite it?"%key,
-                        buttons=(QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No))
+                                                "Warning", txt, buttons=btns)
                     msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
                     if msg.exec_() != QtWidgets.QMessageBox.Yes:
                         return
@@ -386,10 +389,10 @@ class ViewerWindow(QtWidgets.QMainWindow):
     def save_chart(self):
         """ Saves the currently shown chart as a file. """
         figure = self.Graph.figure()
-        ftypes = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
+        ftyp = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
         if figure:
             fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Image',
-                                                      './figure.png', ftypes)
+                                                          './figure.png', ftyp)
             if fname:
                 figure.savefig(str(fname))
 
@@ -405,8 +408,8 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
-        if (current and current != previous and previous and
-                current.text(0) != self.lMsg):
+        if (current and current != previous and previous
+                and current.text(0) != self.lMsg):
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
