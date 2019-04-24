@@ -302,12 +302,13 @@ class NewDataDialog(QDialog):
         self.resize(400, 150)
         self.setWindowTitle("Create new data or change the current one")
         Layout = QVBoxLayout(self)
-        self.data = []
+        self.data = {}
         self.lastText = ""
+        self.returnVal = None
 
         # Add the current and new shape boxes and their labels
         label = QLabel(self)
-        label.setText("Use self.data to reference the current data")
+        label.setText("Use 'this' to reference the current data\nBefore saving enter the variable you want to save. \nOtherwise the original data will be overwritten.")
         Layout.addWidget(label)
         self.history = QTextEdit(self)
         self.history.setEnabled(False)
@@ -326,13 +327,27 @@ class NewDataDialog(QDialog):
         self.buttonBox.button(DBB.Ok).clicked.connect(self.on_accept)
         self.buttonBox.button(DBB.Save).clicked.connect(self.on_save)
 
+    def parsecmd(self, cmd):
+        """ Parse the command given by the user. """
+        try:
+            var, expr = cmd.split("=")
+        except ValueError:
+            raise(ValueError("No '=' in expression"))
+        for op in ['(', ')', ',', '+', '-', '*', '/', '%', '^']:
+            expr = expr.replace(op, " " + op + " ")
+            expr = expr.replace(op + "  " + op, op + op)
+        for datum in self.data:
+            expr = expr.replace(" " + datum + " ",
+                                "self.data['" + datum + "']")
+        return var.strip(), expr
+
     def on_accept(self):
         """ Try to run the command and append the history on pressing 'OK'. """
         try:
-            exec("self." + str(self.cmd.text()))
+            var, value = self.parsecmd(str(self.cmd.text()))
+            self.data[var] = eval(value)
         except Exception as err:
-            self.err.setText(err.message)
-            self.cmd.setText("")
+            self.err.setText(str(err))
             return -1
         self.history.append(self.cmd.text())
         self.lastText = str(self.cmd.text())
@@ -343,25 +358,31 @@ class NewDataDialog(QDialog):
         if re.findall(r"\=", self.cmd.text()):
             return -1
         elif self.cmd.text() == "":
-            exec("self.returnVal = self.%s"%re.split(r"\=", self.lastText)[0])
+            self.returnVal = re.split(r"\=", self.lastText)[0].strip()
             self.accept()
         else:
-            exec("self.returnVal = self.%s"%self.cmd.text())
-            self.accept()
+            self.returnVal = self.cmd.text().strip()
+            if self.returnVal is not None:
+                self.accept()
+            else:
+                return -1
 
     def newData(self, data):
         """ Generate New Data (maybe using the currently selected array). """
-        self.data = data
+        self.data = {'this': data}
         self.history.clear()
         while True:
             # Open a dialog to reshape
             self.cmd.setText("")
             self.cmd.setFocus()
             # If "Save" is pressed
-            if self.exec_():
-                if self.cmd.text() == "":
-                    return 1, self.returnVal
+            if self.exec_() or self.returnVal is not None:
+                if self.data['this'] is None:
+                    return (re.split(r"\=", self.lastText)[0].strip(),
+                            self.data[self.returnVal])
+                elif self.cmd.text() == "":
+                    return 1, self.data[self.returnVal]
                 else:
-                    return str(self.cmd.text()), self.returnVal
+                    return str(self.cmd.text()), self.data[self.returnVal]
             else:
                 return 0, []
