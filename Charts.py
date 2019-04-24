@@ -333,9 +333,11 @@ class NewDataDialog(QDialog):
             var, expr = cmd.split("=")
         except ValueError:
             raise(ValueError("No '=' in expression"))
-        for op in ['(', ')', ',', '+', '-', '*', '/', '%', '^']:
+        for op in ['(', ')', '[', ']', '{', '}', ',',
+                   '+', '-', '*', '/', '%', '^']:
             expr = expr.replace(op, " " + op + " ")
             expr = expr.replace(op + "  " + op, op + op)
+        expr = " " + expr + " "
         for datum in self.data:
             expr = expr.replace(" " + datum + " ",
                                 "self.data['" + datum + "']")

@@ -7,7 +7,7 @@ Created on Mon Jan 28 15:24:19 2019
 """
 try:
     import cPickle as pickle
-except:
+except ImportError:
     import pickle
 
 import os
@@ -110,7 +110,7 @@ class Loader(QObject):
             try:
                 f = pickle.load(open(str(fname)))
             except UnicodeDecodeError:
-                f = pickle.load(open(str(fname),'rb'), encoding='latin1')
+                f = pickle.load(open(str(fname), 'rb'), encoding='latin1')
             data = self.validate(f)
         elif fname[-4:] == '.txt':
             lines = open(fname).readlines()
@@ -122,3 +122,4 @@ class Loader(QObject):
             return False
 
         self.doneLoading.emit(data, key)
+        return True

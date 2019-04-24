@@ -9,7 +9,8 @@ from functools import reduce
 from operator import getitem
 
 import os.path
-from PyQt5 import QtGui, QtWidgets
+from PyQt5.QtGui import QColor, QCursor
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import QRect, Qt, QThread, pyqtSlot
 import numpy as np
@@ -249,7 +250,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
     def dropdown(self, _):
         """ Add a context menu. """
         if self.Tree.currentItem():
-            self.contextMenu.popup(QtGui.QCursor.pos())
+            self.contextMenu.popup(QCursor.pos())
 
     def delete_data(self):
         """ Delete the selected data. """
@@ -407,7 +408,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
                     else:
                         self.keys.remove(key)
                 loadItem = QtWidgets.QTreeWidgetItem([self.lMsg])
-                loadItem.setForeground(0, QtGui.QColor("grey"))
+                loadItem.setForeground(0, QColor("grey"))
                 self.Tree.addTopLevelItem(loadItem)
                 self.loader.load.emit(fname)
 
@@ -426,6 +427,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         shape = self.get_shape_str()
         if shape or self[0].shape == (1,):
             self.Graph.renewPlot(self[0], shape, self)
+            self.update_colorbar()
 
     def update_colorbar(self):
         """ Update the values of the colorbar according to the slider value."""
