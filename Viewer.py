@@ -408,8 +408,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
-        if (current and current != previous and previous
-                and current.text(0) != self.lMsg):
+        if (current and current != previous and current.text(0) != self.lMsg):
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
@@ -423,7 +422,6 @@ class ViewerWindow(QtWidgets.QMainWindow):
             else:
                 self.update_shape(self[0].shape)
                 self.PrmtBtn.setEnabled(True)
-            self.draw_data()
 
     def get_shape_str(self):
         """ Get a shape string from the QLineEditWidgets. """
@@ -478,6 +476,8 @@ class ViewerWindow(QtWidgets.QMainWindow):
                     self.Shape.itemAtPosition(1, n).widget().setText("0")
                 else:
                     self.Shape.itemAtPosition(1, n).widget().clear()
+        # Redraw the graph
+        self.draw_data()
 
     def update_tree(self):
         """ Add new data to TreeWidget. """
