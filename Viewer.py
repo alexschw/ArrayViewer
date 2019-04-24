@@ -180,6 +180,12 @@ class ViewerWindow(QtWidgets.QMainWindow):
         btnNewData.setShortcut("Ctrl+D")
         btnNewData.triggered.connect(self.start_diff)
 
+        btnDelAll = QtWidgets.QAction(menubar)
+        menuStart.addAction(btnDelAll)
+        btnDelAll.setText("Delete All Data")
+        btnDelAll.setShortcut("Ctrl+X")
+        btnDelAll.triggered.connect(self.delete_all_data)
+
         menuGraph = QtWidgets.QMenu(menubar)
         menuGraph.setTitle("Graph")
         menubar.addAction(menuGraph.menuAction())
@@ -256,6 +262,25 @@ class ViewerWindow(QtWidgets.QMainWindow):
         if len(dText) == 1:
             self.keys.remove(dText[0])
         (citem.parent() or self.Tree.invisibleRootItem()).removeChild(citem)
+
+    def delete_all_data(self):
+        """ Delete all data from the Treeview. """
+        txt = "Delete all data in the Array Viewer?"
+        btns = (QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+        msg = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
+                                    "Warning", txt, buttons=btns)
+        msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        if msg.exec_() != QtWidgets.QMessageBox.Yes:
+            return
+        else:
+            del self._data
+            del self.keys
+            self._data = {}
+            self.keys = []
+            self.cText = []
+            self.slices = {}
+            self.update_tree()
+            self.Graph.clear()
 
     def start_diff(self):
         """ Start the diff view. """
