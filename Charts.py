@@ -94,19 +94,17 @@ class GraphWidget(QWidget):
         """ Add a colorbar to the graph or remove it, if it is existing. """
         if self._img is None:
             return
+        if minmax is not None:
+            self._img.set_clim(
+                vmin=minmax[0] * (self._clim[1] - self._clim[0])
+                + self._clim[0], vmax=minmax[1] * self._clim[1]
+            )
         if not self._has_cb:
             if self._cb:
                 self._cb.remove()
                 self._cb = None
         elif self._cb is None:
             self._cb = self._figure.colorbar(self._img)
-        else:
-            if minmax is not None:
-                self._cb.set_clim(
-                    vmin=minmax[0] * (self._clim[1] - self._clim[0])
-                    + self._clim[0], vmax=minmax[1] * self._clim[1]
-                )
-                self._cb.draw_all()
         self._canv.draw()
 
     def colormap(self, mapname=None):
