@@ -21,10 +21,11 @@ from Data import Loader
 
 class ViewerWindow(QtWidgets.QMainWindow):
     """ The main window of the array viewer. """
-    def __init__(self, parent=None):
+    def __init__(self, application=None, parent=None):
         """ Initialize the window. """
         super(self.__class__, self).__init__(parent)
         # set class variables
+        self.app = application
         self.keys = []
         self._data = {}
         self.cText = []
@@ -140,7 +141,6 @@ class ViewerWindow(QtWidgets.QMainWindow):
             self.Shape.addWidget(label, 0, n, 1, 1)
             lineedit = QtWidgets.QLineEdit()
             lineedit.editingFinished.connect(self.set_slice)
-            lineedit.editingFinished.connect(self.draw_data)
             lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
         vLayout.addLayout(self.Shape)
@@ -319,7 +319,6 @@ class ViewerWindow(QtWidgets.QMainWindow):
             self.Graph._oprdim = index
             self.draw_data()
             self.previous_opr_widget = this_wgt
-        
 
     def delete_data(self):
         """ Delete the selected data. """
@@ -408,6 +407,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
             # Get the text and the maximum value within the dimension
             curr_slice.append(self.Shape.itemAtPosition(1, n).widget().text())
         self.slices[self.slice_key()] = curr_slice
+        self.draw_data()
 
     @pyqtSlot(dict, str)
     def on_done_loading(self, data, key):
@@ -493,9 +493,9 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
     def draw_data(self):
         """ Draw the selected data. """
-        shape = self.get_shape_str()
+        shape, scalarDims = self.get_shape_str()
         if shape or self[0].shape == (1,):
-            self.Graph.renewPlot(self[0], shape, self)
+            self.Graph.renewPlot(self[0], shape, scalarDims, self)
             self.update_colorbar()
 
     def update_colorbar(self):
@@ -522,7 +522,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
     def get_shape_str(self):
         """ Get a shape string from the QLineEditWidgets. """
         shapeStr = "["
-        nNonScalar = 0  # number of non scalar values
+        scalarDims = []  # scalar Dimensions
         # For all (non-hidden) widgets
         for n in range(self.Shape.columnCount()):
             if self.Shape.itemAtPosition(1, n).widget().isHidden():
@@ -530,21 +530,22 @@ class ViewerWindow(QtWidgets.QMainWindow):
             # Get the text and the maximum value within the dimension
             txt = self.Shape.itemAtPosition(1, n).widget().text()
             maxt = int(self.Shape.itemAtPosition(0, n).widget().text())
-            if txt != "":
-                if ":" in txt:
-                    nNonScalar += 1
-                elif int(txt) >= maxt:
+            if txt == "":
+                shapeStr += ":,"
+            elif ":" in txt:
+                shapeStr += txt + ','
+            else:
+                scalarDims.append(n)
+                if int(txt) >= maxt:
                     txt = str(maxt - 1)
                     self.Shape.itemAtPosition(1, n).widget().setText(txt)
                 elif int(txt) < -maxt:
                     txt = str(-maxt)
                     self.Shape.itemAtPosition(1, n).widget().setText(txt)
                 shapeStr += txt + ','
-            else:
-                shapeStr += ":,"
-                nNonScalar += 1
+
         shapeStr = shapeStr[:-1] + "]"
-        return str(shapeStr)
+        return str(shapeStr), np.array(scalarDims)
 
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """
@@ -602,7 +603,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    window = ViewerWindow()
+    window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
         window.loader.load.emit(os.path.abspath(new_file))
     window.show()

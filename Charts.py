@@ -66,6 +66,7 @@ class GraphWidget(QWidget):
         self._operation = 'None'
         self._opr = (lambda x: x)
         self._oprdim = -1
+        self._oprcorr = -1
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
@@ -124,10 +125,10 @@ class GraphWidget(QWidget):
             self._opr = (lambda x: x)
         else:
             self._opr = (lambda x: eval("np." + operation + "(x, axis="
-                                        + str(self._oprdim) + ")"))
+                                        + str(self._oprcorr) + ")"))
         return self._oprdim
 
-    def renewPlot(self, data, s, ui):
+    def renewPlot(self, data, s, scalDims, ui):
         """ Draw given data. """
         ax = self._figure.gca()
         ax.clear()
@@ -148,7 +149,8 @@ class GraphWidget(QWidget):
             # Cut out the chosen piece of the array and plot it
             cutout = np.array([])
             cutout = eval("data%s.squeeze()"%s)
-            if self._oprdim != -1:
+            if self._oprdim != -1 and self._oprdim not in scalDims:
+                self._oprcorr = self._oprdim - (scalDims<=self._oprdim).sum()
                 cutout = self._opr(cutout)
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.checkState():
