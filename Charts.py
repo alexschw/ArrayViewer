@@ -153,7 +153,7 @@ class GraphWidget(QWidget):
                 self._oprcorr = self._oprdim - (scalDims<=self._oprdim).sum()
                 cutout = self._opr(cutout)
             # Transpose the first two dimensions if it is chosen
-            if ui.Transp.checkState():
+            if ui.Transp.checkState() and cutout.ndim > 1:
                 cutout = np.swapaxes(cutout, 0, 1)
             # Graph an 1D-cutout
             if cutout.ndim == 0:
