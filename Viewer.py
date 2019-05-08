@@ -32,6 +32,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.slices = {}
         self.checkableItems = []
         self.diffNo = 0
+        self.maxDims = 6
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -134,7 +135,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
         # Shape Widget
         self.Shape = QtWidgets.QGridLayout()
-        for n in range(6):
+        for n in range(self.maxDims):
             label = QtWidgets.QLabel()
             label.setText("0")
             label.hide()
@@ -599,6 +600,27 @@ class ViewerWindow(QtWidgets.QMainWindow):
             itemList.append(item)
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
+
+    def wheelEvent(self, event):
+        onField = False
+        from_wgt = self.app.widgetAt(event.globalPos())
+        for n in range(self.maxDims):
+            if self.Shape.itemAtPosition(1, n).widget() == from_wgt:
+                onField = True
+                break
+        if onField:
+            try:
+                c_val = int(from_wgt.text())
+                modifiers = QtWidgets.QApplication.keyboardModifiers()
+                mod = np.sign(event.angleDelta().y())
+                if modifiers == Qt.ControlModifier:
+                    mod *= 10
+                elif modifiers == Qt.ShiftModifier:
+                    mod *= 100
+                from_wgt.setText(str(c_val+mod))
+                self.set_slice()
+            except ValueError:
+                pass
 
 
 if __name__ == '__main__':
