@@ -63,6 +63,9 @@ class GraphWidget(QWidget):
         self._cb = None
         self._has_cb = False
         self._colormap = 'viridis'
+        self._operation = 'None'
+        self._opr = (lambda x: x)
+        self._oprdim = -1
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
@@ -114,6 +117,16 @@ class GraphWidget(QWidget):
         self._img.set_cmap(self._colormap)
         self._canv.draw()
 
+    def set_operation(self, operation="None"):
+        """ Set an operation to be performed on click on a dimension. """
+        if operation == "None":
+            self._oprdim = -1
+            self._opr = (lambda x: x)
+        else:
+            self._opr = (lambda x: eval("np." + operation + "(x, axis="
+                                        + str(self._oprdim) + ")"))
+        return self._oprdim
+
     def renewPlot(self, data, s, ui):
         """ Draw given data. """
         ax = self._figure.gca()
@@ -135,6 +148,8 @@ class GraphWidget(QWidget):
             # Cut out the chosen piece of the array and plot it
             cutout = np.array([])
             cutout = eval("data%s.squeeze()"%s)
+            if self._oprdim != -1:
+                cutout = self._opr(cutout)
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.checkState():
                 cutout = np.swapaxes(cutout, 0, 1)
@@ -336,12 +351,11 @@ class NewDataDialog(QDialog):
         for op in ['(', ')', '[', ']', '{', '}', ',',
                    '+', '-', '*', '/', '%', '^']:
             expr = expr.replace(op, " " + op + " ")
-            expr = expr.replace(op + "  " + op, op + op)
         expr = " " + expr + " "
         for datum in self.data:
             expr = expr.replace(" " + datum + " ",
                                 "self.data['" + datum + "']")
-        return var.strip(), expr
+        return var.strip(), expr.replace(" ", "")
 
     def on_accept(self):
         """ Try to run the command and append the history on pressing 'OK'. """

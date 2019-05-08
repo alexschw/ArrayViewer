@@ -42,6 +42,8 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.loader.moveToThread(self.loadThread)
         self.loadThread.start()
         self.lMsg = 'loading...'
+        self.emptylabel = QtWidgets.QLabel()
+        self.previous_opr_widget = self.emptylabel
 
         # General Options
         self.setWindowTitle("Array Viewer")
@@ -187,10 +189,10 @@ class ViewerWindow(QtWidgets.QMainWindow):
         btnDelAll.setShortcut("Ctrl+X")
         btnDelAll.triggered.connect(self.delete_all_data)
 
+        # Graph menu
         menuGraph = QtWidgets.QMenu(menubar)
         menuGraph.setTitle("Graph")
         menubar.addAction(menuGraph.menuAction())
-        self.setMenuBar(menubar)
 
         btnColorbar = QtWidgets.QAction(menubar)
         menuGraph.addAction(btnColorbar)
@@ -224,6 +226,38 @@ class ViewerWindow(QtWidgets.QMainWindow):
         btnCmViridis.setText("Colormap 'viridis'")
         btnCmViridis.triggered.connect(lambda: self.Graph.colormap('viridis'))
 
+        # Operations menu
+        menuOprs = QtWidgets.QMenu(menubar)
+        menuOprs.setTitle("Operations")
+        menubar.addAction(menuOprs.menuAction())
+
+        btnOpNone = QtWidgets.QAction(menubar)
+        menuOprs.addAction(btnOpNone)
+        btnOpNone.setText("None")
+        btnOpNone.triggered.connect(lambda: self.set_operation())
+
+        btnOpMin = QtWidgets.QAction(menubar)
+        menuOprs.addAction(btnOpMin)
+        btnOpMin.setText("Min")
+        btnOpMin.triggered.connect(lambda: self.set_operation('min'))
+
+        btnOpMean = QtWidgets.QAction(menubar)
+        menuOprs.addAction(btnOpMean)
+        btnOpMean.setText("Mean")
+        btnOpMean.triggered.connect(lambda: self.set_operation('mean'))
+
+        btnOpMed = QtWidgets.QAction(menubar)
+        menuOprs.addAction(btnOpMed)
+        btnOpMed.setText("Median")
+        btnOpMed.triggered.connect(lambda: self.set_operation('median'))
+
+        btnOpMax = QtWidgets.QAction(menubar)
+        menuOprs.addAction(btnOpMax)
+        btnOpMax.setText("Max")
+        btnOpMax.triggered.connect(lambda: self.set_operation('max'))
+
+        self.setMenuBar(menubar)
+
     def __getitem__(self, item):
         """ Gets the current data. """
         if not self._data or not self.cText:
@@ -251,6 +285,41 @@ class ViewerWindow(QtWidgets.QMainWindow):
         """ Add a context menu. """
         if self.Tree.currentItem():
             self.contextMenu.popup(QCursor.pos())
+
+    def set_operation(self, operation="None"):
+        """ Make Dimension-titles (not) clickable and pass the operation. """
+        for n in range(self.Shape.columnCount()):
+            self.Shape.itemAtPosition(0, n).widget().setStyleSheet("")
+            if operation == "None":
+                self.Shape.itemAtPosition(0, n).widget().mousePressEvent \
+                    = None
+            else:
+                self.Shape.itemAtPosition(0, n).widget().mousePressEvent \
+                    = self.perform_operation
+        self.previous_opr_widget = self.emptylabel
+        oprdim = self.Graph.set_operation(operation)
+        if oprdim != -1:
+            prev_wid = self.Shape.itemAtPosition(0, oprdim).widget()
+            prev_wid.setStyleSheet("background-color:lightgreen;")
+        self.draw_data()
+
+    def perform_operation(self, event):
+        """ Perform the chosen Operation on the graph.
+        If the field is clicked again the operation will be undone.
+        """
+        this_wgt = self.app.widgetAt(event.globalPos())
+        self.previous_opr_widget.setStyleSheet("")
+        if this_wgt == self.previous_opr_widget:
+            self.Graph._oprdim = -1
+            self.draw_data()
+            self.previous_opr_widget = self.emptylabel
+        else:
+            this_wgt.setStyleSheet("background-color:lightgreen;")
+            index = self.Shape.indexOf(this_wgt) // self.Shape.rowCount()
+            self.Graph._oprdim = index
+            self.draw_data()
+            self.previous_opr_widget = this_wgt
+        
 
     def delete_data(self):
         """ Delete the selected data. """
