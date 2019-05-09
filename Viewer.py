@@ -107,6 +107,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.Prmt = QtWidgets.QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
+        self.Prmt.returnPressed.connect(self.permute_data)
         grLayout.addWidget(self.Prmt, 4, 0)
         self.PrmtBtn = QtWidgets.QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
