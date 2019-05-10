@@ -67,6 +67,7 @@ class GraphWidget(QWidget):
         self._opr = (lambda x: x)
         self._oprdim = -1
         self._oprcorr = -1
+        self.cutout = np.array([])
 
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
@@ -126,6 +127,45 @@ class GraphWidget(QWidget):
                                         + str(self._oprcorr) + ")"))
         return self._oprdim
 
+    def two_D_plot(self, ui, ax, s):
+        if ui.Plot2D.checkState():
+            ax.plot(self.cutout)
+        elif ui.MMM.checkState():
+            ax.plot(self.cutout.max(axis=0), 'r')
+            ax.plot(self.cutout.mean(axis=0), 'k')
+            ax.plot(self.cutout.min(axis=0), 'b')
+        else:
+            self._img = ax.imshow(self.cutout, interpolation='none',
+                                  aspect='auto')
+        # Calculate the ticks for the plot by checking the limits
+        limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
+        lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
+        lim[lim == ''] = '0'
+        lim = lim.astype(float)
+        if not ui.Transp.checkState():
+            lim = lim[(1,0),:]
+        # Set the x-ticks
+        loc = ax.xaxis.get_major_locator()()
+        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0,2]+lim[0,0]
+        if all(d.astype(int) == d.astype(float)):
+            ax.set_xticklabels(d.astype(int))
+        else:
+            ax.set_xticklabels(d.astype(float))
+        # Set the y-ticks
+        loc = ax.yaxis.get_major_locator()()
+        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1,2]+lim[1,0]
+        if all(d.astype(int) == d.astype(float)):
+            ax.set_yticklabels(d.astype(int))
+        else:
+            ax.set_yticklabels(d.astype(float))
+
+    def n_D_plot(self, ax):
+        nPad = self.cutout.shape[0] // 100 + 1
+        dat = flatPad(self.cutout, nPad)
+        self._img = ax.imshow(dat, interpolation='none', aspect='auto')
+        ax.xaxis.set_major_locator(TickMultLoc(self.cutout.shape[0] + nPad))
+        ax.yaxis.set_major_locator(TickMultLoc(self.cutout.shape[1] + nPad))
+
     def renewPlot(self, data, s, scalDims, ui):
         """ Draw given data. """
         ax = self._figure.gca()
@@ -145,68 +185,39 @@ class GraphWidget(QWidget):
                 ax.plot(lst)
         else:
             # Cut out the chosen piece of the array and plot it
-            cutout = np.array([])
-            cutout = eval("data%s.squeeze()"%s)
+            self.cutout = np.array([])
+            self.cutout = eval("data%s.squeeze()"%s)
             if self._oprdim != -1 and self._oprdim not in scalDims:
                 self._oprcorr = self._oprdim - (scalDims<=self._oprdim).sum()
-                cutout = self._opr(cutout)
+                self.cutout = self._opr(self.cutout)
             # Transpose the first two dimensions if it is chosen
-            if ui.Transp.checkState() and cutout.ndim > 1:
-                cutout = np.swapaxes(cutout, 0, 1)
+            if ui.Transp.checkState() and self.cutout.ndim > 1:
+                self.cutout = np.swapaxes(self.cutout, 0, 1)
             # Graph an 1D-cutout
-            if cutout.ndim == 0:
+            if self.cutout.ndim == 0:
                 ax.set_ylim([0, 1])
-                ax.text(0, 1.0, cutout)
+                ax.text(0, 1.0, self.cutout)
                 ax.axis('off')
-            if cutout.ndim == 1:
-                ax.plot(cutout)
+            if self.cutout.ndim == 1:
+                ax.plot(self.cutout)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow or plot
-            elif cutout.ndim == 2:
-                if ui.Plot2D.checkState():
-                    ax.plot(cutout)
-                else:
-                    self._img = ax.imshow(cutout, interpolation='none',
-                                          aspect='auto')
-                # Calculate the ticks for the plot by checking the limits
-                limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
-                lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
-                lim[lim == ''] = '0'
-                lim = lim.astype(float)
-                if not ui.Transp.checkState():
-                    lim = lim[(1,0),:]
-                # Set the x-ticks
-                loc = ax.xaxis.get_major_locator()()
-                d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0,2]+lim[0,0]
-                if all(d.astype(int) == d.astype(float)):
-                    ax.set_xticklabels(d.astype(int))
-                else:
-                    ax.set_xticklabels(d.astype(float))
-                # Set the y-ticks
-                loc = ax.yaxis.get_major_locator()()
-                d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1,2]+lim[1,0]
-                if all(d.astype(int) == d.astype(float)):
-                    ax.set_yticklabels(d.astype(int))
-                else:
-                    ax.set_yticklabels(d.astype(float))
+            elif self.cutout.ndim == 2:
+                self.two_D_plot(ui, ax, s)
             # higher-dimensional cutouts will first be flattened
-            elif cutout.ndim >= 3:
-                nPad = cutout.shape[0] // 100 + 1
-                dat = flatPad(cutout, nPad)
-                self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-                ax.xaxis.set_major_locator(TickMultLoc(cutout.shape[0] + nPad))
-                ax.yaxis.set_major_locator(TickMultLoc(cutout.shape[1] + nPad))
+            elif self.cutout.ndim >= 3:
+                self.n_D_plot(ax)
             # Reset the colorbar. A better solution would be possible, if the
             # axes were not cleared everytime.
             self.colorbar()
             self.colormap()
-            if cutout.size > 0:
-                self._clim = (cutout.min(), cutout.max())
+            if self.cutout.size > 0:
+                self._clim = (self.cutout.min(), self.cutout.max())
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText('min :' + "%0.5f"%cutout.min())
-                ui.txtMax.setText('max :' + "%0.5f"%cutout.max())
+                ui.txtMin.setText('min :' + "%0.5f"%self.cutout.min())
+                ui.txtMax.setText('max :' + "%0.5f"%self.cutout.max())
         self._canv.draw()
 
 
@@ -323,7 +334,7 @@ class NewDataDialog(QDialog):
 
         # Add the current and new shape boxes and their labels
         label = QLabel(self)
-        label.setText("Use 'this' to reference the current data\nBefore saving enter the variable you want to save. \nOtherwise the original data will be overwritten.")
+        label.setText("Use 'this' to reference the current data and 'cutout' for the current view.\nBefore saving enter the variable you want to save. \nOtherwise the original data will be overwritten.")
         Layout.addWidget(label)
         self.history = QTextEdit(self)
         self.history.setEnabled(False)
@@ -345,7 +356,7 @@ class NewDataDialog(QDialog):
     def parsecmd(self, cmd):
         """ Parse the command given by the user. """
         try:
-            var, expr = cmd.split("=")
+            var, expr = cmd.split("=", 1)
         except ValueError:
             raise(ValueError("No '=' in expression"))
         for op in ['(', ')', '[', ']', '{', '}', ',',
@@ -383,9 +394,9 @@ class NewDataDialog(QDialog):
             else:
                 return -1
 
-    def newData(self, data):
+    def newData(self, data, cutout):
         """ Generate New Data (maybe using the currently selected array). """
-        self.data = {'this': data}
+        self.data = {'this': data, 'cutout': cutout}
         self.history.clear()
         while True:
             # Open a dialog to reshape

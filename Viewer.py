@@ -99,20 +99,29 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
         # Add the "Plot2D"-Checkbox
         self.Plot2D = QtWidgets.QCheckBox(QFra)
-        self.Plot2D.setText("Use plot for 2D graphs")
+        self.Plot2D.setText("2D as plot")
+        self.Plot2D.clicked.connect(lambda: self.checkboxes(True))
         self.Plot2D.stateChanged.connect(self.draw_data)
-        grLayout.addWidget(self.Plot2D, 3, 1)
+        grLayout.addWidget(self.Plot2D, 4, 0)
+        
+        # Add the "Min Mean Max"-Checkbox
+        self.MMM = QtWidgets.QCheckBox(QFra)
+        self.MMM.setText("min-mean-max plot")
+        self.MMM.clicked.connect(lambda: self.checkboxes(False))
+        self.MMM.stateChanged.connect(self.draw_data)
+        grLayout.addWidget(self.MMM, 4, 1)
+
 
         # Add the Permute Field
         self.Prmt = QtWidgets.QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         self.Prmt.returnPressed.connect(self.permute_data)
-        grLayout.addWidget(self.Prmt, 4, 0)
+        grLayout.addWidget(self.Prmt, 5, 0)
         self.PrmtBtn = QtWidgets.QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
         self.PrmtBtn.released.connect(self.permute_data)
-        grLayout.addWidget(self.PrmtBtn, 4, 1)
+        grLayout.addWidget(self.PrmtBtn, 5, 1)
 
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(QFra)
@@ -274,6 +283,12 @@ class ViewerWindow(QtWidgets.QMainWindow):
         if not self._data:
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
+
+    def checkboxes(self, fromP2D):
+        if self.Plot2D.checkState() and not fromP2D:
+            self.Plot2D.setCheckState(0)
+        elif self.MMM.checkState() and fromP2D:
+            self.MMM.setCheckState(0)
 
     def get_obj_trace(self, item):
         """ Returns the trace to a given item in the TreeView. """
@@ -445,7 +460,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
     def new_data_dialog(self):
         """ Open the new data dialog box to construct new data. """
-        key, _data = self.newDataBox.newData(self[0])
+        key, _data = self.newDataBox.newData(self[0], self.Graph.cutout)
         if key == 1:
             self[0] = _data
             self.update_shape(self[0].shape)
@@ -507,6 +522,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
         if (current and current != previous and current.text(0) != self.lMsg):
+            self.Graph._oprdim = -1
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
