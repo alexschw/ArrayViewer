@@ -11,6 +11,11 @@ from operator import getitem
 import os.path
 from PyQt5.QtGui import QColor, QCursor, QRegExpValidator
 from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QFileDialog,
+                             QFrame, QGridLayout, QHBoxLayout, QHeaderView,
+                             QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,
+                             QMessageBox, QPushButton, QTreeWidget,
+                             QTreeWidgetItem, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import QRect, QRegExp, Qt, QThread, pyqtSlot
 import numpy as np
@@ -19,7 +24,7 @@ from Slider import rangeSlider
 from Data import Loader
 
 
-class ViewerWindow(QtWidgets.QMainWindow):
+class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
     def __init__(self, application=None, parent=None):
         """ Initialize the window. """
@@ -44,30 +49,30 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.loader.moveToThread(self.loadThread)
         self.loadThread.start()
         self.lMsg = 'loading...'
-        self.emptylabel = QtWidgets.QLabel()
+        self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
 
         # General Options
         self.setWindowTitle("Array Viewer")
 
-        CWgt = QtWidgets.QWidget(self)
+        CWgt = QWidget(self)
         self.setCentralWidget(CWgt)
-        vLayout = QtWidgets.QVBoxLayout(CWgt)
+        vLayout = QVBoxLayout(CWgt)
 
         # Get the general Frame/Box Structure
-        QFra = QtWidgets.QFrame(CWgt)
+        QFra = QFrame(CWgt)
         vLayout.addWidget(QFra)
-        grLayout = QtWidgets.QGridLayout()
-        hLayout = QtWidgets.QHBoxLayout(QFra)
+        grLayout = QGridLayout()
+        hLayout = QHBoxLayout(QFra)
         hLayout.addLayout(grLayout)
 
         # Add the Tree Widget
-        self.Tree = QtWidgets.QTreeWidget(QFra)
+        self.Tree = QTreeWidget(QFra)
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
-        self.Tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        self.Tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.Tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.Tree.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.Tree.header().setStretchLastSection(False)
         self.Tree.header().setVisible(False)
         self.Tree.setColumnWidth(1, 10)
@@ -77,35 +82,35 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.Tree.contextMenuEvent = self.dropdown
 
         # Add a hidden Diff Button
-        self.diffBtn = QtWidgets.QPushButton(QFra)
+        self.diffBtn = QPushButton(QFra)
         self.diffBtn.setText("Calculate the difference")
         self.diffBtn.released.connect(self.calc_diff)
         self.diffBtn.hide()
         grLayout.addWidget(self.diffBtn, 1, 0, 1, -1)
 
         # Add the min and max labels
-        self.txtMin = QtWidgets.QLabel(QFra)
+        self.txtMin = QLabel(QFra)
         self.txtMin.setText("min : ")
         grLayout.addWidget(self.txtMin, 2, 0)
-        self.txtMax = QtWidgets.QLabel(QFra)
+        self.txtMax = QLabel(QFra)
         self.txtMax.setText("max : ")
         grLayout.addWidget(self.txtMax, 2, 1)
 
         # Add the "Transpose"-Checkbox
-        self.Transp = QtWidgets.QCheckBox(QFra)
+        self.Transp = QCheckBox(QFra)
         self.Transp.setText("Transpose")
         self.Transp.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Transp, 3, 0)
 
         # Add the "Plot2D"-Checkbox
-        self.Plot2D = QtWidgets.QCheckBox(QFra)
+        self.Plot2D = QCheckBox(QFra)
         self.Plot2D.setText("2D as plot")
         self.Plot2D.clicked.connect(lambda: self.checkboxes(True))
         self.Plot2D.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Plot2D, 4, 0)
 
         # Add the "Min Mean Max"-Checkbox
-        self.MMM = QtWidgets.QCheckBox(QFra)
+        self.MMM = QCheckBox(QFra)
         self.MMM.setText("min-mean-max plot")
         self.MMM.clicked.connect(lambda: self.checkboxes(False))
         self.MMM.stateChanged.connect(self.draw_data)
@@ -113,12 +118,12 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
 
         # Add the Permute Field
-        self.Prmt = QtWidgets.QLineEdit(QFra)
+        self.Prmt = QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         self.Prmt.returnPressed.connect(self.permute_data)
         grLayout.addWidget(self.Prmt, 5, 0)
-        self.PrmtBtn = QtWidgets.QPushButton(QFra)
+        self.PrmtBtn = QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
         self.PrmtBtn.released.connect(self.permute_data)
         grLayout.addWidget(self.PrmtBtn, 5, 1)
@@ -135,8 +140,8 @@ class ViewerWindow(QtWidgets.QMainWindow):
         hLayout.addWidget(self.Sldr)
 
         # Add a context menu
-        self.contextMenu = QtWidgets.QMenu(self)
-        delData = QtWidgets.QAction(self.contextMenu)
+        self.contextMenu = QMenu(self)
+        delData = QAction(self.contextMenu)
         delData.setText("Delete Data")
         delData.triggered.connect(self.delete_data)
         self.contextMenu.addAction(delData)
@@ -144,15 +149,15 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self._initMenu()
 
         # Shape Widget
-        self.Shape = QtWidgets.QGridLayout()
+        self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
         self.Validator.setRegExp(QRegExp("\\d*:?\\d*:?\\d*"))
         for n in range(self.maxDims):
-            label = QtWidgets.QLabel()
+            label = QLabel()
             label.setText("0")
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
-            lineedit = QtWidgets.QLineEdit()
+            lineedit = QLineEdit()
             lineedit.setValidator(self.Validator)
             lineedit.editingFinished.connect(self.set_slice)
             lineedit.hide()
@@ -161,111 +166,111 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
     def _initMenu(self):
         """ Setup the menu bar. """
-        menubar = QtWidgets.QMenuBar(self)
+        menubar = QMenuBar(self)
         menubar.setGeometry(QRect(0, 0, 800, 10))
-        menuStart = QtWidgets.QMenu(menubar)
+        menuStart = QMenu(menubar)
         menuStart.setTitle("Start")
         menubar.addAction(menuStart.menuAction())
 
-        btnLoadData = QtWidgets.QAction(menubar)
+        btnLoadData = QAction(menubar)
         menuStart.addAction(btnLoadData)
         btnLoadData.setText("Load data")
         btnLoadData.setShortcut("Ctrl+O")
         btnLoadData.triggered.connect(self.load_data_dialog)
 
-        btnSave = QtWidgets.QAction(menubar)
+        btnSave = QAction(menubar)
         menuStart.addAction(btnSave)
         btnSave.setText("Save")
         btnSave.setShortcut("Ctrl+S")
         btnSave.triggered.connect(self.save_chart)
 
-        btnReshape = QtWidgets.QAction(menubar)
+        btnReshape = QAction(menubar)
         menuStart.addAction(btnReshape)
         btnReshape.setText("Reshape")
         btnReshape.setShortcut("Ctrl+R")
         btnReshape.triggered.connect(self.reshape_dialog)
 
-        btnNewData = QtWidgets.QAction(menubar)
+        btnNewData = QAction(menubar)
         menuStart.addAction(btnNewData)
         btnNewData.setText("New Data")
         btnNewData.setShortcut("Ctrl+N")
         btnNewData.triggered.connect(self.new_data_dialog)
 
-        btnNewData = QtWidgets.QAction(menubar)
+        btnNewData = QAction(menubar)
         menuStart.addAction(btnNewData)
         btnNewData.setText("Difference")
         btnNewData.setShortcut("Ctrl+D")
         btnNewData.triggered.connect(self.start_diff)
 
-        btnDelAll = QtWidgets.QAction(menubar)
+        btnDelAll = QAction(menubar)
         menuStart.addAction(btnDelAll)
         btnDelAll.setText("Delete All Data")
         btnDelAll.setShortcut("Ctrl+X")
         btnDelAll.triggered.connect(self.delete_all_data)
 
         # Graph menu
-        menuGraph = QtWidgets.QMenu(menubar)
+        menuGraph = QMenu(menubar)
         menuGraph.setTitle("Graph")
         menubar.addAction(menuGraph.menuAction())
 
-        btnColorbar = QtWidgets.QAction(menubar)
+        btnColorbar = QAction(menubar)
         menuGraph.addAction(btnColorbar)
         btnColorbar.setText("Colorbar")
         btnColorbar.triggered.connect(self.Graph.toggle_colorbar)
 
         menuGraph.addSeparator()
 
-        btnCmJet = QtWidgets.QAction(menubar)
+        btnCmJet = QAction(menubar)
         menuGraph.addAction(btnCmJet)
         btnCmJet.setText("Colormap 'jet'")
         btnCmJet.triggered.connect(lambda: self.Graph.colormap('jet'))
 
-        btnCmGray = QtWidgets.QAction(menubar)
+        btnCmGray = QAction(menubar)
         menuGraph.addAction(btnCmGray)
         btnCmGray.setText("Colormap 'gray'")
         btnCmGray.triggered.connect(lambda: self.Graph.colormap('gray'))
 
-        btnCmHot = QtWidgets.QAction(menubar)
+        btnCmHot = QAction(menubar)
         menuGraph.addAction(btnCmHot)
         btnCmHot.setText("Colormap 'hot'")
         btnCmHot.triggered.connect(lambda: self.Graph.colormap('hot'))
 
-        btnCmBwr = QtWidgets.QAction(menubar)
+        btnCmBwr = QAction(menubar)
         menuGraph.addAction(btnCmBwr)
         btnCmBwr.setText("Colormap 'bwr'")
         btnCmBwr.triggered.connect(lambda: self.Graph.colormap('bwr'))
 
-        btnCmViridis = QtWidgets.QAction(menubar)
+        btnCmViridis = QAction(menubar)
         menuGraph.addAction(btnCmViridis)
         btnCmViridis.setText("Colormap 'viridis'")
         btnCmViridis.triggered.connect(lambda: self.Graph.colormap('viridis'))
 
         # Operations menu
-        menuOprs = QtWidgets.QMenu(menubar)
+        menuOprs = QMenu(menubar)
         menuOprs.setTitle("Operations")
         menubar.addAction(menuOprs.menuAction())
 
-        btnOpNone = QtWidgets.QAction(menubar)
+        btnOpNone = QAction(menubar)
         menuOprs.addAction(btnOpNone)
         btnOpNone.setText("None")
         btnOpNone.triggered.connect(lambda: self.set_operation())
 
-        btnOpMin = QtWidgets.QAction(menubar)
+        btnOpMin = QAction(menubar)
         menuOprs.addAction(btnOpMin)
         btnOpMin.setText("Min")
         btnOpMin.triggered.connect(lambda: self.set_operation('min'))
 
-        btnOpMean = QtWidgets.QAction(menubar)
+        btnOpMean = QAction(menubar)
         menuOprs.addAction(btnOpMean)
         btnOpMean.setText("Mean")
         btnOpMean.triggered.connect(lambda: self.set_operation('mean'))
 
-        btnOpMed = QtWidgets.QAction(menubar)
+        btnOpMed = QAction(menubar)
         menuOprs.addAction(btnOpMed)
         btnOpMed.setText("Median")
         btnOpMed.triggered.connect(lambda: self.set_operation('median'))
 
-        btnOpMax = QtWidgets.QAction(menubar)
+        btnOpMax = QAction(menubar)
         menuOprs.addAction(btnOpMax)
         btnOpMax.setText("Max")
         btnOpMax.triggered.connect(lambda: self.set_operation('max'))
@@ -355,11 +360,11 @@ class ViewerWindow(QtWidgets.QMainWindow):
     def delete_all_data(self):
         """ Delete all data from the Treeview. """
         txt = "Delete all data in the Array Viewer?"
-        btns = (QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
-        msg = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
+        btns = (QMessageBox.Yes|QMessageBox.No)
+        msg = QMessageBox(QMessageBox.Warning,
                                     "Warning", txt, buttons=btns)
-        msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
-        if msg.exec_() != QtWidgets.QMessageBox.Yes:
+        msg.setDefaultButton(QMessageBox.Yes)
+        if msg.exec_() != QMessageBox.Yes:
             return
         else:
             del self._data
@@ -476,7 +481,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         """ Open file-dialog to choose one or multiple files. """
         ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
         title = 'Open data file'
-        fnames = QtWidgets.QFileDialog.getOpenFileNames(self, title, '.', ftypes)
+        fnames = QFileDialog.getOpenFileNames(self, title, '.', ftypes)
         if fnames:
             # For all files
             if isinstance(fnames[0], list):
@@ -488,15 +493,15 @@ class ViewerWindow(QtWidgets.QMainWindow):
                 # Show warning if data exists
                 if key in self.keys:
                     txt = "Data(%s) exists. Do you want to overwrite it?"%key
-                    btns = (QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
-                    msg = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                                "Warning", txt, buttons=btns)
-                    msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
-                    if msg.exec_() != QtWidgets.QMessageBox.Yes:
+                    btns = (QMessageBox.Yes|QMessageBox.No)
+                    msg = QMessageBox(QMessageBox.Warning, "Warning", txt,
+                                      buttons=btns)
+                    msg.setDefaultButton(QMessageBox.Yes)
+                    if msg.exec_() != QMessageBox.Yes:
                         return
                     else:
                         self.keys.remove(key)
-                loadItem = QtWidgets.QTreeWidgetItem([self.lMsg])
+                loadItem = QTreeWidgetItem([self.lMsg])
                 loadItem.setForeground(0, QColor("grey"))
                 self.Tree.addTopLevelItem(loadItem)
                 self.loader.load.emit(fname)
@@ -506,7 +511,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         figure = self.Graph.figure()
         ftyp = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
         if figure:
-            fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Image',
+            fname = QFileDialog.getSaveFileName(self, 'Save Image',
                                                           './figure.png', ftyp)
             if fname:
                 figure.savefig(str(fname))
@@ -602,14 +607,14 @@ class ViewerWindow(QtWidgets.QMainWindow):
         itemList = []
         self.checkableItems = []
         for i in self.keys:
-            item = QtWidgets.QTreeWidgetItem([i])
+            item = QTreeWidgetItem([i])
             for j in sorted(self._data[i].keys()):
-                item.addChild(QtWidgets.QTreeWidgetItem([j]))
+                item.addChild(QTreeWidgetItem([j]))
             for j in range(item.childCount()):
                 data = self._data[i][str(item.child(j).text(0))]
                 if isinstance(data, dict):
                     for n, k in enumerate(list(data.keys())):
-                        item.child(j).addChild(QtWidgets.QTreeWidgetItem([k]))
+                        item.child(j).addChild(QTreeWidgetItem([k]))
                         if not isinstance(data[k], self.noPrintTypes):
                             cItem = item.child(j).child(n)
                             cItem.setCheckState(1, Qt.Unchecked)
@@ -630,7 +635,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
                 break
         if onField:
             txt = from_wgt.text()
-            modifiers = QtWidgets.QApplication.keyboardModifiers()
+            modifiers = QApplication.keyboardModifiers()
             mod = np.sign(event.angleDelta().y())
             if modifiers == Qt.ControlModifier:
                 mod *= 10
@@ -658,7 +663,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
         window.loader.load.emit(os.path.abspath(new_file))
