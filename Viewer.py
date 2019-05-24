@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QFileDialog,
                              QMessageBox, QPushButton, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
-from PyQt5.QtCore import QRect, QRegExp, Qt, QThread, pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
@@ -45,6 +45,7 @@ class ViewerWindow(QMainWindow):
         self.loader = Loader()
         self.loadThread = QThread()
         self.loader.doneLoading.connect(self.on_done_loading)
+        self.loader.infoMsg.connect(self.infoMsg)
         self.loader.moveToThread(self.loadThread)
         self.loadThread.start()
         self.lMsg = 'loading...'
@@ -115,7 +116,6 @@ class ViewerWindow(QMainWindow):
         self.MMM.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.MMM, 4, 1)
 
-
         # Add the Permute Field
         self.Prmt = QLineEdit(QFra)
         self.Prmt.setText("")
@@ -130,13 +130,13 @@ class ViewerWindow(QMainWindow):
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(QFra)
         self.Graph.setSizePolicy(QSP.Expanding, QSP.Expanding)
-        hLayout.addWidget(self.Graph)
+        grLayout.addWidget(self.Graph, 0, 2, 0, 1)
 
         # Add the Color Slider
         self.Sldr = rangeSlider(QFra)
         self.Sldr.setSizePolicy(QSP.Fixed, QSP.Expanding)
         self.Sldr.sliderReleased.connect(self.update_colorbar)
-        hLayout.addWidget(self.Sldr)
+        grLayout.addWidget(self.Sldr, 0, 3)
 
         # Add a context menu
         self.contextMenu = QMenu(self)
@@ -162,6 +162,11 @@ class ViewerWindow(QMainWindow):
             lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
         vLayout.addLayout(self.Shape)
+
+        # Message Field
+        self.errMsgTimer = QTimer(self)
+        self.errMsg = QLabel("")
+        grLayout.addWidget(self.errMsg, 5, 2)
 
     def _initMenu(self):
         """ Setup the menu bar. """
@@ -375,6 +380,19 @@ class ViewerWindow(QMainWindow):
             self.update_tree()
             self.Graph.clear()
 
+    @pyqtSlot(str, int)
+    def infoMsg(self, text, wLevel):
+        """ Show an info Message """
+        if wLevel == -1:
+            self.errMsg.setText(text)
+            self.errMsg.setStyleSheet("QLabel { color : red; }")
+        elif wLevel == 0:
+            self.errMsg.setText(text)
+            self.errMsg.setStyleSheet("QLabel { color : green; }")
+        elif wLevel == 1:
+            print(text)
+        self.errMsgTimer.singleShot(2000, lambda: self.errMsg.setText(""))
+
     def start_diff(self):
         """ Start the diff view. """
         self.diffBtn.show()
@@ -448,7 +466,7 @@ class ViewerWindow(QMainWindow):
         chkstr = content.split(",")
         chkstr.sort()
         if chkstr != [str(_a) for _a in range(self[0].ndim)]:
-            print("Shape is not matching dimensions. Aborting!")
+            self.infoMsg("Shape is not matching dimensions. Aborting!", -1)
             return
         new_order = tuple(np.array(content.split(","), dtype="i"))
         self[0] = np.transpose(self[0], new_order)
@@ -456,7 +474,7 @@ class ViewerWindow(QMainWindow):
             self.slices[self.slice_key()] = [
                 self.slices[self.slice_key()][i] for i in new_order]
         self.update_shape(self[0].shape)
-        print("Permuted to", self[0].shape)
+        self.infoMsg("Permuted to " + str(self[0].shape), 1)
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data. """

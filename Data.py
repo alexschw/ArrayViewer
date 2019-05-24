@@ -21,6 +21,7 @@ class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
     doneLoading = pyqtSignal(dict, str)
     load = pyqtSignal(str, str)
+    infoMsg = pyqtSignal(str, int)
 
     def __init__(self, parent=None):
         """ Initialize the Loader. """
@@ -78,7 +79,8 @@ class Loader(QObject):
         elif isinstance(data, h5py._hl.dataset.Dataset):
             return np.array(data)
         elif not isinstance(data, (np.ndarray, int, float, str, type(u''), tuple)):
-            print("DataType (", type(data), ") not recognized. Skipping")
+            self.infoMsg.emit("DataType (" + type(data) +
+                              ") not recognized. Skipping", 0)
             return None
         return data
 
@@ -90,7 +92,7 @@ class Loader(QObject):
             key = str(splitted[-2] + " - " + splitted[-1])
         # Check if the File is bigger than 15 GB, than it will not be loaded
         if os.path.getsize(fname) > 15e9:
-            print("File bigger than 15GB. Not loading!")
+            self.infoMsg.emit("File bigger than 15GB. Not loading!", -1)
             self.doneLoading.emit({}, '')
             return False
         # Load the different data types

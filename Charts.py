@@ -129,6 +129,9 @@ class GraphWidget(QWidget):
 
     def two_D_plot(self, ui, ax, s):
         if ui.Plot2D.checkState():
+            if self.cutout.shape[1] > 500:
+                ui.infoMsg("You are trying to plot more than 500 lines!", -1)
+                return
             ax.plot(self.cutout)
         elif ui.MMM.checkState():
             ax.plot(self.cutout.max(axis=0), 'r')
@@ -231,6 +234,7 @@ class ReshapeDialog(QDialog):
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
         self.prodShape = 0
+        self.infoMsg = parent.infoMsg
         gridLayout = QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
@@ -310,7 +314,7 @@ class ReshapeDialog(QDialog):
                     data = np.reshape(data, getShapeFromStr(sStr))
                 # If it could not be reshaped, get another user input
                 except ValueError:
-                    print("Data could not be reshaped!")
+                    self.infoMsg("Data could not be reshaped!", -1)
                     continue
                 return data
             # If "CANCEL" is pressed
