@@ -65,7 +65,10 @@ class Loader(QObject):
             ndata = []
             for subdat in data:
                 ndata.append(self.validate(subdat))
-            return np.array(ndata)
+            if isinstance(subdat, str):
+                return ndata
+            else:
+                return np.array(ndata)
         elif isinstance(data, h5py._hl.files.File) \
                 or isinstance(data, h5py._hl.group.Group):
             dct = {}
