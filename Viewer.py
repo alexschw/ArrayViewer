@@ -9,10 +9,10 @@ from functools import reduce
 from operator import getitem
 
 import os.path
-from PyQt5.QtGui import QColor, QCursor
+from PyQt5.QtGui import QColor, QCursor, QRegExpValidator
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QSizePolicy as QSP
-from PyQt5.QtCore import QRect, Qt, QThread, pyqtSlot
+from PyQt5.QtCore import QRect, QRegExp, Qt, QThread, pyqtSlot
 import numpy as np
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
@@ -103,7 +103,7 @@ class ViewerWindow(QtWidgets.QMainWindow):
         self.Plot2D.clicked.connect(lambda: self.checkboxes(True))
         self.Plot2D.stateChanged.connect(self.draw_data)
         grLayout.addWidget(self.Plot2D, 4, 0)
-        
+
         # Add the "Min Mean Max"-Checkbox
         self.MMM = QtWidgets.QCheckBox(QFra)
         self.MMM.setText("min-mean-max plot")
@@ -145,12 +145,15 @@ class ViewerWindow(QtWidgets.QMainWindow):
 
         # Shape Widget
         self.Shape = QtWidgets.QGridLayout()
+        self.Validator = QRegExpValidator(self)
+        self.Validator.setRegExp(QRegExp("\\d*:?\\d*:?\\d*"))
         for n in range(self.maxDims):
             label = QtWidgets.QLabel()
             label.setText("0")
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
             lineedit = QtWidgets.QLineEdit()
+            lineedit.setValidator(self.Validator)
             lineedit.editingFinished.connect(self.set_slice)
             lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
@@ -626,18 +629,32 @@ class ViewerWindow(QtWidgets.QMainWindow):
                 onField = True
                 break
         if onField:
+            txt = from_wgt.text()
+            modifiers = QtWidgets.QApplication.keyboardModifiers()
+            mod = np.sign(event.angleDelta().y())
+            if modifiers == Qt.ControlModifier:
+                mod *= 10
+            elif modifiers == Qt.ShiftModifier:
+                mod *= 100
             try:
-                c_val = int(from_wgt.text())
-                modifiers = QtWidgets.QApplication.keyboardModifiers()
-                mod = np.sign(event.angleDelta().y())
-                if modifiers == Qt.ControlModifier:
-                    mod *= 10
-                elif modifiers == Qt.ShiftModifier:
-                    mod *= 100
-                from_wgt.setText(str(c_val+mod))
-                self.set_slice()
+                from_wgt.setText(str(int(txt)+mod))
             except ValueError:
-                pass
+                txt = txt.split(':')
+                if len(txt) == 1:
+                    return
+                if len(txt) == 3 and txt[2] != "":
+                    if modifiers == Qt.ControlModifier:
+                        mod //= 10
+                        mod *= int(txt[2])
+                if txt[0] != "":
+                    txt[0] = str(int(txt[0])+mod)
+                if txt[1] != "":
+                    txt[1] = str(int(txt[1])+mod)
+                if "0" in txt:
+                    txt = np.array(txt)
+                    txt[txt == "0"] = ""
+                from_wgt.setText(':'.join(txt))
+            self.set_slice()
 
 
 if __name__ == '__main__':
