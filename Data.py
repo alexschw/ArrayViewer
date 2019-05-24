@@ -20,7 +20,7 @@ import numpy as np
 class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
     doneLoading = pyqtSignal(dict, str)
-    load = pyqtSignal(str)
+    load = pyqtSignal(str, str)
 
     def __init__(self, parent=None):
         """ Initialize the Loader. """
@@ -79,11 +79,12 @@ class Loader(QObject):
             return None
         return data
 
-    @pyqtSlot(str)
-    def add_data(self, fname):
+    @pyqtSlot(str, str)
+    def add_data(self, fname, key=""):
         """ Add a new data to the dataset. Ask if the data already exists. """
         splitted = fname.split("/")
-        key = str(splitted[-2] + " - " + splitted[-1])
+        if key == "":
+            key = str(splitted[-2] + " - " + splitted[-1])
         # Check if the File is bigger than 15 GB, than it will not be loaded
         if os.path.getsize(fname) > 15e9:
             print("File bigger than 15GB. Not loading!")

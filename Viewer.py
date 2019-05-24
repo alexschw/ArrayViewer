@@ -9,8 +9,7 @@ from functools import reduce
 from operator import getitem
 
 import os.path
-from PyQt5.QtGui import QColor, QCursor, QRegExpValidator
-from PyQt5 import QtWidgets
+from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
 from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QFileDialog,
                              QFrame, QGridLayout, QHBoxLayout, QHeaderView,
                              QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,
@@ -492,19 +491,31 @@ class ViewerWindow(QMainWindow):
                 key = str(splitted[-2] + " - " + splitted[-1])
                 # Show warning if data exists
                 if key in self.keys:
-                    txt = "Data(%s) exists. Do you want to overwrite it?"%key
-                    btns = (QMessageBox.Yes|QMessageBox.No)
-                    msg = QMessageBox(QMessageBox.Warning, "Warning", txt,
-                                      buttons=btns)
+                    txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
+                    replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
+                                             "Add new Dataset")
+                    msg = QMessageBox(QMessageBox.Warning, "Warning", txt)
+                    yesBtn = msg.addButton(QMessageBox.Yes)
+                    msg.addButton(QMessageBox.No)
+                    msg.addButton(replaceBtn, QMessageBox.AcceptRole)
                     msg.setDefaultButton(QMessageBox.Yes)
-                    if msg.exec_() != QMessageBox.Yes:
+                    msg.exec_()
+                    cBtn = msg.clickedButton()
+                    if cBtn == replaceBtn:
+                        n = 1
+                        while True:
+                            if key + "_" + str(n) not in self.keys:
+                                key =  key + "_" + str(n)
+                                break
+                            n += 1
+                    elif cBtn != yesBtn:
                         return
-                    else:
+                    else :
                         self.keys.remove(key)
                 loadItem = QTreeWidgetItem([self.lMsg])
                 loadItem.setForeground(0, QColor("grey"))
                 self.Tree.addTopLevelItem(loadItem)
-                self.loader.load.emit(fname)
+                self.loader.load.emit(fname, key)
 
     def save_chart(self):
         """ Saves the currently shown chart as a file. """
@@ -666,6 +677,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
-        window.loader.load.emit(os.path.abspath(new_file))
+        window.loader.load.emit(os.path.abspath(new_file), "")
     window.show()
     sys.exit(app.exec_())
