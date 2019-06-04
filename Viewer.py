@@ -86,7 +86,7 @@ class ViewerWindow(QMainWindow):
         self.diffBtn.setText("Calculate the difference")
         self.diffBtn.released.connect(self.calc_diff)
         self.diffBtn.hide()
-        grLayout.addWidget(self.diffBtn, 1, 0, 1, -1)
+        grLayout.addWidget(self.diffBtn, 1, 0, 1, 2)
 
         # Add the min and max labels
         self.txtMin = QLabel(QFra)
@@ -136,7 +136,7 @@ class ViewerWindow(QMainWindow):
         self.Sldr = rangeSlider(QFra)
         self.Sldr.setSizePolicy(QSP.Fixed, QSP.Expanding)
         self.Sldr.sliderReleased.connect(self.update_colorbar)
-        grLayout.addWidget(self.Sldr, 0, 3)
+        grLayout.addWidget(self.Sldr, 0, 3, 0, 1)
 
         # Add a context menu
         self.contextMenu = QMenu(self)
@@ -150,7 +150,7 @@ class ViewerWindow(QMainWindow):
         # Shape Widget
         self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
-        self.Validator.setRegExp(QRegExp("\\d*:?\\d*:?\\d*"))
+        self.Validator.setRegExp(QRegExp("[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"))
         for n in range(self.maxDims):
             label = QLabel()
             label.setText("0")

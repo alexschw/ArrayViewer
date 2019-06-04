@@ -127,25 +127,13 @@ class GraphWidget(QWidget):
                                         + str(self._oprcorr) + ")"))
         return self._oprdim
 
-    def two_D_plot(self, ui, ax, s):
-        if ui.Plot2D.checkState():
-            if self.cutout.shape[1] > 500:
-                ui.infoMsg("You are trying to plot more than 500 lines!", -1)
-                return
-            ax.plot(self.cutout)
-        elif ui.MMM.checkState():
-            ax.plot(self.cutout.max(axis=0), 'r')
-            ax.plot(self.cutout.mean(axis=0), 'k')
-            ax.plot(self.cutout.min(axis=0), 'b')
-        else:
-            self._img = ax.imshow(self.cutout, interpolation='none',
-                                  aspect='auto')
+    def set_ticks(self, ax, s, transp, is1DPlot=False):
         # Calculate the ticks for the plot by checking the limits
         limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
         lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
         lim[lim == ''] = '0'
         lim = lim.astype(float)
-        if not ui.Transp.checkState():
+        if not transp:
             lim = lim[(1,0),:]
         # Set the x-ticks
         loc = ax.xaxis.get_major_locator()()
@@ -154,6 +142,8 @@ class GraphWidget(QWidget):
             ax.set_xticklabels(d.astype(int))
         else:
             ax.set_xticklabels(d.astype(float))
+        if is1DPlot:
+            return
         # Set the y-ticks
         loc = ax.yaxis.get_major_locator()()
         d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1,2]+lim[1,0]
@@ -161,6 +151,16 @@ class GraphWidget(QWidget):
             ax.set_yticklabels(d.astype(int))
         else:
             ax.set_yticklabels(d.astype(float))
+
+    def two_D_plot(self, ui, ax, s):
+        if ui.MMM.checkState():
+            ax.plot(self.cutout.max(axis=0), 'r')
+            ax.plot(self.cutout.mean(axis=0), 'k')
+            ax.plot(self.cutout.min(axis=0), 'b')
+        else:
+            self._img = ax.imshow(self.cutout, interpolation='none',
+                                  aspect='auto')
+        self.set_ticks(ax, s, ui.Transp.checkState())
 
     def n_D_plot(self, ax):
         nPad = self.cutout.shape[0] // 100 + 1
@@ -208,7 +208,15 @@ class GraphWidget(QWidget):
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow or plot
             elif self.cutout.ndim == 2:
-                self.two_D_plot(ui, ax, s)
+                if ui.Plot2D.checkState():
+                    if self.cutout.shape[1] > 500:
+                        ui.infoMsg("You are trying to plot more than 500 lines!", -1)
+                        return
+                    else:
+                        ax.plot(self.cutout)
+                        self.set_ticks(ax, s, not ui.Transp.checkState(), True)
+                else:
+                    self.two_D_plot(ui, ax, s)
             # higher-dimensional cutouts will first be flattened
             elif self.cutout.ndim >= 3:
                 self.n_D_plot(ax)
@@ -219,8 +227,8 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (self.cutout.min(), self.cutout.max())
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText('min :' + "%0.5f"%self.cutout.min())
-                ui.txtMax.setText('max :' + "%0.5f"%self.cutout.max())
+                ui.txtMin.setText('min :' + "%0.5f"%self._clim[0])
+                ui.txtMax.setText('max :' + "%0.5f"%self._clim[1])
         self._canv.draw()
 
 
