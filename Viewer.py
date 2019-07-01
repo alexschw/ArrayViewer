@@ -206,7 +206,7 @@ class ViewerWindow(QMainWindow):
         btnColorbar = QAction(menubar)
         menuGraph.addAction(btnColorbar)
         btnColorbar.setText("Colorbar")
-        btnColorbar.triggered.connect(self.Graph.toggle_colorbar)
+        btnColorbar.triggered.connect(self.add_colorbar)
 
         menuGraph.addSeparator()
 
@@ -302,6 +302,11 @@ class ViewerWindow(QMainWindow):
         if not self._data:
             return 0
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
+
+    def add_colorbar(self):
+        self.Graph.toggle_colorbar()
+        self.Sldr.set_enabled(self.Graph._has_cb)
+        self.update_colorbar()
 
     def checkboxes(self, fromP2D):
         if self.Plot2D.isChecked() and not fromP2D:

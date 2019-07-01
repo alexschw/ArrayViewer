@@ -20,8 +20,7 @@ class rangeSlider(QtWidgets.QWidget):
         self.maxSlide.setRange(0, self._nSteps)
         self.minSlide.setTickPosition(self.minSlide.TicksRight)
         self.maxSlide.setTickPosition(self.maxSlide.TicksLeft)
-        self.minSlide.setSliderPosition(0)
-        self.maxSlide.setSliderPosition(self._nSteps)
+        self.set_enabled(False)
         self.minSlide.setSingleStep(1)
         self.maxSlide.setSingleStep(1)
         self.minSlide.setTickInterval(self._nSteps / 10)
@@ -55,6 +54,12 @@ class rangeSlider(QtWidgets.QWidget):
         """ Restricts the minimum slider to be less than the maximum slider """
         if value > self.maxSlide.value() - 1:
             self.minSlide.setSliderPosition(self.maxSlide.value() - 1)
+
+    def set_enabled(self, status):
+        self.minSlide.setSliderPosition(0)
+        self.maxSlide.setSliderPosition(self._nSteps)
+        self.minSlide.setEnabled(status)
+        self.maxSlide.setEnabled(status)
 
 
 if __name__ == '__main__':
