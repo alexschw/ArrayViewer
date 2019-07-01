@@ -153,21 +153,31 @@ class GraphWidget(QWidget):
             ax.set_yticklabels(d.astype(float))
 
     def two_D_plot(self, ui, ax, s):
-        if ui.MMM.checkState():
+        if ui.MMM.isChecked():
             ax.plot(self.cutout.max(axis=0), 'r')
             ax.plot(self.cutout.mean(axis=0), 'k')
             ax.plot(self.cutout.min(axis=0), 'b')
         else:
             self._img = ax.imshow(self.cutout, interpolation='none',
                                   aspect='auto')
-        self.set_ticks(ax, s, ui.Transp.checkState())
+        self.set_ticks(ax, s, ui.Transp.isChecked())
 
-    def n_D_plot(self, ax):
-        nPad = self.cutout.shape[0] // 100 + 1
-        dat = flatPad(self.cutout, nPad)
+    def n_D_plot(self, ax, ui):
+        sh = self.cutout.shape
+        nPad = sh[0] // 100 + 1
+        if ui.Plot3D.isChecked() and self.cutout.ndim==3 and sh[2]==3:
+            nPad = -1
+            mm = [np.min(self.cutout), np.max(self.cutout)]
+            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]) ,0 ,1)
+        else:
+            dat = flatPad(self.cutout, nPad)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-        ax.xaxis.set_major_locator(TickMultLoc(self.cutout.shape[0] + nPad))
-        ax.yaxis.set_major_locator(TickMultLoc(self.cutout.shape[1] + nPad))
+        locx = TickMultLoc(sh[0] + nPad)
+        ax.xaxis.set_major_locator(locx)
+        ax.xaxis.set_ticklabels(np.arange(-sh[0], int(locx().max()), sh[0]))
+        locy = TickMultLoc(sh[1] + nPad)
+        ax.yaxis.set_major_locator(locy)
+        ax.yaxis.set_ticklabels(np.arange(-sh[1], int(locy().max()), sh[1]))
 
     def renewPlot(self, data, s, scalDims, ui):
         """ Draw given data. """
@@ -194,7 +204,7 @@ class GraphWidget(QWidget):
                 self._oprcorr = self._oprdim - (scalDims<=self._oprdim).sum()
                 self.cutout = self._opr(self.cutout)
             # Transpose the first two dimensions if it is chosen
-            if ui.Transp.checkState() and self.cutout.ndim > 1:
+            if ui.Transp.isChecked() and self.cutout.ndim > 1:
                 self.cutout = np.swapaxes(self.cutout, 0, 1)
             # Graph an 1D-cutout
             if self.cutout.ndim == 0:
@@ -208,18 +218,18 @@ class GraphWidget(QWidget):
                     ax.invert_yaxis()
             # 2D-cutout will be shown using imshow or plot
             elif self.cutout.ndim == 2:
-                if ui.Plot2D.checkState():
+                if ui.Plot2D.isChecked():
                     if self.cutout.shape[1] > 500:
                         ui.infoMsg("You are trying to plot more than 500 lines!", -1)
                         return
                     else:
                         ax.plot(self.cutout)
-                        self.set_ticks(ax, s, not ui.Transp.checkState(), True)
+                        self.set_ticks(ax, s, not ui.Transp.isChecked(), True)
                 else:
                     self.two_D_plot(ui, ax, s)
             # higher-dimensional cutouts will first be flattened
             elif self.cutout.ndim >= 3:
-                self.n_D_plot(ax)
+                self.n_D_plot(ax, ui)
             # Reset the colorbar. A better solution would be possible, if the
             # axes were not cleared everytime.
             self.colorbar()

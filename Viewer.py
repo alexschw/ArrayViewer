@@ -78,7 +78,7 @@ class ViewerWindow(QMainWindow):
         self.Tree.setColumnWidth(1, 10)
         self.Tree.setColumnHidden(1, True)
         self.Tree.currentItemChanged.connect(self.change_tree)
-        grLayout.addWidget(self.Tree, 0, 0, 1, -1)
+        grLayout.addWidget(self.Tree, 0, 0, 1, 2)
         self.Tree.contextMenuEvent = self.dropdown
 
         # Add a hidden Diff Button
@@ -100,32 +100,18 @@ class ViewerWindow(QMainWindow):
         self.Transp = QCheckBox(QFra)
         self.Transp.setText("Transpose")
         self.Transp.stateChanged.connect(self.draw_data)
-        grLayout.addWidget(self.Transp, 3, 0)
-
-        # Add the "Plot2D"-Checkbox
-        self.Plot2D = QCheckBox(QFra)
-        self.Plot2D.setText("2D as plot")
-        self.Plot2D.clicked.connect(lambda: self.checkboxes(True))
-        self.Plot2D.stateChanged.connect(self.draw_data)
-        grLayout.addWidget(self.Plot2D, 4, 0)
-
-        # Add the "Min Mean Max"-Checkbox
-        self.MMM = QCheckBox(QFra)
-        self.MMM.setText("min-mean-max plot")
-        self.MMM.clicked.connect(lambda: self.checkboxes(False))
-        self.MMM.stateChanged.connect(self.draw_data)
-        grLayout.addWidget(self.MMM, 4, 1)
+        grLayout.addWidget(self.Transp, 3, 0, 1, 2)
 
         # Add the Permute Field
         self.Prmt = QLineEdit(QFra)
         self.Prmt.setText("")
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         self.Prmt.returnPressed.connect(self.permute_data)
-        grLayout.addWidget(self.Prmt, 5, 0)
+        grLayout.addWidget(self.Prmt, 4, 0)
         self.PrmtBtn = QPushButton(QFra)
         self.PrmtBtn.setText("Permute")
         self.PrmtBtn.released.connect(self.permute_data)
-        grLayout.addWidget(self.PrmtBtn, 5, 1)
+        grLayout.addWidget(self.PrmtBtn, 4, 1)
 
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(QFra)
@@ -279,6 +265,27 @@ class ViewerWindow(QMainWindow):
         btnOpMax.setText("Max")
         btnOpMax.triggered.connect(lambda: self.set_operation('max'))
 
+        # Plot menu
+        menuPlot = QMenu(menubar)
+        menuPlot.setTitle("Plot")
+        menubar.addAction(menuPlot.menuAction())
+
+        self.MMM = QAction("min-mean-max plot", menubar, checkable=True)
+        self.MMM.triggered.connect(lambda: self.checkboxes(False))
+        self.MMM.triggered.connect(self.draw_data)
+        menuPlot.addAction(self.MMM)
+
+        self.Plot2D = QAction("2D as plot", menubar, checkable=True)
+        self.Plot2D.triggered.connect(lambda: self.checkboxes(True))
+        self.Plot2D.triggered.connect(self.draw_data)
+        menuPlot.addAction(self.Plot2D)
+
+        self.Plot3D = QAction("3D as Image", menubar, checkable=True)
+        self.Plot3D.triggered.connect(self.draw_data)
+        menuPlot.addAction(self.Plot3D)
+
+
+
         self.setMenuBar(menubar)
 
     def __getitem__(self, item):
@@ -297,10 +304,10 @@ class ViewerWindow(QMainWindow):
         reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
 
     def checkboxes(self, fromP2D):
-        if self.Plot2D.checkState() and not fromP2D:
-            self.Plot2D.setCheckState(0)
-        elif self.MMM.checkState() and fromP2D:
-            self.MMM.setCheckState(0)
+        if self.Plot2D.isChecked() and not fromP2D:
+            self.Plot2D.setChecked(0)
+        elif self.MMM.isChecked() and fromP2D:
+            self.MMM.setChecked(0)
 
     def get_obj_trace(self, item):
         """ Returns the trace to a given item in the TreeView. """
