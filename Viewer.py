@@ -490,10 +490,11 @@ class ViewerWindow(QMainWindow):
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data. """
-        self[0] = self.reshapeBox.reshape_array(self[0])
-        if self.slice_key() in self.slices:
-            del self.slices[self.slice_key()]
-        self.update_shape(self[0].shape)
+        if isinstance(self[0], np.ndarray):
+            self[0] = self.reshapeBox.reshape_array(self[0])
+            if self.slice_key() in self.slices:
+                del self.slices[self.slice_key()]
+            self.update_shape(self[0].shape)
 
     def new_data_dialog(self):
         """ Open the new data dialog box to construct new data. """

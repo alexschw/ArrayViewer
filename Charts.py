@@ -133,6 +133,8 @@ class GraphWidget(QWidget):
         lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
         lim[lim == ''] = '0'
         lim = lim.astype(float)
+        if lim.shape[0] == 1:
+            lim = np.append([[0,0,1]], lim, axis=0)
         if not transp:
             lim = lim[(1,0),:]
         # Set the x-ticks
@@ -213,6 +215,7 @@ class GraphWidget(QWidget):
                 ax.axis('off')
             if self.cutout.ndim == 1:
                 ax.plot(self.cutout)
+                self.set_ticks(ax, s, False, True)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
