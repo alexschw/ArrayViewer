@@ -604,6 +604,12 @@ class ViewerWindow(QMainWindow):
                 shapeStr += txt + ','
             else:
                 scalarDims.append(n)
+                try:
+                    int(txt)
+                except ValueError:
+                    self.infoMsg("Could not convert value to int.", -1)
+                    shapeStr += ':,'
+                    continue
                 if int(txt) >= maxt:
                     txt = str(maxt - 1)
                     self.Shape.itemAtPosition(1, n).widget().setText(txt)
@@ -687,6 +693,13 @@ class ViewerWindow(QMainWindow):
                 from_wgt.setText(str(int(txt)+mod))
             except ValueError:
                 txt = txt.split(':')
+                try:
+                    for t in txt:
+                        if t != "":
+                            int(t)
+                except ValueError:
+                    self.infoMsg("Could not convert value to int.", -1)
+                    return
                 if len(txt) == 1:
                     return
                 if len(txt) == 3 and txt[2] != "":
