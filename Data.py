@@ -31,8 +31,8 @@ class Loader(QObject):
 
     def filltoequal(self, lil):
         """ Fill a list of lists. Append smaller lists with nan. """
-        maxlen = max(list(map(len, lil)))
-        [[xi.append(np.nan) for _ in range(maxlen - len(xi))] for xi in lil]
+        maxlen = len(sorted(lil,key=len, reverse=True)[0])
+        return [[xi+[np.nan]*(maxlen - len(xi))] for xi in lil]
 
     def validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
@@ -53,7 +53,7 @@ class Loader(QObject):
             if data != [] and not isinstance(data[0], str):
                 # not all elements in the list have the same length
                 if isinstance(data[0], list) and len(set(map(len, data))) != 1:
-                    self.filltoequal(data)
+                    data = self.filltoequal(data)
                 data = np.array(data)
         elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # Create a dictionary from matlab structs
@@ -76,9 +76,8 @@ class Loader(QObject):
             for key in data:
                 dct[key] = self.validate(data[key])
             return dct
-        elif isinstance(data, h5py._hl.dataset.Dataset):
-            return np.array(data)
-        elif not isinstance(data, (np.ndarray, int, float, str, type(u''), tuple)):
+        elif not isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset, int,
+                                   float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + type(data) +
                               ") not recognized. Skipping", 0)
             return None

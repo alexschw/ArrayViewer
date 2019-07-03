@@ -192,7 +192,7 @@ class GraphWidget(QWidget):
             return
         elif isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
-            ax.text(0.0, 1.0, data)
+            ax.text(-0.1, 1.1, data, va='top', wrap=True)
             ax.axis('off')
         elif isinstance(data[0], list):
             # If there is an array of lists print each element as a graph
