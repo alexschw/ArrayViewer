@@ -37,6 +37,7 @@ class ViewerWindow(QMainWindow):
         self.checkableItems = []
         self.diffNo = 0
         self.maxDims = 6
+        self.first_to_last = False
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -514,10 +515,16 @@ class ViewerWindow(QMainWindow):
 
     def load_data_dialog(self):
         """ Open file-dialog to choose one or multiple files. """
-        ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
         title = 'Open data file'
-        fnames = QFileDialog.getOpenFileNames(self, title, '.', ftypes)
-        if fnames:
+        ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
+        FD = QFileDialog(self, title, '.', ftypes)
+        FD.setOptions(QFileDialog.DontUseNativeDialog)
+        checkbox = QCheckBox("Put first dimension to the end", FD)
+        checkbox.setChecked(self.first_to_last)
+        FD.layout().addWidget(checkbox, 4, 1, 1, 1)
+        if FD.exec():
+            fnames = FD.selectedFiles()
+            self.first_to_last = checkbox.checkState()
             # For all files
             if isinstance(fnames[0], list):
                 fnames = fnames[0]
@@ -551,7 +558,7 @@ class ViewerWindow(QMainWindow):
                 loadItem = QTreeWidgetItem([self.lMsg])
                 loadItem.setForeground(0, QColor("grey"))
                 self.Tree.addTopLevelItem(loadItem)
-                self.loader.load.emit(fname, key)
+                self.loader.load.emit(fname, key, self.first_to_last)
 
     def save_chart(self):
         """ Saves the currently shown chart as a file. """

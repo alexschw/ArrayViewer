@@ -20,13 +20,14 @@ import numpy as np
 class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
     doneLoading = pyqtSignal(dict, str)
-    load = pyqtSignal(str, str)
+    load = pyqtSignal(str, str, bool)
     infoMsg = pyqtSignal(str, int)
 
     def __init__(self, parent=None):
         """ Initialize the Loader. """
         super(QObject, self).__init__(parent)
         self.fname = ''
+        self.switch_to_last = False
         self.load.connect(self.add_data)
 
     def filltoequal(self, lil):
@@ -67,25 +68,28 @@ class Loader(QObject):
             for subdat in data:
                 ndata.append(self.validate(subdat))
             if isinstance(subdat, str):
-                return ndata
+                data = ndata
             else:
-                return np.array(ndata)
+                data = np.array(ndata)
         elif isinstance(data, h5py._hl.files.File) \
                 or isinstance(data, h5py._hl.group.Group):
             dct = {}
             for key in data:
                 dct[key] = self.validate(data[key])
-            return dct
+            data = dct
         elif not isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + type(data) +
                               ") not recognized. Skipping", 0)
-            return None
+            data = None
+        if self.switch_to_last and isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset)):
+            data = np.moveaxis(data, 0, -1)
         return data
 
-    @pyqtSlot(str, str)
-    def add_data(self, fname, key=""):
+    @pyqtSlot(str, str, bool)
+    def add_data(self, fname, key="", switch_to_last=False):
         """ Add a new data to the dataset. Ask if the data already exists. """
+        self.switch_to_last = switch_to_last
         splitted = fname.split("/")
         if key == "":
             key = str(splitted[-2] + " - " + splitted[-1])
