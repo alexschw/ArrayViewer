@@ -126,6 +126,11 @@ class ViewerWindow(QMainWindow):
 
         # Add a context menu
         self.contextMenu = QMenu(self)
+        reshapeData = QAction(self.contextMenu)
+        reshapeData.setText("Reshape")
+        reshapeData.triggered.connect(self.reshape_dialog)
+        self.contextMenu.addAction(reshapeData)
+
         delData = QAction(self.contextMenu)
         delData.setText("Delete Data")
         delData.triggered.connect(self.delete_data)
@@ -715,6 +720,14 @@ class ViewerWindow(QMainWindow):
                     txt[txt == "0"] = ""
                 from_wgt.setText(':'.join(txt))
             self.set_slice()
+
+    def keyPressEvent(self, ev):
+        if ev.key() == Qt.Key_Delete:
+            self.delete_data()
+        elif ev.key() == Qt.Key_C:
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers == Qt.ControlModifier:
+                sys.exit()
 
 
 if __name__ == '__main__':
