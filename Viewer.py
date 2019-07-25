@@ -30,14 +30,16 @@ class ViewerWindow(QMainWindow):
         super(self.__class__, self).__init__(parent)
         # set class variables
         self.app = application
-        self.keys = []
         self._data = {}
-        self.cText = []
         self.slices = {}
+        self.cText = []
+        self.keys = []
         self.checkableItems = []
+        self.old_trace = []
         self.diffNo = 0
         self.maxDims = 6
         self.first_to_last = False
+        self.changing_item = None
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -127,6 +129,11 @@ class ViewerWindow(QMainWindow):
 
         # Add a context menu
         self.contextMenu = QMenu(self)
+        renameData = QAction(self.contextMenu)
+        renameData.setText("Rename")
+        renameData.triggered.connect(self.rename_key)
+        self.contextMenu.addAction(renameData)
+
         reshapeData = QAction(self.contextMenu)
         reshapeData.setText("Reshape")
         reshapeData.triggered.connect(self.reshape_dialog)
@@ -303,11 +310,16 @@ class ViewerWindow(QMainWindow):
         else:
             return reduce(getitem, item[:-1], self._data)[item[-1]]
 
-    def __setitem__(self, _, newData):
+    def __setitem__(self, newkey, newData):
         """ Sets the current data to the new data. """
         if not self._data:
             return 0
-        reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]] = newData
+        reduce(getitem, newkey[:-1], self._data)[newkey[-1]] = newData
+
+    def pop(self, key):
+        """ Returns the current data and removes it from the dict. """
+        return reduce(getitem, key[:-1], self._data).pop(key[-1])
+
 
     def add_colorbar(self):
         self.Graph.toggle_colorbar()
@@ -632,6 +644,41 @@ class ViewerWindow(QMainWindow):
 
         shapeStr = shapeStr[:-1] + "]"
         return str(shapeStr), np.array(scalarDims)
+
+    def rename_key(self):
+        """ Start the renaming of a data-key """
+        self.changing_item = self.Tree.currentItem()
+        if str(self.changing_item.text(0)) == self.lMsg:
+            return
+        self.old_trace = self.get_obj_trace(self.changing_item)
+        # Make Item editable
+        self.changing_item.setFlags(Qt.ItemFlag(63))
+        self.Tree.editItem(self.changing_item, 0)
+        self.Tree.itemChanged.connect(self.finish_renaming)
+
+    def finish_renaming(self):
+        """ Finish the renaming of a data-key """
+        if len(self.old_trace) == 0:
+            return
+        new_trace = self.get_obj_trace(self.changing_item)
+        if new_trace == self.old_trace:
+            return
+        self.Tree.itemChanged.disconnect(self.finish_renaming)
+        # Check if the name exists in siblings
+        itemIndex = self.Tree.indexFromItem(self.changing_item, 0)
+        siblingTxt = []
+        for n in range(self.changing_item.parent().childCount()):
+            if itemIndex.sibling(n, 0) != itemIndex:
+                siblingTxt.append(itemIndex.sibling(n, 0).data(0))
+        if new_trace[-1] in siblingTxt:
+            self.changing_item.setData(0, 0, self.old_trace[-1])
+            self.old_trace = []
+            return
+        # Replace the key
+        self[new_trace] = self.pop(self.old_trace)
+        self.old_trace = []
+        # Make Item non-editable
+        self.changing_item.setFlags(Qt.ItemFlag(61))
 
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """
