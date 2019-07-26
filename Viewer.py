@@ -463,6 +463,7 @@ class ViewerWindow(QMainWindow):
         FD = QFileDialog(self, 'Open data file', '.',
                          "(*.data *.hdf5 *.mat *.npy *.txt)")
         FD.setOptions(QFileDialog.DontUseNativeDialog)
+        FD.setFileMode(QFileDialog.ExistingFiles)
         checkbox = QCheckBox("Put first dimension to the end", FD)
         checkbox.setChecked(self.first_to_last)
         FD.layout().addWidget(checkbox, 4, 1, 1, 1)
