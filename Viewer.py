@@ -22,12 +22,29 @@ from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 from Data import Loader
 
+def menu_opt(mbar, submenu, text, function, shortcut=None):
+    """ Build a new menu option. """
+    btn = QAction(mbar)
+    btn.setText(text)
+    btn.triggered.connect(function)
+    if shortcut:
+        btn.setShortcut(shortcut)
+    submenu.addAction(btn)
+
+def get_obj_trace(item):
+    """ Returns the trace to a given item in the TreeView. """
+    dText = [str(item.text(0))]
+    while item.parent() is not None:
+        item = item.parent()
+        dText.insert(0, str(item.text(0)))
+    return dText
+
 
 class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
     def __init__(self, application=None, parent=None):
         """ Initialize the window. """
-        super(self.__class__, self).__init__(parent)
+        super(ViewerWindow, self).__init__(parent)
         # set class variables
         self.app = application
         self._data = {}
@@ -75,7 +92,8 @@ class ViewerWindow(QMainWindow):
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
         self.Tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.Tree.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.Tree.header().setSectionResizeMode(1,
+                                                QHeaderView.ResizeToContents)
         self.Tree.header().setStretchLastSection(False)
         self.Tree.header().setVisible(False)
         self.Tree.setColumnWidth(1, 10)
@@ -127,29 +145,13 @@ class ViewerWindow(QMainWindow):
         self.Sldr.sliderReleased.connect(self.update_colorbar)
         grLayout.addWidget(self.Sldr, 0, 3, 0, 1)
 
-        # Add a context menu
-        self.contextMenu = QMenu(self)
-        renameData = QAction(self.contextMenu)
-        renameData.setText("Rename")
-        renameData.triggered.connect(self.rename_key)
-        self.contextMenu.addAction(renameData)
-
-        reshapeData = QAction(self.contextMenu)
-        reshapeData.setText("Reshape")
-        reshapeData.triggered.connect(self.reshape_dialog)
-        self.contextMenu.addAction(reshapeData)
-
-        delData = QAction(self.contextMenu)
-        delData.setText("Delete Data")
-        delData.triggered.connect(self.delete_data)
-        self.contextMenu.addAction(delData)
-
         self._initMenu()
 
         # Shape Widget
         self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
-        self.Validator.setRegExp(QRegExp("[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"))
+        rex = r"[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"
+        self.Validator.setRegExp(QRegExp(rex))
         for n in range(self.maxDims):
             label = QLabel()
             label.setText("0")
@@ -169,137 +171,78 @@ class ViewerWindow(QMainWindow):
 
     def _initMenu(self):
         """ Setup the menu bar. """
-        menubar = QMenuBar(self)
-        menubar.setGeometry(QRect(0, 0, 800, 10))
-        menuStart = QMenu(menubar)
+        menu = QMenuBar(self)
+        menu.setGeometry(QRect(0, 0, 800, 10))
+        menuStart = QMenu(menu)
         menuStart.setTitle("Start")
-        menubar.addAction(menuStart.menuAction())
+        menu.addAction(menuStart.menuAction())
 
-        btnLoadData = QAction(menubar)
-        menuStart.addAction(btnLoadData)
-        btnLoadData.setText("Load data")
-        btnLoadData.setShortcut("Ctrl+O")
-        btnLoadData.triggered.connect(self.load_data_dialog)
-
-        btnSave = QAction(menubar)
-        menuStart.addAction(btnSave)
-        btnSave.setText("Save")
-        btnSave.setShortcut("Ctrl+S")
-        btnSave.triggered.connect(self.save_chart)
-
-        btnReshape = QAction(menubar)
-        menuStart.addAction(btnReshape)
-        btnReshape.setText("Reshape")
-        btnReshape.setShortcut("Ctrl+R")
-        btnReshape.triggered.connect(self.reshape_dialog)
-
-        btnNewData = QAction(menubar)
-        menuStart.addAction(btnNewData)
-        btnNewData.setText("New Data")
-        btnNewData.setShortcut("Ctrl+N")
-        btnNewData.triggered.connect(self.new_data_dialog)
-
-        btnNewData = QAction(menubar)
-        menuStart.addAction(btnNewData)
-        btnNewData.setText("Difference")
-        btnNewData.setShortcut("Ctrl+D")
-        btnNewData.triggered.connect(self.start_diff)
-
-        btnDelAll = QAction(menubar)
-        menuStart.addAction(btnDelAll)
-        btnDelAll.setText("Delete All Data")
-        btnDelAll.setShortcut("Ctrl+X")
-        btnDelAll.triggered.connect(self.delete_all_data)
+        menu_opt(menu, menuStart, "Load data", self.load_data_dialog, "Ctrl+O")
+        menu_opt(menu, menuStart, "Save", self.save_chart, "Ctrl+S")
+        menu_opt(menu, menuStart, "New Data", self.new_data_dialog, "Ctrl+N")
+        menu_opt(menu, menuStart, "Reshape", self.reshape_dialog, "Ctrl+R")
+        menu_opt(menu, menuStart, "Difference", self.start_diff, "Ctrl+D")
+        menu_opt(menu, menuStart, "Delete All Data", self.delete_all_data,
+                 "Ctrl+X")
 
         # Graph menu
-        menuGraph = QMenu(menubar)
+        menuGraph = QMenu(menu)
         menuGraph.setTitle("Graph")
-        menubar.addAction(menuGraph.menuAction())
+        menu.addAction(menuGraph.menuAction())
 
-        btnColorbar = QAction(menubar)
-        menuGraph.addAction(btnColorbar)
-        btnColorbar.setText("Colorbar")
-        btnColorbar.triggered.connect(self.add_colorbar)
-
+        menu_opt(menu, menuGraph, "Colorbar", self.add_colorbar)
         menuGraph.addSeparator()
 
-        btnCmJet = QAction(menubar)
-        menuGraph.addAction(btnCmJet)
-        btnCmJet.setText("Colormap 'jet'")
-        btnCmJet.triggered.connect(lambda: self.Graph.colormap('jet'))
-
-        btnCmGray = QAction(menubar)
-        menuGraph.addAction(btnCmGray)
-        btnCmGray.setText("Colormap 'gray'")
-        btnCmGray.triggered.connect(lambda: self.Graph.colormap('gray'))
-
-        btnCmHot = QAction(menubar)
-        menuGraph.addAction(btnCmHot)
-        btnCmHot.setText("Colormap 'hot'")
-        btnCmHot.triggered.connect(lambda: self.Graph.colormap('hot'))
-
-        btnCmBwr = QAction(menubar)
-        menuGraph.addAction(btnCmBwr)
-        btnCmBwr.setText("Colormap 'bwr'")
-        btnCmBwr.triggered.connect(lambda: self.Graph.colormap('bwr'))
-
-        btnCmViridis = QAction(menubar)
-        menuGraph.addAction(btnCmViridis)
-        btnCmViridis.setText("Colormap 'viridis'")
-        btnCmViridis.triggered.connect(lambda: self.Graph.colormap('viridis'))
+        menu_opt(menu, menuGraph, "Colormap 'jet'",
+                 lambda: self.Graph.colormap('jet'))
+        menu_opt(menu, menuGraph, "Colormap 'gray'",
+                 lambda: self.Graph.colormap('gray'))
+        menu_opt(menu, menuGraph, "Colormap 'hot'",
+                 lambda: self.Graph.colormap('hot'))
+        menu_opt(menu, menuGraph, "Colormap 'bwr'",
+                 lambda: self.Graph.colormap('bwr'))
+        menu_opt(menu, menuGraph, "Colormap 'viridis'",
+                 lambda: self.Graph.colormap('viridis'))
 
         # Operations menu
-        menuOprs = QMenu(menubar)
-        menuOprs.setTitle("Operations")
-        menubar.addAction(menuOprs.menuAction())
+        menuOpr = QMenu(menu)
+        menuOpr.setTitle("Operations")
+        menu.addAction(menuOpr.menuAction())
 
-        btnOpNone = QAction(menubar)
-        menuOprs.addAction(btnOpNone)
-        btnOpNone.setText("None")
-        btnOpNone.triggered.connect(lambda: self.set_operation())
+        menu_opt(menu, menuOpr, "None", self.set_operation)
+        menu_opt(menu, menuOpr, "Min", lambda: self.set_operation('min'))
+        menu_opt(menu, menuOpr, "Mean", lambda: self.set_operation('mean'))
+        menu_opt(menu, menuOpr, "Median", lambda: self.set_operation('median'))
+        menu_opt(menu, menuOpr, "Max", lambda: self.set_operation('max'))
 
-        btnOpMin = QAction(menubar)
-        menuOprs.addAction(btnOpMin)
-        btnOpMin.setText("Min")
-        btnOpMin.triggered.connect(lambda: self.set_operation('min'))
-
-        btnOpMean = QAction(menubar)
-        menuOprs.addAction(btnOpMean)
-        btnOpMean.setText("Mean")
-        btnOpMean.triggered.connect(lambda: self.set_operation('mean'))
-
-        btnOpMed = QAction(menubar)
-        menuOprs.addAction(btnOpMed)
-        btnOpMed.setText("Median")
-        btnOpMed.triggered.connect(lambda: self.set_operation('median'))
-
-        btnOpMax = QAction(menubar)
-        menuOprs.addAction(btnOpMax)
-        btnOpMax.setText("Max")
-        btnOpMax.triggered.connect(lambda: self.set_operation('max'))
 
         # Plot menu
-        menuPlot = QMenu(menubar)
+        menuPlot = QMenu(menu)
         menuPlot.setTitle("Plot")
-        menubar.addAction(menuPlot.menuAction())
+        menu.addAction(menuPlot.menuAction())
 
-        self.MMM = QAction("min-mean-max plot", menubar, checkable=True)
+        self.MMM = QAction("min-mean-max plot", menu, checkable=True)
         self.MMM.triggered.connect(lambda: self.checkboxes(False))
         self.MMM.triggered.connect(self.draw_data)
         menuPlot.addAction(self.MMM)
 
-        self.Plot2D = QAction("2D as plot", menubar, checkable=True)
+        self.Plot2D = QAction("2D as plot", menu, checkable=True)
         self.Plot2D.triggered.connect(lambda: self.checkboxes(True))
         self.Plot2D.triggered.connect(self.draw_data)
         menuPlot.addAction(self.Plot2D)
 
-        self.Plot3D = QAction("3D as Image", menubar, checkable=True)
+        self.Plot3D = QAction("3D as Image", menu, checkable=True)
         self.Plot3D.triggered.connect(self.draw_data)
         menuPlot.addAction(self.Plot3D)
 
+        self.setMenuBar(menu)
 
+        # Add a context menu
+        self.contextMenu = QMenu(self)
 
-        self.setMenuBar(menubar)
+        menu_opt(self, self.contextMenu, "Rename", self.rename_key)
+        menu_opt(self, self.contextMenu, "Reshape", self.reshape_dialog)
+        menu_opt(self, self.contextMenu, "Delete Data", self.delete_data)
 
     def __getitem__(self, item):
         """ Gets the current data. """
@@ -307,13 +250,12 @@ class ViewerWindow(QMainWindow):
             return None
         if item in [0, "data", ""]:
             return reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]]
-        else:
-            return reduce(getitem, item[:-1], self._data)[item[-1]]
+        return reduce(getitem, item[:-1], self._data)[item[-1]]
 
     def __setitem__(self, newkey, newData):
         """ Sets the current data to the new data. """
         if not self._data:
-            return 0
+            return
         reduce(getitem, newkey[:-1], self._data)[newkey[-1]] = newData
 
     def pop(self, key):
@@ -322,23 +264,17 @@ class ViewerWindow(QMainWindow):
 
 
     def add_colorbar(self):
+        """ Add a colorbar to the Graph Widget. """
         self.Graph.toggle_colorbar()
-        self.Sldr.set_enabled(self.Graph._has_cb)
+        self.Sldr.set_enabled(self.Graph.has_cb)
         self.update_colorbar()
 
     def checkboxes(self, fromP2D):
+        """ Validate the value of the checkboxes and toggle their values. """
         if self.Plot2D.isChecked() and not fromP2D:
             self.Plot2D.setChecked(0)
         elif self.MMM.isChecked() and fromP2D:
             self.MMM.setChecked(0)
-
-    def get_obj_trace(self, item):
-        """ Returns the trace to a given item in the TreeView. """
-        dText = [str(item.text(0))]
-        while item.parent() is not None:
-            item = item.parent()
-            dText.insert(0, str(item.text(0)))
-        return dText
 
     def dropdown(self, _):
         """ Add a context menu. """
@@ -369,13 +305,13 @@ class ViewerWindow(QMainWindow):
         this_wgt = self.app.widgetAt(event.globalPos())
         self.previous_opr_widget.setStyleSheet("")
         if this_wgt == self.previous_opr_widget:
-            self.Graph._oprdim = -1
+            self.Graph.set_oprdim(-1)
             self.draw_data()
             self.previous_opr_widget = self.emptylabel
         else:
             this_wgt.setStyleSheet("background-color:lightgreen;")
             index = self.Shape.indexOf(this_wgt) // self.Shape.rowCount()
-            self.Graph._oprdim = index
+            self.Graph.set_oprdim(index)
             self.draw_data()
             self.previous_opr_widget = this_wgt
 
@@ -384,7 +320,7 @@ class ViewerWindow(QMainWindow):
         citem = self.Tree.currentItem()
         if str(citem.text(0)) == self.lMsg:
             return
-        dText = self.get_obj_trace(citem)
+        dText = get_obj_trace(citem)
         citem = self.Tree.currentItem()
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
@@ -395,24 +331,22 @@ class ViewerWindow(QMainWindow):
         """ Delete all data from the Treeview. """
         txt = "Delete all data in the Array Viewer?"
         btns = (QMessageBox.Yes|QMessageBox.No)
-        msg = QMessageBox(QMessageBox.Warning,
-                                    "Warning", txt, buttons=btns)
+        msg = QMessageBox(QMessageBox.Warning, "Warning", txt, buttons=btns)
         msg.setDefaultButton(QMessageBox.Yes)
         if msg.exec_() != QMessageBox.Yes:
             return
-        else:
-            del self._data
-            del self.keys
-            self._data = {}
-            self.keys = []
-            self.cText = []
-            self.slices = {}
-            self.update_tree()
-            self.Graph.clear()
+        del self._data
+        del self.keys
+        self._data = {}
+        self.keys = []
+        self.cText = []
+        self.slices = {}
+        self.update_tree()
+        self.Graph.clear()
 
     @pyqtSlot(str, int)
     def infoMsg(self, text, wLevel):
-        """ Show an info Message """
+        """ Show an info Message. """
         if wLevel == -1:
             self.errMsg.setText(text)
             self.errMsg.setStyleSheet("QLabel { color : red; }")
@@ -435,7 +369,7 @@ class ViewerWindow(QMainWindow):
         checkedItems = 0
         for item in self.checkableItems:
             if item.checkState(1) == Qt.Checked:
-                text = self.get_obj_trace(item)
+                text = get_obj_trace(item)
                 if checkedItems == 0:
                     text0 = '[0] ' + '/'.join(text)
                     item0 = self[text]
@@ -464,8 +398,7 @@ class ViewerWindow(QMainWindow):
             return None
         if self.slice_key() in self.slices:
             return self.slices[self.slice_key()]
-        else:
-            return None
+        return None
 
     def set_slice(self):
         """ Get the current slice in the window and save it in a dict. """
@@ -527,9 +460,8 @@ class ViewerWindow(QMainWindow):
 
     def load_data_dialog(self):
         """ Open file-dialog to choose one or multiple files. """
-        title = 'Open data file'
-        ftypes = "(*.data *.hdf5 *.mat *.npy *.txt)"
-        FD = QFileDialog(self, title, '.', ftypes)
+        FD = QFileDialog(self, 'Open data file', '.',
+                         "(*.data *.hdf5 *.mat *.npy *.txt)")
         FD.setOptions(QFileDialog.DontUseNativeDialog)
         checkbox = QCheckBox("Put first dimension to the end", FD)
         checkbox.setChecked(self.first_to_last)
@@ -558,14 +490,12 @@ class ViewerWindow(QMainWindow):
                     cBtn = msg.clickedButton()
                     if cBtn == replaceBtn:
                         n = 1
-                        while True:
-                            if key + "_" + str(n) not in self.keys:
-                                key =  key + "_" + str(n)
-                                break
+                        while key + "_" + str(n) in self.keys:
                             n += 1
+                        key = key + "_" + str(n)
                     elif cBtn != yesBtn:
                         return
-                    else :
+                    else:
                         self.keys.remove(key)
                 loadItem = QTreeWidgetItem([self.lMsg])
                 loadItem.setForeground(0, QColor("grey"))
@@ -578,7 +508,7 @@ class ViewerWindow(QMainWindow):
         ftyp = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
         if figure:
             fname = QFileDialog.getSaveFileName(self, 'Save Image',
-                                                          './figure.png', ftyp)
+                                                './figure.png', ftyp)
             if fname:
                 figure.savefig(str(fname))
 
@@ -596,13 +526,13 @@ class ViewerWindow(QMainWindow):
     def change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
         if (current and current != previous and current.text(0) != self.lMsg):
-            self.Graph._oprdim = -1
+            self.Graph.set_oprdim(-1)
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
                 return 0
             # Get the currently selected FigureCanvasQTAggd data recursively
-            self.cText = self.get_obj_trace(current)
+            self.cText = get_obj_trace(current)
             # Update the shape widgets based on the datatype
             if isinstance(self[0], self.noPrintTypes):
                 self.update_shape([0], False)
@@ -646,21 +576,21 @@ class ViewerWindow(QMainWindow):
         return str(shapeStr), np.array(scalarDims)
 
     def rename_key(self):
-        """ Start the renaming of a data-key """
+        """ Start the renaming of a data-key. """
         self.changing_item = self.Tree.currentItem()
         if str(self.changing_item.text(0)) == self.lMsg:
             return
-        self.old_trace = self.get_obj_trace(self.changing_item)
+        self.old_trace = get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
         self.Tree.editItem(self.changing_item, 0)
         self.Tree.itemChanged.connect(self.finish_renaming)
 
     def finish_renaming(self):
-        """ Finish the renaming of a data-key """
+        """ Finish the renaming of a data-key. """
         if len(self.old_trace) == 0:
             return
-        new_trace = self.get_obj_trace(self.changing_item)
+        new_trace = get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
             return
         self.Tree.itemChanged.disconnect(self.finish_renaming)
@@ -734,6 +664,7 @@ class ViewerWindow(QMainWindow):
         self.Tree.addTopLevelItems(itemList)
 
     def wheelEvent(self, event):
+        """ Catch wheelEvents on the Shape widgets making them scrollable. """
         onField = False
         from_wgt = self.app.widgetAt(event.globalPos())
         for n in range(self.maxDims):
@@ -776,6 +707,7 @@ class ViewerWindow(QMainWindow):
             self.set_slice()
 
     def keyPressEvent(self, ev):
+        """ Catch keyPressEvents for [Delete] and [Ctrl]+[C]. """
         if ev.key() == Qt.Key_Delete:
             self.delete_data()
         elif ev.key() == Qt.Key_C:

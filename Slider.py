@@ -1,3 +1,7 @@
+"""
+# Create a custom Slider with minimum and maximum for the color values.
+# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
+"""
 import sys
 from PyQt5 import QtCore, QtWidgets
 
@@ -56,6 +60,7 @@ class rangeSlider(QtWidgets.QWidget):
             self.minSlide.setSliderPosition(self.maxSlide.value() - 1)
 
     def set_enabled(self, status):
+        """ Enable/Disable the slider. """
         self.minSlide.setSliderPosition(0)
         self.maxSlide.setSliderPosition(self._nSteps)
         self.minSlide.setEnabled(status)

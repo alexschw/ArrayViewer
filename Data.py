@@ -1,9 +1,6 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
-Created on Mon Jan 28 15:24:19 2019
-
-@author: alexschw
+# Data Loader for the ArrayViewer.
+# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
 try:
     import cPickle as pickle
@@ -25,15 +22,10 @@ class Loader(QObject):
 
     def __init__(self, parent=None):
         """ Initialize the Loader. """
-        super(QObject, self).__init__(parent)
+        super(Loader, self).__init__(parent)
         self.fname = ''
         self.switch_to_last = False
         self.load.connect(self.add_data)
-
-    def filltoequal(self, lil):
-        """ Fill a list of lists. Append smaller lists with nan. """
-        maxlen = len(sorted(lil,key=len, reverse=True)[0])
-        return [[xi+[np.nan]*(maxlen - len(xi))] for xi in lil]
 
     def validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
@@ -54,7 +46,8 @@ class Loader(QObject):
             if data != [] and not isinstance(data[0], str):
                 # not all elements in the list have the same length
                 if isinstance(data[0], list) and len(set(map(len, data))) != 1:
-                    data = self.filltoequal(data)
+                    maxlen = len(sorted(data, key=len, reverse=True)[0])
+                    data = [[xi+[np.nan]*(maxlen - len(xi))] for xi in data]
                 data = np.array(data)
         elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # Create a dictionary from matlab structs
@@ -65,14 +58,14 @@ class Loader(QObject):
         elif isinstance(data, np.ndarray) and data.dtype == "O":
             # Create numpy arrays from matlab cell types
             ndata = []
+            subdat = []
             for subdat in data:
                 ndata.append(self.validate(subdat))
             if isinstance(subdat, str):
                 data = ndata
             else:
                 data = np.array(ndata)
-        elif isinstance(data, h5py._hl.files.File) \
-                or isinstance(data, h5py._hl.group.Group):
+        elif isinstance(data, (h5py._hl.files.File, h5py._hl.group.Group)):
             dct = {}
             for key in data:
                 dct[key] = self.validate(data[key])
@@ -82,7 +75,8 @@ class Loader(QObject):
             self.infoMsg.emit("DataType (" + type(data) +
                               ") not recognized. Skipping", 0)
             data = None
-        if self.switch_to_last and isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset)):
+        if self.switch_to_last and \
+           isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset)):
             data = np.moveaxis(data, 0, -1)
         return data
 

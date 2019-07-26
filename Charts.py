@@ -42,7 +42,8 @@ def getShapeFromStr(string):
     Returns an array with the elements of the string. All brackets are
     removed as well as empty elements in the array.
     """
-    return np.array([_f for _f in string.strip("()[]").split(",") if _f], dtype=int)
+    return np.array([_f for _f in string.strip("()[]").split(",") if _f],
+                    dtype=int)
 
 
 class GraphWidget(QWidget):
@@ -61,7 +62,7 @@ class GraphWidget(QWidget):
         self._clim = (0, 1)
         self._img = None
         self._cb = None
-        self._has_cb = False
+        self.has_cb = False
         self._colormap = 'viridis'
         self._operation = 'None'
         self._opr = (lambda x: x)
@@ -88,7 +89,7 @@ class GraphWidget(QWidget):
 
     def toggle_colorbar(self):
         """ Toggle the state of the colorbar """
-        self._has_cb = not self._has_cb
+        self.has_cb = not self.has_cb
         self.colorbar()
 
     def colorbar(self, minmax=None):
@@ -100,7 +101,7 @@ class GraphWidget(QWidget):
                 vmin=minmax[0] * (self._clim[1] - self._clim[0])
                 + self._clim[0], vmax=minmax[1] * self._clim[1]
             )
-        if not self._has_cb:
+        if not self.has_cb:
             if self._cb:
                 self._cb.remove()
                 self._cb = None
@@ -127,19 +128,22 @@ class GraphWidget(QWidget):
                                         + str(self._oprcorr) + ")"))
         return self._oprdim
 
+    def set_oprdim(self, value):
+        self._oprdim = value
+
     def set_ticks(self, ax, s, transp, is1DPlot=False):
         # Calculate the ticks for the plot by checking the limits
         limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
-        lim = np.array([l if len(l)==3 else l+['1'] for l in limits])
+        lim = np.array([l if len(l) == 3 else l+['1'] for l in limits])
         lim[lim == ''] = '0'
         lim = lim.astype(float)
         if lim.shape[0] == 1:
-            lim = np.append([[0,0,1]], lim, axis=0)
+            lim = np.append([[0, 0, 1]], lim, axis=0)
         if not transp:
-            lim = lim[(1,0),:]
+            lim = lim[(1, 0), :]
         # Set the x-ticks
         loc = ax.xaxis.get_major_locator()()
-        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0,2]+lim[0,0]
+        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0, 2]+lim[0, 0]
         if all(d.astype(int) == d.astype(float)):
             ax.set_xticklabels(d.astype(int))
         else:
@@ -148,7 +152,7 @@ class GraphWidget(QWidget):
             return
         # Set the y-ticks
         loc = ax.yaxis.get_major_locator()()
-        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1,2]+lim[1,0]
+        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1, 2]+lim[1, 0]
         if all(d.astype(int) == d.astype(float)):
             ax.set_yticklabels(d.astype(int))
         else:
@@ -167,10 +171,10 @@ class GraphWidget(QWidget):
     def n_D_plot(self, ax, ui):
         sh = self.cutout.shape
         nPad = sh[0] // 100 + 1
-        if ui.Plot3D.isChecked() and self.cutout.ndim==3 and sh[2]==3:
+        if ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
             nPad = -1
             mm = [np.min(self.cutout), np.max(self.cutout)]
-            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]) ,0 ,1)
+            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
         else:
             dat = flatPad(self.cutout, nPad)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
@@ -203,7 +207,7 @@ class GraphWidget(QWidget):
             self.cutout = np.array([])
             self.cutout = eval("data%s.squeeze()"%s)
             if self._oprdim != -1 and self._oprdim not in scalDims:
-                self._oprcorr = self._oprdim - (scalDims<=self._oprdim).sum()
+                self._oprcorr = self._oprdim - (scalDims <= self._oprdim).sum()
                 self.cutout = self._opr(self.cutout)
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.isChecked() and self.cutout.ndim > 1:
@@ -223,7 +227,8 @@ class GraphWidget(QWidget):
             elif self.cutout.ndim == 2:
                 if ui.Plot2D.isChecked():
                     if self.cutout.shape[1] > 500:
-                        ui.infoMsg("You are trying to plot more than 500 lines!", -1)
+                        msg = "You are trying to plot more than 500 lines!"
+                        ui.infoMsg(msg, -1)
                         return
                     else:
                         ax.plot(self.cutout)
@@ -359,7 +364,10 @@ class NewDataDialog(QDialog):
 
         # Add the current and new shape boxes and their labels
         label = QLabel(self)
-        label.setText("Use 'this' to reference the current data and 'cutout' for the current view.\nBefore saving enter the variable you want to save. \nOtherwise the original data will be overwritten.")
+        label.setText(("Use 'this' to reference the current data and 'cutout'"+
+                       " for the current view.\n"+
+                       "Before saving enter the variable you want to save. \n"+
+                       "Otherwise the original data will be overwritten."))
         Layout.addWidget(label)
         self.history = QTextEdit(self)
         self.history.setEnabled(False)
@@ -383,7 +391,7 @@ class NewDataDialog(QDialog):
         try:
             var, expr = cmd.split("=", 1)
         except ValueError:
-            raise(ValueError("No '=' in expression"))
+            raise ValueError("No '=' in expression")
         for op in ['(', ')', '[', ']', '{', '}', ',',
                    '+', '-', '*', '/', '%', '^']:
             expr = expr.replace(op, " " + op + " ")
