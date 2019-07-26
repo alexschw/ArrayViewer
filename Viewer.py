@@ -150,7 +150,7 @@ class ViewerWindow(QMainWindow):
         # Shape Widget
         self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
-        rex = r"[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"
+        rex = "[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"
         self.Validator.setRegExp(QRegExp(rex))
         for n in range(self.maxDims):
             label = QLabel()
@@ -249,13 +249,15 @@ class ViewerWindow(QMainWindow):
         if not self._data or not self.cText:
             return None
         if item in [0, "data", ""]:
-            return reduce(getitem, self.cText[:-1], self._data)[self.cText[-1]]
+            item = self.cText
         return reduce(getitem, item[:-1], self._data)[item[-1]]
 
     def __setitem__(self, newkey, newData):
         """ Sets the current data to the new data. """
         if not self._data:
             return
+        if newkey in [0, "data", ""]:
+            newkey = self.cText
         reduce(getitem, newkey[:-1], self._data)[newkey[-1]] = newData
 
     def pop(self, key):
@@ -598,15 +600,23 @@ class ViewerWindow(QMainWindow):
         # Check if the name exists in siblings
         itemIndex = self.Tree.indexFromItem(self.changing_item, 0)
         siblingTxt = []
-        for n in range(self.changing_item.parent().childCount()):
-            if itemIndex.sibling(n, 0) != itemIndex:
-                siblingTxt.append(itemIndex.sibling(n, 0).data(0))
+        if self.changing_item.parent():
+            for n in range(self.changing_item.parent().childCount()):
+                if itemIndex.sibling(n, 0) != itemIndex:
+                    siblingTxt.append(itemIndex.sibling(n, 0).data(0))
+        else:
+            for n in range(self.Tree.topLevelItemCount()):
+                if self.Tree.topLevelItem(n) != self.changing_item:
+                    siblingTxt.append(itemIndex.sibling(n, 0).data(0))
         if new_trace[-1] in siblingTxt:
             self.changing_item.setData(0, 0, self.old_trace[-1])
             self.old_trace = []
             return
         # Replace the key
         self[new_trace] = self.pop(self.old_trace)
+        # If element is top-level-item
+        if not self.changing_item.parent() and self.old_trace[0] in self.keys:
+            self.keys[self.keys.index(self.old_trace[0])] = new_trace[0]
         self.old_trace = []
         # Make Item non-editable
         self.changing_item.setFlags(Qt.ItemFlag(61))
