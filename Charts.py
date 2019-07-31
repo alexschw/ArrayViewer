@@ -63,6 +63,7 @@ class GraphWidget(QWidget):
         self._img = None
         self._cb = None
         self.has_cb = False
+        self.has_operation = False
         self._colormap = 'viridis'
         self._operation = 'None'
         self._opr = (lambda x: x)
@@ -120,7 +121,8 @@ class GraphWidget(QWidget):
 
     def set_operation(self, operation="None"):
         """ Set an operation to be performed on click on a dimension. """
-        if operation == "None":
+        self.has_operation = (operation != "None")
+        if not self.has_operation:
             self._oprdim = -1
             self._opr = (lambda x: x)
         else:
@@ -130,6 +132,9 @@ class GraphWidget(QWidget):
 
     def set_oprdim(self, value):
         self._oprdim = value
+
+    def has_opr(self):
+        return self.has_operation
 
     def set_ticks(self, ax, s, transp, is1DPlot=False):
         # Calculate the ticks for the plot by checking the limits
@@ -163,8 +168,9 @@ class GraphWidget(QWidget):
             ax.plot(self.cutout.max(axis=0), 'r')
             ax.plot(self.cutout.mean(axis=0), 'k')
             ax.plot(self.cutout.min(axis=0), 'b')
+            ax.legend(["Max", "Mean", "Min"])
         else:
-            self._img = ax.imshow(self.cutout, interpolation='none',
+            self._img = ax.imshow(self.cutout.T, interpolation='none',
                                   aspect='auto')
         self.set_ticks(ax, s, ui.Transp.isChecked())
 

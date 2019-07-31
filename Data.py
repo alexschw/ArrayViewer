@@ -109,6 +109,8 @@ class Loader(QObject):
                 data = {'Value': np.load(str(fname))}
             except UnicodeDecodeError:
                 data = {'Value': np.load(str(fname), encoding='latin1')}
+            except ValueError:
+                data = self.validate(np.load(str(fname), allow_pickle=True)[()])
         elif fname[-5:] == '.data':
             try:
                 f = pickle.load(open(str(fname)))

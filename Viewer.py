@@ -20,7 +20,7 @@ from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
 from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
-from Data import Loader
+from Data import Loader, h5py
 
 def menu_opt(mbar, submenu, text, function, shortcut=None):
     """ Build a new menu option. """
@@ -155,6 +155,7 @@ class ViewerWindow(QMainWindow):
         for n in range(self.maxDims):
             label = QLabel()
             label.setText("0")
+            label.mousePressEvent = self.perform_operation
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
             lineedit = QLineEdit()
@@ -287,13 +288,6 @@ class ViewerWindow(QMainWindow):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.Shape.columnCount()):
             self.Shape.itemAtPosition(0, n).widget().setStyleSheet("")
-            if operation == "None":
-                self.Shape.itemAtPosition(0, n).widget().mousePressEvent \
-                    = None
-            else:
-                self.Shape.itemAtPosition(0, n).widget().mousePressEvent \
-                    = self.perform_operation
-        self.previous_opr_widget = self.emptylabel
         oprdim = self.Graph.set_operation(operation)
         if oprdim != -1:
             prev_wid = self.Shape.itemAtPosition(0, oprdim).widget()
@@ -306,7 +300,7 @@ class ViewerWindow(QMainWindow):
         """
         this_wgt = self.app.widgetAt(event.globalPos())
         self.previous_opr_widget.setStyleSheet("")
-        if this_wgt == self.previous_opr_widget:
+        if this_wgt == self.previous_opr_widget or not self.Graph.has_opr():
             self.Graph.set_oprdim(-1)
             self.draw_data()
             self.previous_opr_widget = self.emptylabel
@@ -443,7 +437,7 @@ class ViewerWindow(QMainWindow):
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data. """
-        if isinstance(self[0], np.ndarray):
+        if isinstance(self[0], (np.ndarray, h5py._hl.dataset.Dataset)):
             self[0] = self.reshapeBox.reshape_array(self[0])
             if self.slice_key() in self.slices:
                 del self.slices[self.slice_key()]
@@ -469,7 +463,7 @@ class ViewerWindow(QMainWindow):
         checkbox = QCheckBox("Put first dimension to the end", FD)
         checkbox.setChecked(self.first_to_last)
         FD.layout().addWidget(checkbox, 4, 1, 1, 1)
-        if FD.exec():
+        if FD.exec_():
             fnames = FD.selectedFiles()
             self.first_to_last = checkbox.checkState()
             # For all files
@@ -513,7 +507,7 @@ class ViewerWindow(QMainWindow):
             fname = QFileDialog.getSaveFileName(self, 'Save Image',
                                                 './figure.png', ftyp)
             if fname:
-                figure.savefig(str(fname))
+                figure.savefig(fname[0])
 
     def draw_data(self):
         """ Draw the selected data. """
