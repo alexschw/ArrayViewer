@@ -15,15 +15,19 @@ from matplotlib.ticker import MultipleLocator as TickMultLoc
 import numpy as np
 
 
-def flatPad(Arr, padding=1, fill=np.nan):
+def flatPad(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
-    Arr = np.reshape(Arr, Arr.shape[:2] + (-1, ))
-    # Get the most equal division of the last dimension
-    for n in range(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
-        if Arr.shape[2]%n == 0:
-            rows = Arr.shape[2] / n
-            break
+    Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
+    if (Array.ndim == 4 and 0.18 < Array.shape[2]/Array.shape[3] < 5.5):
+        # If the Array is 4D and has reasonable ratio, keep that ratio.
+        rows = Array.shape[2]
+    else:
+        # Get the most equal division of the last dimension
+        for n in range(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
+            if Arr.shape[2]%n == 0:
+                rows = Arr.shape[2] / n
+                break
     # Add the padding to the right and bottom of the arrays
     A0 = np.ones([padding, Arr.shape[1], Arr.shape[2]]) * fill
     A1 = np.ones([Arr.shape[0] + padding, padding, Arr.shape[2]]) * fill
