@@ -19,7 +19,7 @@ def flatPad(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
     Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
-    if (Array.ndim == 4 and 0.18 < Array.shape[2]/Array.shape[3] < 5.5):
+    if (Array.ndim == 4 and 0.18 < 1.0*Array.shape[2]/Array.shape[3] < 5.5):
         # If the Array is 4D and has reasonable ratio, keep that ratio.
         rows = Array.shape[2]
     else:
@@ -135,12 +135,15 @@ class GraphWidget(QWidget):
         return self._oprdim
 
     def set_oprdim(self, value):
+        """ Set the operation dimension. """
         self._oprdim = value
 
     def has_opr(self):
+        """ Check if the operation is None. """
         return self.has_operation
 
     def set_ticks(self, ax, s, transp, is1DPlot=False):
+        """ Set the ticks of plots according to the selected slices. """
         # Calculate the ticks for the plot by checking the limits
         limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
         lim = np.array([l if len(l) == 3 else l+['1'] for l in limits])
@@ -168,6 +171,7 @@ class GraphWidget(QWidget):
             ax.set_yticklabels(d.astype(float))
 
     def two_D_plot(self, ui, ax, s):
+        """ Plot 2-dimensional data. """
         if ui.MMM.isChecked():
             ax.plot(self.cutout.max(axis=0), 'r')
             ax.plot(self.cutout.mean(axis=0), 'k')
@@ -179,6 +183,7 @@ class GraphWidget(QWidget):
         self.set_ticks(ax, s, ui.Transp.isChecked())
 
     def n_D_plot(self, ax, ui):
+        """ Plot multi-dimensional data. """
         sh = self.cutout.shape
         nPad = sh[0] // 100 + 1
         if ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
@@ -204,7 +209,7 @@ class GraphWidget(QWidget):
         ui.txtMax.setText('max :')
         if data is None:
             return
-        elif isinstance(data, self.noPrintTypes):
+        if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             ax.text(-0.1, 1.1, data, va='top', wrap=True)
             ax.axis('off')

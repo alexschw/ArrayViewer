@@ -55,11 +55,16 @@ class ViewerWindow(QMainWindow):
         self.old_trace = []
         self.diffNo = 0
         self.maxDims = 6
-        self.first_to_last = False
         self.changing_item = None
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
+        try:
+            f = open(os.path.expanduser("~/.arrayviewer"), "r")
+            self.first_to_last = (f.read() == "1")
+            f.close()
+        except IOError:
+            self.first_to_last = False
 
         # set the loader from a separate class
         self.loader = Loader()
@@ -465,7 +470,16 @@ class ViewerWindow(QMainWindow):
         FD.layout().addWidget(checkbox, 4, 1, 1, 1)
         if FD.exec_():
             fnames = FD.selectedFiles()
-            self.first_to_last = checkbox.checkState()
+            new_ftl = checkbox.checkState()
+            if self.first_to_last != new_ftl:
+                self.first_to_last = new_ftl
+                f = open(os.path.expanduser("~/.arrayviewer"), "w")
+                if self.first_to_last:
+                    f.write("1")
+                else:
+                    f.write("0")
+                f.close()
+
             # For all files
             if isinstance(fnames[0], list):
                 fnames = fnames[0]
@@ -527,7 +541,7 @@ class ViewerWindow(QMainWindow):
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() != 0:
-                return 0
+                return
             # Get the currently selected FigureCanvasQTAggd data recursively
             self.cText = get_obj_trace(current)
             # Update the shape widgets based on the datatype
@@ -585,7 +599,7 @@ class ViewerWindow(QMainWindow):
 
     def finish_renaming(self):
         """ Finish the renaming of a data-key. """
-        if len(self.old_trace) == 0:
+        if not self.old_trace:
             return
         new_trace = get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
