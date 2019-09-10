@@ -9,7 +9,7 @@ This data can than be plotted as a standard plot, image or 3d/4d representation.
 
 Getting Started
 ***************
-To install the ArrayViewer download the repository from `<https://ai.informatik.tu-chemnitz.de/gogs/alexschw/ArrayViewer>`_
+To use the ArrayViewer download the repository from `<https://ai.informatik.tu-chemnitz.de/gogs/alexschw/ArrayViewer>`_
 
 In the repository run ``python3 Viewer.py`` to start the application.
 

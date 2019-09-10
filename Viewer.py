@@ -10,7 +10,7 @@ from operator import getitem
 
 import os.path
 from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
-from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QFileDialog,
+from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox, QFileDialog,
                              QFrame, QGridLayout, QHBoxLayout, QHeaderView,
                              QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,
                              QMessageBox, QPushButton, QTreeWidget,
@@ -22,14 +22,18 @@ from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 from Data import Loader, h5py
 
-def menu_opt(mbar, submenu, text, function, shortcut=None):
+def menu_opt(mbar, submenu, text, function, shortcut=None, actiongroup=None):
     """ Build a new menu option. """
     btn = QAction(mbar)
     btn.setText(text)
     btn.triggered.connect(function)
     if shortcut:
         btn.setShortcut(shortcut)
+    if actiongroup:
+        btn.setActionGroup(actiongroup)
+        btn.setCheckable(True)
     submenu.addAction(btn)
+    return btn
 
 def get_obj_trace(item):
     """ Returns the trace to a given item in the TreeView. """
@@ -179,8 +183,7 @@ class ViewerWindow(QMainWindow):
         """ Setup the menu bar. """
         menu = QMenuBar(self)
         menu.setGeometry(QRect(0, 0, 800, 10))
-        menuStart = QMenu(menu)
-        menuStart.setTitle("Start")
+        menuStart = QMenu("Start", menu)
         menu.addAction(menuStart.menuAction())
 
         menu_opt(menu, menuStart, "Load data", self.load_data_dialog, "Ctrl+O")
@@ -192,27 +195,29 @@ class ViewerWindow(QMainWindow):
                  "Ctrl+X")
 
         # Graph menu
-        menuGraph = QMenu(menu)
-        menuGraph.setTitle("Graph")
+        menuGraph = QMenu("Graph", menu)
         menu.addAction(menuGraph.menuAction())
 
-        menu_opt(menu, menuGraph, "Colorbar", self.add_colorbar)
+        menu_opt(menu, menuGraph, "Colorbar",
+                 self.add_colorbar).setCheckable(True)
         menuGraph.addSeparator()
 
+        ag = QActionGroup(self)
+        ag.setExclusive(True)
         menu_opt(menu, menuGraph, "Colormap 'jet'",
-                 lambda: self.Graph.colormap('jet'))
+                 lambda: self.Graph.colormap('jet'), actiongroup=ag)
         menu_opt(menu, menuGraph, "Colormap 'gray'",
-                 lambda: self.Graph.colormap('gray'))
+                 lambda: self.Graph.colormap('gray'), actiongroup=ag)
         menu_opt(menu, menuGraph, "Colormap 'hot'",
-                 lambda: self.Graph.colormap('hot'))
+                 lambda: self.Graph.colormap('hot'), actiongroup=ag)
         menu_opt(menu, menuGraph, "Colormap 'bwr'",
-                 lambda: self.Graph.colormap('bwr'))
+                 lambda: self.Graph.colormap('bwr'), actiongroup=ag)
         menu_opt(menu, menuGraph, "Colormap 'viridis'",
-                 lambda: self.Graph.colormap('viridis'))
+                 lambda: self.Graph.colormap('viridis'),
+                 actiongroup=ag).setChecked(True)
 
         # Operations menu
-        menuOpr = QMenu(menu)
-        menuOpr.setTitle("Operations")
+        menuOpr = QMenu("Operations", menu)
         menu.addAction(menuOpr.menuAction())
 
         menu_opt(menu, menuOpr, "None", self.set_operation)
@@ -223,8 +228,7 @@ class ViewerWindow(QMainWindow):
 
 
         # Plot menu
-        menuPlot = QMenu(menu)
-        menuPlot.setTitle("Plot")
+        menuPlot = QMenu("Plot", menu)
         menu.addAction(menuPlot.menuAction())
 
         self.MMM = QAction("min-mean-max plot", menu, checkable=True)
