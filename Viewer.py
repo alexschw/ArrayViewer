@@ -10,11 +10,12 @@ from operator import getitem
 
 import os.path
 from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
-from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox, QFileDialog,
-                             QFrame, QGridLayout, QHBoxLayout, QHeaderView,
-                             QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,
-                             QMessageBox, QPushButton, QTreeWidget,
-                             QTreeWidgetItem, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
+                             QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+                             QHeaderView, QLabel, QLineEdit, QMainWindow,
+                             QMenu, QMenuBar, QMessageBox, QPushButton,
+                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                             QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
@@ -22,15 +23,15 @@ from Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from Slider import rangeSlider
 from Data import Loader, h5py
 
-def menu_opt(mbar, submenu, text, function, shortcut=None, actiongroup=None):
+def menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
     btn = QAction(mbar)
     btn.setText(text)
     btn.triggered.connect(function)
     if shortcut:
         btn.setShortcut(shortcut)
-    if actiongroup:
-        btn.setActionGroup(actiongroup)
+    if act_grp:
+        btn.setActionGroup(act_grp)
         btn.setCheckable(True)
     submenu.addAction(btn)
     return btn
@@ -202,48 +203,51 @@ class ViewerWindow(QMainWindow):
                  self.add_colorbar).setCheckable(True)
         menuGraph.addSeparator()
 
-        ag = QActionGroup(self)
-        ag.setExclusive(True)
+        ag_cm = QActionGroup(self)
         menu_opt(menu, menuGraph, "Colormap 'jet'",
-                 lambda: self.Graph.colormap('jet'), actiongroup=ag)
+                 lambda: self.Graph.colormap('jet'), act_grp=ag_cm)
         menu_opt(menu, menuGraph, "Colormap 'gray'",
-                 lambda: self.Graph.colormap('gray'), actiongroup=ag)
+                 lambda: self.Graph.colormap('gray'), act_grp=ag_cm)
         menu_opt(menu, menuGraph, "Colormap 'hot'",
-                 lambda: self.Graph.colormap('hot'), actiongroup=ag)
+                 lambda: self.Graph.colormap('hot'), act_grp=ag_cm)
         menu_opt(menu, menuGraph, "Colormap 'bwr'",
-                 lambda: self.Graph.colormap('bwr'), actiongroup=ag)
+                 lambda: self.Graph.colormap('bwr'), act_grp=ag_cm)
         menu_opt(menu, menuGraph, "Colormap 'viridis'",
                  lambda: self.Graph.colormap('viridis'),
-                 actiongroup=ag).setChecked(True)
+                 act_grp=ag_cm).setChecked(True)
 
         # Operations menu
         menuOpr = QMenu("Operations", menu)
         menu.addAction(menuOpr.menuAction())
 
-        menu_opt(menu, menuOpr, "None", self.set_operation)
-        menu_opt(menu, menuOpr, "Min", lambda: self.set_operation('min'))
-        menu_opt(menu, menuOpr, "Mean", lambda: self.set_operation('mean'))
-        menu_opt(menu, menuOpr, "Median", lambda: self.set_operation('median'))
-        menu_opt(menu, menuOpr, "Max", lambda: self.set_operation('max'))
+        ag_op = QActionGroup(self)
+        menu_opt(menu, menuOpr, "None", self.set_operation,
+                 act_grp=ag_op).setChecked(True)
+        menu_opt(menu, menuOpr, "Min", lambda: self.set_operation('min'),
+                 act_grp=ag_op)
+        menu_opt(menu, menuOpr, "Mean", lambda: self.set_operation('mean'),
+                 act_grp=ag_op)
+        menu_opt(menu, menuOpr, "Median", lambda: self.set_operation('median'),
+                 act_grp=ag_op)
+        menu_opt(menu, menuOpr, "Max", lambda: self.set_operation('max'),
+                 act_grp=ag_op)
 
 
         # Plot menu
         menuPlot = QMenu("Plot", menu)
         menu.addAction(menuPlot.menuAction())
 
-        self.MMM = QAction("min-mean-max plot", menu, checkable=True)
-        self.MMM.triggered.connect(lambda: self.checkboxes(False))
+        ag_plt = QActionGroup(self)
+        ag_plt.setExclusive(False)
+
+        self.MMM = menu_opt(menu, menuPlot, "min-mean-max plot",
+                            lambda: self.checkboxes(False), act_grp=ag_plt)
         self.MMM.triggered.connect(self.draw_data)
-        menuPlot.addAction(self.MMM)
-
-        self.Plot2D = QAction("2D as plot", menu, checkable=True)
-        self.Plot2D.triggered.connect(lambda: self.checkboxes(True))
+        self.Plot2D = menu_opt(menu, menuPlot, "2D as plot",
+                               lambda: self.checkboxes(True), act_grp=ag_plt)
         self.Plot2D.triggered.connect(self.draw_data)
-        menuPlot.addAction(self.Plot2D)
-
-        self.Plot3D = QAction("3D as Image", menu, checkable=True)
-        self.Plot3D.triggered.connect(self.draw_data)
-        menuPlot.addAction(self.Plot3D)
+        self.Plot3D = menu_opt(menu, menuPlot, "3D as RGB", self.draw_data,
+                               act_grp=ag_plt)
 
         self.setMenuBar(menu)
 
