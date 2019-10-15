@@ -13,13 +13,13 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
 import numpy as np
-
+from h5py._hl.dataset import Dataset
 
 def flatPad(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
     Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
-    if (Array.ndim == 4 and 0.18 < 1.0*Array.shape[2]/Array.shape[3] < 5.5):
+    if (Array.ndim == 4 and .18 < 1.0 * Array.shape[2] / Array.shape[3] < 5.5):
         # If the Array is 4D and has reasonable ratio, keep that ratio.
         rows = Array.shape[2]
     else:
@@ -212,6 +212,10 @@ class GraphWidget(QWidget):
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             ax.text(-0.1, 1.1, data, va='top', wrap=True)
+            ax.axis('off')
+        elif isinstance(data, Dataset) and data.shape == ():
+            # Print single values of h5py arrays to the graph directly
+            ax.text(-0.1, 1.1, data[()], va='top', wrap=True)
             ax.axis('off')
         elif isinstance(data[0], list):
             # If there is an array of lists print each element as a graph

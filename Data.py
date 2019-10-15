@@ -77,7 +77,8 @@ class Loader(QObject):
             data = None
         if self.switch_to_last and \
            isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset)):
-            data = np.moveaxis(data, 0, -1)
+            if len(data.shape) > 1:
+                data = np.moveaxis(data, 0, -1)
         return data
 
     @pyqtSlot(str, str, bool)
@@ -94,7 +95,7 @@ class Loader(QObject):
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
-            data = self.validate(h5py.File(str(fname)))
+            data = self.validate(h5py.File(str(fname), 'r'))
         elif fname[-4:] == '.mat':
             try:
                 # old matlab versions
