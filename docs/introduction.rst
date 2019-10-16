@@ -15,7 +15,7 @@ The main ArrayViewer window consists of five separate sections as shown above an
 
 Data Tree
 =========
-The Data Tree contains the loaded data. The structure of the tree represents the structure of the loaded data. Right-click on any to rename, reshape or delete it in the tree. These operations will not change the original file! If you select any value without a child value its representation will appear in the Charts View.
+The Data Tree contains the loaded data. The structure of the tree represents the structure of the loaded data. Right-click on any key to rename, reshape or delete it in the tree. When right-clicking a key with children, you can also combine its children. These operations will not change the original file! If you select any key without a child key its representation will appear in the Charts View.
 
 Charts View
 ===========

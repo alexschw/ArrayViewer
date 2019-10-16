@@ -36,6 +36,13 @@ def menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     submenu.addAction(btn)
     return btn
 
+def fl_cast(tpl):
+    """ Try casting keys to float. """
+    try:
+        return float(tpl)
+    except ValueError:
+        return tpl
+
 def get_obj_trace(item):
     """ Returns the trace to a given item in the TreeView. """
     dText = [str(item.text(0))]
@@ -256,14 +263,16 @@ class ViewerWindow(QMainWindow):
 
         menu_opt(self, self.contextMenu, "Rename", self.rename_key)
         menu_opt(self, self.contextMenu, "Reshape", self.reshape_dialog)
+        self.combine_opt = menu_opt(self, self.contextMenu, "Combine Dataset",
+                                    self.combine_dialog)
         menu_opt(self, self.contextMenu, "Delete Data", self.delete_data)
 
     def __getitem__(self, item):
         """ Gets the current data. """
-        if not self._data or not self.cText:
-            return None
         if item in [0, "data", ""]:
             item = self.cText
+        if not self._data or not item:
+            return None
         return reduce(getitem, item[:-1], self._data)[item[-1]]
 
     def __setitem__(self, newkey, newData):
@@ -295,6 +304,10 @@ class ViewerWindow(QMainWindow):
     def dropdown(self, _):
         """ Add a context menu. """
         if self.Tree.currentItem():
+            if self.Tree.currentItem().childCount() == 0:
+                self.combine_opt.setVisible(False)
+            else:
+                self.combine_opt.setVisible(True)
             self.contextMenu.popup(QCursor.pos())
 
     def set_operation(self, operation="None"):
@@ -447,6 +460,50 @@ class ViewerWindow(QMainWindow):
                 self.slices[self.slice_key()][i] for i in new_order]
         self.update_shape(self[0].shape)
         self.infoMsg("Permuted to " + str(self[0].shape), 1)
+
+    def combine_dialog(self):
+        """ Open a dialog to combine the dataset. """
+        trace = get_obj_trace(self.Tree.currentItem())
+        data = self[trace]
+        keys = sorted(data, key=fl_cast)
+        d0 = data[keys[0]]
+        npt = self.noPrintTypes + (dict,)
+        # Search for occurences of arrays with the same shape as the first one
+        if isinstance(d0, npt):
+            n_keys = [k for k in keys if isinstance(data[k], type(d0))]
+            data_shape = ()
+        else:
+            n_keys = []
+            for k in keys:
+                if not isinstance(data[k], npt) and data[k].shape == d0.shape:
+                    n_keys.append(k)
+            data_shape = data[n_keys[0]].shape
+        # Show a dialog asking if the conversion should be done.
+        if len(data_shape) > 1:
+            txt = "Combine the first {} datasets of {} element(s) into one?"
+            txt = txt.format(len(n_keys), data_shape)
+        else:
+            txt = "Combine {} elements into 1D vector?".format(len(n_keys))
+        btns = (QMessageBox.Yes|QMessageBox.No)
+        msg = QMessageBox(QMessageBox.Information, "Info", txt, buttons=btns)
+        msg.setDefaultButton(QMessageBox.Yes)
+        if msg.exec_() != QMessageBox.Yes:
+            return
+        # Add 'combined' if not all values are combined or it is a topLevelItem
+        if len(n_keys) != len(keys) or len(trace) == 1:
+            trace.append('combined')
+        # Perform the combination
+        try:
+            self[trace] = np.array([data[k] for k in n_keys])
+        except ValueError:
+            # For h5py dictionaries
+            self[trace] = np.array([data[k][()] for k in n_keys])
+        # Remove the combined data
+        if len(n_keys) != len(keys) and len(data_shape) > 1:
+            [self[trace[:-1]].pop(key) for key in n_keys]
+        # Put new dimension at the end and remove singleton dimensions.
+        self[trace] = np.moveaxis(self[trace], 0, -1).squeeze()
+        self.update_tree()
 
     def reshape_dialog(self):
         """ Open the reshape box to reshape the current data. """
@@ -672,12 +729,12 @@ class ViewerWindow(QMainWindow):
         self.checkableItems = []
         for i in self.keys:
             item = QTreeWidgetItem([i])
-            for j in sorted(self._data[i].keys()):
+            for j in sorted(self._data[i].keys(), key=fl_cast):
                 item.addChild(QTreeWidgetItem([j]))
             for j in range(item.childCount()):
                 data = self._data[i][str(item.child(j).text(0))]
                 if isinstance(data, dict):
-                    for n, k in enumerate(list(data.keys())):
+                    for n, k in enumerate(sorted(data.keys(), key=fl_cast)):
                         item.child(j).addChild(QTreeWidgetItem([k]))
                         if not isinstance(data[k], self.noPrintTypes):
                             cItem = item.child(j).child(n)

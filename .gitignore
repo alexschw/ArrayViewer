@@ -5,3 +5,4 @@
 *.mat
 *.npy
 *.data
+*.hdf5
