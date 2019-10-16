@@ -11,7 +11,7 @@ Getting Started
 ***************
 To use the ArrayViewer download the repository from `<https://ai.informatik.tu-chemnitz.de/gogs/alexschw/ArrayViewer>`_
 
-In the repository run ``python3 Viewer.py`` to start the application.
+In the repository run ``python3 Viewer.py`` or ``./Viewer.py`` to start the application.
 
 
 Technical Details

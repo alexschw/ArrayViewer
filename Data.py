@@ -25,9 +25,9 @@ class Loader(QObject):
         super(Loader, self).__init__(parent)
         self.fname = ''
         self.switch_to_last = False
-        self.load.connect(self.add_data)
+        self.load.connect(self._add_data)
 
-    def validate(self, data):
+    def _validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
         if isinstance(data, dict):
             # List of global variables (that should not be shown)
@@ -38,7 +38,7 @@ class Loader(QObject):
                     glob.append(subdat)
                     continue
                 # Run the validation again for each subelement in the dict
-                data[subdat] = self.validate(data[subdat])
+                data[subdat] = self._validate(data[subdat])
             # Remove global variables
             for g in glob:
                 data.pop(g)
@@ -53,14 +53,14 @@ class Loader(QObject):
             # Create a dictionary from matlab structs
             dct = {}
             for key in data._fieldnames:
-                exec("dct[key] = self.validate(data.%s)"%key)
+                exec("dct[key] = self._validate(data.%s)"%key)
             data = dct
         elif isinstance(data, np.ndarray) and data.dtype == "O":
             # Create numpy arrays from matlab cell types
             ndata = []
             subdat = []
             for subdat in data:
-                ndata.append(self.validate(subdat))
+                ndata.append(self._validate(subdat))
             if isinstance(subdat, str):
                 data = ndata
             else:
@@ -68,7 +68,7 @@ class Loader(QObject):
         elif isinstance(data, (h5py._hl.files.File, h5py._hl.group.Group)):
             dct = {}
             for key in data:
-                dct[key] = self.validate(data[key])
+                dct[key] = self._validate(data[key])
             data = dct
         elif not isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
@@ -82,7 +82,7 @@ class Loader(QObject):
         return data
 
     @pyqtSlot(str, str, bool)
-    def add_data(self, fname, key="", switch_to_last=False):
+    def _add_data(self, fname, key="", switch_to_last=False):
         """ Add a new data to the dataset. Ask if the data already exists. """
         self.switch_to_last = switch_to_last
         splitted = fname.split("/")
@@ -95,29 +95,30 @@ class Loader(QObject):
             return False
         # Load the different data types
         if fname[-5:] == '.hdf5':
-            data = self.validate(h5py.File(str(fname), 'r'))
+            data = self._validate(h5py.File(str(fname), 'r'))
         elif fname[-4:] == '.mat':
             try:
                 # old matlab versions
-                data = self.validate(scipy.io.loadmat(str(fname),
-                                                      squeeze_me=True,
-                                                      struct_as_record=False))
+                data = self._validate(scipy.io.loadmat(str(fname),
+                                                       squeeze_me=True,
+                                                       struct_as_record=False))
             except NotImplementedError:
                 # v7.3
-                data = self.validate(h5py.File(str(fname)))
+                data = self._validate(h5py.File(str(fname)))
         elif fname[-4:] == '.npy':
             try:
                 data = {'Value': np.load(str(fname))}
             except UnicodeDecodeError:
                 data = {'Value': np.load(str(fname), encoding='latin1')}
             except ValueError:
-                data = self.validate(np.load(str(fname), allow_pickle=True)[()])
+                data = self._validate(np.load(str(fname),
+                                              allow_pickle=True)[()])
         elif fname[-5:] == '.data':
             try:
                 f = pickle.load(open(str(fname)))
             except UnicodeDecodeError:
                 f = pickle.load(open(str(fname), 'rb'), encoding='latin1')
-            data = self.validate(f)
+            data = self._validate(f)
         elif fname[-4:] == '.txt':
             lines = open(fname).readlines()
             numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'

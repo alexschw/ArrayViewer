@@ -10,7 +10,7 @@ class rangeSlider(QtWidgets.QWidget):
     """ Combination of two sliders that return a range tuple """
     sliderReleased = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None, minmax=[0, 1]):
+    def __init__(self, parent=None, minmax=(0, 1)):
         """ Initialize the Slider """
         super(rangeSlider, self).__init__(parent)
         # Set internal variables
@@ -29,8 +29,8 @@ class rangeSlider(QtWidgets.QWidget):
         self.maxSlide.setSingleStep(1)
         self.minSlide.setTickInterval(self._nSteps / 10)
         self.maxSlide.setTickInterval(self._nSteps / 10)
-        self.minSlide.valueChanged.connect(self.minRestict)
-        self.maxSlide.valueChanged.connect(self.maxRestict)
+        self.minSlide.valueChanged.connect(self._min_restict)
+        self.maxSlide.valueChanged.connect(self._max_restict)
         self.Layout = QtWidgets.QHBoxLayout(self)
         self.Layout.setSpacing(0)
         self.Layout.addWidget(self.minSlide)
@@ -39,25 +39,19 @@ class rangeSlider(QtWidgets.QWidget):
         self.minSlide.sliderReleased.connect(self.sliderReleased.emit)
         self.maxSlide.sliderReleased.connect(self.sliderReleased.emit)
 
-    @QtCore.pyqtSlot()
-    def value(self):
-        """ Returns a tuple of the current value of both sliders """
-        return (self.minSlide.value() * self._scaling + self._minVal,
-                self.maxSlide.value() * self._scaling + self._minVal)
-
-    def print_val(self):
-        """ Prints the tuple of the current value of both sliders """
-        print(self.value())
-
-    def maxRestict(self, value):
+    def _max_restict(self, value):
         """ Restricts the maximum slider to be more than the minimum slider """
         if value < self.minSlide.value() + 1:
             self.maxSlide.setSliderPosition(self.minSlide.value() + 1)
 
-    def minRestict(self, value):
+    def _min_restict(self, value):
         """ Restricts the minimum slider to be less than the maximum slider """
         if value > self.maxSlide.value() - 1:
             self.minSlide.setSliderPosition(self.maxSlide.value() - 1)
+
+    def print_val(self):
+        """ Prints the tuple of the current value of both sliders """
+        print(self.value())
 
     def set_enabled(self, status):
         """ Enable/Disable the slider. """
@@ -65,6 +59,12 @@ class rangeSlider(QtWidgets.QWidget):
         self.maxSlide.setSliderPosition(self._nSteps)
         self.minSlide.setEnabled(status)
         self.maxSlide.setEnabled(status)
+
+    @QtCore.pyqtSlot()
+    def value(self):
+        """ Returns a tuple of the current value of both sliders """
+        return (self.minSlide.value() * self._scaling + self._minVal,
+                self.maxSlide.value() * self._scaling + self._minVal)
 
 
 if __name__ == '__main__':
@@ -79,6 +79,7 @@ if __name__ == '__main__':
     QFra.addWidget(rangeSld)
     pushBtn = QtWidgets.QPushButton()
     rangeSld.sliderReleased.connect(rangeSld.print_val)
+    rangeSld.set_enabled(True)
     QFra.addWidget(pushBtn)
     window.show()
     app.exec_()

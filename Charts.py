@@ -15,7 +15,7 @@ from matplotlib.ticker import MultipleLocator as TickMultLoc
 import numpy as np
 from h5py._hl.dataset import Dataset
 
-def flatPad(Array, padding=1, fill=np.nan):
+def _flat_with_padding(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
     Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
@@ -41,7 +41,7 @@ def flatPad(Array, padding=1, fill=np.nan):
     return pA2D
 
 
-def getShapeFromStr(string):
+def _get_shape_from_str(string):
     """
     Returns an array with the elements of the string. All brackets are
     removed as well as empty elements in the array.
@@ -49,6 +49,57 @@ def getShapeFromStr(string):
     return np.array([_f for _f in string.strip("()[]").split(",") if _f],
                     dtype=int)
 
+def _set_ticks(ax, s, transp, is1DPlot=False):
+    """ Set the ticks of plots according to the selected slices. """
+    # Calculate the ticks for the plot by checking the limits
+    limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
+    lim = np.array([l if len(l) == 3 else l+['1'] for l in limits])
+    lim[lim == ''] = '0'
+    lim = lim.astype(float)
+    if lim.shape[0] == 1:
+        lim = np.append([[0, 0, 1]], lim, axis=0)
+    if not transp:
+        lim = lim[(1, 0), :]
+    # Set the x-ticks
+    loc = ax.xaxis.get_major_locator()()
+    d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0, 2]+lim[0, 0]
+    if all(d.astype(int) == d.astype(float)):
+        ax.set_xticklabels(d.astype(int))
+    else:
+        ax.set_xticklabels(d.astype(float))
+    if is1DPlot:
+        return
+    # Set the y-ticks
+    loc = ax.yaxis.get_major_locator()()
+    d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1, 2]+lim[1, 0]
+    if all(d.astype(int) == d.astype(float)):
+        ax.set_yticklabels(d.astype(int))
+    else:
+        ax.set_yticklabels(d.astype(float))
+
+def _suggestion(previous_val, value):
+    """ Returns all possible factors """
+    pfactors = []
+    divisor = 2
+    while value > 1:
+        while value % divisor == 0:
+            pfactors.append(divisor)
+            value /= divisor
+        divisor += 1
+        if divisor * divisor > value:
+            if value > 1:
+                pfactors.append(value)
+            break
+    factors = []
+    for n in range(1, len(pfactors) + 1):
+        for x in combinations(pfactors, n):
+            y = 1
+            for a in x:
+                y = y * a
+            factors.append(int(y))
+    factors = list(set(factors))
+    factors.sort(reverse=True)
+    return [previous_val + "{0},".format(i) for i in factors]
 
 class GraphWidget(QWidget):
     """ Draws the data graph. """
@@ -83,19 +134,40 @@ class GraphWidget(QWidget):
         self._txt.setText('')
         self._layout.addWidget(self._txt)
 
+    def _n_D_plot(self, ax, ui):
+        """ Plot multi-dimensional data. """
+        sh = self.cutout.shape
+        nPad = sh[0] // 100 + 1
+        if ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
+            nPad = -1
+            mm = [np.min(self.cutout), np.max(self.cutout)]
+            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
+        else:
+            dat = _flat_with_padding(self.cutout, nPad)
+        self._img = ax.imshow(dat, interpolation='none', aspect='auto')
+        locx = TickMultLoc(sh[0] + nPad)
+        ax.xaxis.set_major_locator(locx)
+        ax.xaxis.set_ticklabels(np.arange(-sh[0], int(locx().max()), sh[0]))
+        locy = TickMultLoc(sh[1] + nPad)
+        ax.yaxis.set_major_locator(locy)
+        ax.yaxis.set_ticklabels(np.arange(-sh[1], int(locy().max()), sh[1]))
+
+    def _two_D_plot(self, ui, ax, s):
+        """ Plot 2-dimensional data. """
+        if ui.MMM.isChecked():
+            ax.plot(self.cutout.max(axis=0), 'r')
+            ax.plot(self.cutout.mean(axis=0), 'k')
+            ax.plot(self.cutout.min(axis=0), 'b')
+            ax.legend(["Max", "Mean", "Min"])
+        else:
+            self._img = ax.imshow(self.cutout.T, interpolation='none',
+                                  aspect='auto')
+        _set_ticks(ax, s, ui.Transp.isChecked())
+
     def clear(self):
         """ Clear the figure. """
         self._cb = None
         self._figure.clf()
-
-    def figure(self):
-        """ Return the local figure variable. """
-        return self._figure
-
-    def toggle_colorbar(self):
-        """ Toggle the state of the colorbar """
-        self.has_cb = not self.has_cb
-        self.colorbar()
 
     def colorbar(self, minmax=None):
         """ Add a colorbar to the graph or remove it, if it is existing. """
@@ -123,82 +195,13 @@ class GraphWidget(QWidget):
         self._img.set_cmap(self._colormap)
         self._canv.draw()
 
-    def set_operation(self, operation="None"):
-        """ Set an operation to be performed on click on a dimension. """
-        self.has_operation = (operation != "None")
-        if not self.has_operation:
-            self._oprdim = -1
-            self._opr = (lambda x: x)
-        else:
-            self._opr = (lambda x: eval("np." + operation + "(x, axis="
-                                        + str(self._oprcorr) + ")"))
-        return self._oprdim
-
-    def set_oprdim(self, value):
-        """ Set the operation dimension. """
-        self._oprdim = value
+    def figure(self):
+        """ Return the local figure variable. """
+        return self._figure
 
     def has_opr(self):
         """ Check if the operation is None. """
         return self.has_operation
-
-    def set_ticks(self, ax, s, transp, is1DPlot=False):
-        """ Set the ticks of plots according to the selected slices. """
-        # Calculate the ticks for the plot by checking the limits
-        limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
-        lim = np.array([l if len(l) == 3 else l+['1'] for l in limits])
-        lim[lim == ''] = '0'
-        lim = lim.astype(float)
-        if lim.shape[0] == 1:
-            lim = np.append([[0, 0, 1]], lim, axis=0)
-        if not transp:
-            lim = lim[(1, 0), :]
-        # Set the x-ticks
-        loc = ax.xaxis.get_major_locator()()
-        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0, 2]+lim[0, 0]
-        if all(d.astype(int) == d.astype(float)):
-            ax.set_xticklabels(d.astype(int))
-        else:
-            ax.set_xticklabels(d.astype(float))
-        if is1DPlot:
-            return
-        # Set the y-ticks
-        loc = ax.yaxis.get_major_locator()()
-        d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1, 2]+lim[1, 0]
-        if all(d.astype(int) == d.astype(float)):
-            ax.set_yticklabels(d.astype(int))
-        else:
-            ax.set_yticklabels(d.astype(float))
-
-    def two_D_plot(self, ui, ax, s):
-        """ Plot 2-dimensional data. """
-        if ui.MMM.isChecked():
-            ax.plot(self.cutout.max(axis=0), 'r')
-            ax.plot(self.cutout.mean(axis=0), 'k')
-            ax.plot(self.cutout.min(axis=0), 'b')
-            ax.legend(["Max", "Mean", "Min"])
-        else:
-            self._img = ax.imshow(self.cutout.T, interpolation='none',
-                                  aspect='auto')
-        self.set_ticks(ax, s, ui.Transp.isChecked())
-
-    def n_D_plot(self, ax, ui):
-        """ Plot multi-dimensional data. """
-        sh = self.cutout.shape
-        nPad = sh[0] // 100 + 1
-        if ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
-            nPad = -1
-            mm = [np.min(self.cutout), np.max(self.cutout)]
-            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
-        else:
-            dat = flatPad(self.cutout, nPad)
-        self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-        locx = TickMultLoc(sh[0] + nPad)
-        ax.xaxis.set_major_locator(locx)
-        ax.xaxis.set_ticklabels(np.arange(-sh[0], int(locx().max()), sh[0]))
-        locy = TickMultLoc(sh[1] + nPad)
-        ax.yaxis.set_major_locator(locy)
-        ax.yaxis.set_ticklabels(np.arange(-sh[1], int(locy().max()), sh[1]))
 
     def renewPlot(self, data, s, scalDims, ui):
         """ Draw given data. """
@@ -238,7 +241,7 @@ class GraphWidget(QWidget):
                 ax.axis('off')
             if self.cutout.ndim == 1:
                 ax.plot(self.cutout)
-                self.set_ticks(ax, s, False, True)
+                _set_ticks(ax, s, False, True)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
@@ -247,16 +250,15 @@ class GraphWidget(QWidget):
                 if ui.Plot2D.isChecked():
                     if self.cutout.shape[1] > 500:
                         msg = "You are trying to plot more than 500 lines!"
-                        ui.infoMsg(msg, -1)
+                        ui.info_msg(msg, -1)
                         return
-                    else:
-                        ax.plot(self.cutout)
-                        self.set_ticks(ax, s, not ui.Transp.isChecked(), True)
+                    ax.plot(self.cutout)
+                    _set_ticks(ax, s, not ui.Transp.isChecked(), True)
                 else:
-                    self.two_D_plot(ui, ax, s)
+                    self._two_D_plot(ui, ax, s)
             # higher-dimensional cutouts will first be flattened
             elif self.cutout.ndim >= 3:
-                self.n_D_plot(ax, ui)
+                self._n_D_plot(ax, ui)
             # Reset the colorbar. A better solution would be possible, if the
             # axes were not cleared everytime.
             self.colorbar()
@@ -267,6 +269,26 @@ class GraphWidget(QWidget):
                 ui.txtMin.setText('min :' + "%0.5f"%self._clim[0])
                 ui.txtMax.setText('max :' + "%0.5f"%self._clim[1])
         self._canv.draw()
+
+    def set_operation(self, operation="None"):
+        """ Set an operation to be performed on click on a dimension. """
+        self.has_operation = (operation != "None")
+        if not self.has_operation:
+            self._oprdim = -1
+            self._opr = (lambda x: x)
+        else:
+            self._opr = (lambda x: eval("np." + operation + "(x, axis="
+                                        + str(self._oprcorr) + ")"))
+        return self._oprdim
+
+    def set_oprdim(self, value):
+        """ Set the operation dimension. """
+        self._oprdim = value
+
+    def toggle_colorbar(self):
+        """ Toggle the state of the colorbar """
+        self.has_cb = not self.has_cb
+        self.colorbar()
 
 
 class ReshapeDialog(QDialog):
@@ -279,7 +301,7 @@ class ReshapeDialog(QDialog):
         self.resize(400, 150)
         self.setWindowTitle("Reshape the current array")
         self.prodShape = 0
-        self.infoMsg = parent.infoMsg
+        self.info_msg = parent.info_msg
         gridLayout = QGridLayout(self)
 
         # Add the current and new shape boxes and their labels
@@ -294,10 +316,10 @@ class ReshapeDialog(QDialog):
 
         gridLayout.addWidget(newShape, 1, 0, 1, 1)
         self.txtNew = QLineEdit(self)
-        self.txtNew.textEdited.connect(self.keyPress)
-        self.shCmpl = QCompleter([])
-        self.shCmpl.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
-        self.txtNew.setCompleter(self.shCmpl)
+        self.txtNew.textEdited.connect(self._key_press)
+        self.cmpl = QCompleter([])
+        self.cmpl.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
+        self.txtNew.setCompleter(self.cmpl)
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
@@ -306,40 +328,16 @@ class ReshapeDialog(QDialog):
         self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
         self.buttonBox.button(DBB.Ok).clicked.connect(self.accept)
 
-    def keyPress(self, keyEv):
+    def _key_press(self, keyEv):
         """ Whenever a key is pressed check for comma and set autofill data."""
         if keyEv and keyEv[-1] == ',':
-            shape = getShapeFromStr(str(keyEv))
+            shape = _get_shape_from_str(str(keyEv))
             if self.prodShape%shape.prod() == 0:
                 rest = self.prodShape // shape.prod()
-                self.shCmpl.model().setStringList(self.suggestion(keyEv, rest))
+                self.cmpl.model().setStringList(_suggestion(keyEv, rest))
             else:
-                self.shCmpl.model().setStringList([keyEv + " Not fitting"])
+                self.cmpl.model().setStringList([keyEv + " Not fitting"])
         return keyEv
-
-    def suggestion(self, previous_val, value):
-        """ Returns all possible factors """
-        pfactors = []
-        divisor = 2
-        while value > 1:
-            while value % divisor == 0:
-                pfactors.append(divisor)
-                value /= divisor
-            divisor += 1
-            if divisor * divisor > value:
-                if value > 1:
-                    pfactors.append(value)
-                break
-        factors = []
-        for n in range(1, len(pfactors) + 1):
-            for x in combinations(pfactors, n):
-                y = 1
-                for a in x:
-                    y = y * a
-                factors.append(int(y))
-        factors = list(set(factors))
-        factors.sort(reverse=True)
-        return [previous_val + "{0},".format(i) for i in factors]
 
     def reshape_array(self, data):
         """ Reshape the currently selected array. """
@@ -356,15 +354,14 @@ class ReshapeDialog(QDialog):
                     continue
                 # Try if the array could be reshaped that way
                 try:
-                    data = np.reshape(data, getShapeFromStr(sStr))
+                    data = np.reshape(data, _get_shape_from_str(sStr))
                 # If it could not be reshaped, get another user input
                 except ValueError:
-                    self.infoMsg("Data could not be reshaped!", -1)
+                    self.info_msg("Data could not be reshaped!", -1)
                     continue
                 return data
             # If "CANCEL" is pressed
-            else:
-                return data
+            return data
 
 
 class NewDataDialog(QDialog):
@@ -402,10 +399,36 @@ class NewDataDialog(QDialog):
         self.buttonBox = DBB(DBB.Cancel|DBB.Ok|DBB.Save, QtCore.Qt.Horizontal)
         Layout.addWidget(self.buttonBox)
         self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
-        self.buttonBox.button(DBB.Ok).clicked.connect(self.on_accept)
-        self.buttonBox.button(DBB.Save).clicked.connect(self.on_save)
+        self.buttonBox.button(DBB.Ok).clicked.connect(self._on_accept)
+        self.buttonBox.button(DBB.Save).clicked.connect(self._on_save)
 
-    def parsecmd(self, cmd):
+    def _on_accept(self):
+        """ Try to run the command and append the history on pressing 'OK'. """
+        try:
+            var, value = self._parsecmd(str(self.cmd.text()))
+            self.data[var] = eval(value)
+        except Exception as err:
+            self.err.setText(str(err))
+            return
+        self.history.append(self.cmd.text())
+        self.lastText = str(self.cmd.text())
+        self.cmd.setText("")
+
+    def _on_save(self):
+        """ Return the object currently in the textBox to the Viewer. """
+        if re.findall(r"\=", self.cmd.text()):
+            return
+        if self.cmd.text() == "":
+            self.returnVal = re.split(r"\=", self.lastText)[0].strip()
+            self.accept()
+        else:
+            self.returnVal = self.cmd.text().strip()
+            if self.returnVal is not None:
+                self.accept()
+            else:
+                return
+
+    def _parsecmd(self, cmd):
         """ Parse the command given by the user. """
         try:
             var, expr = cmd.split("=", 1)
@@ -420,33 +443,7 @@ class NewDataDialog(QDialog):
                                 "self.data['" + datum + "']")
         return var.strip(), expr.replace(" ", "")
 
-    def on_accept(self):
-        """ Try to run the command and append the history on pressing 'OK'. """
-        try:
-            var, value = self.parsecmd(str(self.cmd.text()))
-            self.data[var] = eval(value)
-        except Exception as err:
-            self.err.setText(str(err))
-            return -1
-        self.history.append(self.cmd.text())
-        self.lastText = str(self.cmd.text())
-        self.cmd.setText("")
-
-    def on_save(self):
-        """ Return the object currently in the textBox to the Viewer. """
-        if re.findall(r"\=", self.cmd.text()):
-            return -1
-        elif self.cmd.text() == "":
-            self.returnVal = re.split(r"\=", self.lastText)[0].strip()
-            self.accept()
-        else:
-            self.returnVal = self.cmd.text().strip()
-            if self.returnVal is not None:
-                self.accept()
-            else:
-                return -1
-
-    def newData(self, data, cutout):
+    def new_data(self, data, cutout):
         """ Generate New Data (maybe using the currently selected array). """
         self.data = {'this': data, 'cutout': cutout}
         self.history.clear()
@@ -459,9 +456,7 @@ class NewDataDialog(QDialog):
                 if self.data['this'] is None:
                     return (re.split(r"\=", self.lastText)[0].strip(),
                             self.data[self.returnVal])
-                elif self.cmd.text() == "":
+                if self.cmd.text() == "":
                     return 1, self.data[self.returnVal]
-                else:
-                    return str(self.cmd.text()), self.data[self.returnVal]
-            else:
-                return 0, []
+                return str(self.cmd.text()), self.data[self.returnVal]
+            return 0, []
