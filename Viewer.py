@@ -594,12 +594,16 @@ class ViewerWindow(QMainWindow):
             self.info_msg("Shape is not matching dimensions. Aborting!", -1)
             return
         new_order = tuple(np.array(content.split(","), dtype="i"))
+        if new_order == tuple(sorted(new_order)):
+            return
         self[0] = np.transpose(self[0], new_order)
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
         self._update_shape(self[0].shape)
-        self.info_msg("Permuted to " + str(self[0].shape), 1)
+        sh = self[0].shape
+        self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
+                      " to " + str(sh), 0)
 
     def _pop(self, key):
         """ Returns the current data and removes it from the dict. """

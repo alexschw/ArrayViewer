@@ -208,8 +208,8 @@ class GraphWidget(QWidget):
         ax = self._figure.gca()
         ax.clear()
         # Reset the minimum and maximum text
-        ui.txtMin.setText('min :')
-        ui.txtMax.setText('max :')
+        ui.txtMin.setText('min : ')
+        ui.txtMax.setText('max : ')
         if data is None:
             return
         if isinstance(data, self.noPrintTypes):
@@ -266,8 +266,8 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (self.cutout.min(), self.cutout.max())
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText('min :' + "%0.5f"%self._clim[0])
-                ui.txtMax.setText('max :' + "%0.5f"%self._clim[1])
+                ui.txtMin.setText('min : ' + "%0.5f"%self._clim[0])
+                ui.txtMax.setText('max : ' + "%0.5f"%self._clim[1])
         self._canv.draw()
 
     def set_operation(self, operation="None"):
