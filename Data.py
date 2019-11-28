@@ -1,7 +1,7 @@
 """
-# Data Loader for the ArrayViewer.
-# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
+Data Loader for the ArrayViewer.
 """
+# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 try:
     import cPickle as pickle
 except ImportError:

@@ -1,7 +1,7 @@
 """
-# GraphWidget and ReshapeDialog for the ArrayViewer
-# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
+GraphWidget and ReshapeDialog for the ArrayViewer
 """
+# Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 import re
 from itertools import combinations
 from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,

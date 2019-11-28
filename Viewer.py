@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-# Array Viewer
+Base Script of the Array Viewer
+"""
 # View arrays from different sources in the viewer. Reshape them etc.
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
-"""
+
 import sys
 from functools import reduce
 from operator import getitem
