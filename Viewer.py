@@ -804,6 +804,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
-        window.loader.load.emit(os.path.abspath(new_file), "")
+        window.loader.load.emit(os.path.abspath(new_file), "", window.first_to_last)
     window.show()
     sys.exit(app.exec_())
