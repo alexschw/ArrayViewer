@@ -221,7 +221,7 @@ class GraphWidget(QWidget):
             ax.text(-0.1, 1.1, data[()], va='top', wrap=True)
             ax.axis('off')
         elif isinstance(data[0], list):
-            # If there is an array of lists print each element as a graph
+            # If there is an array of lists plot each element as a graph
             for lst in data:
                 ax.plot(lst)
         else:
@@ -234,12 +234,13 @@ class GraphWidget(QWidget):
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.isChecked() and self.cutout.ndim > 1:
                 self.cutout = np.swapaxes(self.cutout, 0, 1)
-            # Graph an 1D-cutout
-            if self.cutout.ndim == 0:
+            # Print the Value(s) directly
+            if self.cutout.ndim == 0 or ui.PrintFlat.isChecked():
                 ax.set_ylim([0, 1])
-                ax.text(0, 1.0, self.cutout)
+                ax.text(-0.1, 1.1, self.cutout, va='top', wrap=True)
                 ax.axis('off')
-            if self.cutout.ndim == 1:
+            # Graph an 1D-cutout
+            elif self.cutout.ndim == 1:
                 ax.plot(self.cutout)
                 _set_ticks(ax, s, False, True)
                 alim = ax.get_ylim()

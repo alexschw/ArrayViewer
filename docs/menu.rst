@@ -34,4 +34,4 @@ The operations menu is a shortcut for performing one-dimensional operations on t
 
 Plot menu
 *********
-The plot menu offers plotting routines apart from the ones used by default. You can plot a graph of the minimum, mean and maximum value of a 2D Dataset (``min-mean-max plot``), plot all 2D datasets instead of showing an image (``2D as plot``) or plot any A x B x 3 data as an RGB image (``3D as image``)
+The plot menu offers plotting routines apart from the ones used by default. You can plot a graph of the minimum, mean and maximum value of a 2D Dataset (``min-mean-max plot``), plot all 2D datasets instead of showing an image (``2D as plot``) or plot any A x B x 3 data as an RGB image (``3D as image``). If you select ``Print Values as text`` any values will be printed directly into the Charts View.

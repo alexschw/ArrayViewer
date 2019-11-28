@@ -255,6 +255,8 @@ class ViewerWindow(QMainWindow):
         self.Plot2D.triggered.connect(self._draw_data)
         self.Plot3D = _menu_opt(menu, menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)
+        self.PrintFlat = _menu_opt(menu, menuPlot, "Print Values as text",
+                                   self._draw_data, act_grp=ag_plt)
 
         self.setMenuBar(menu)
 
