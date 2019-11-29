@@ -5,15 +5,15 @@ This is the auto generated module documentation and hence of no deeper use, if y
 
 Viewer module
 +++++++++++++
-.. automodule:: Viewer
+.. automodule:: ArrayViewer.Viewer
     :members:
 
 Data module
 +++++++++++
-.. automodule:: Data
+.. automodule:: ArrayViewer.Data
     :members:
 
 Charts module
 +++++++++++++
-.. automodule:: Charts
+.. automodule:: ArrayViewer.Charts
     :members:

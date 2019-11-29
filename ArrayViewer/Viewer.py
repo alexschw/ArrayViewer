@@ -20,9 +20,9 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
-from Charts import GraphWidget, ReshapeDialog, NewDataDialog
-from Slider import rangeSlider
-from Data import Loader, h5py
+from .Charts import GraphWidget, ReshapeDialog, NewDataDialog
+from .Slider import rangeSlider
+from .Data import Loader, h5py
 
 def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
@@ -802,11 +802,14 @@ class ViewerWindow(QMainWindow):
             from_wgt.setText(':'.join(txt))
         self._set_slice()
 
-
-if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
-        window.loader.load.emit(os.path.abspath(new_file), "", window.first_to_last)
+        window.loader.load.emit(os.path.abspath(new_file), "",
+                                window.first_to_last)
     window.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

@@ -9,9 +9,9 @@ This data can than be plotted as a standard plot, image or 3d/4d representation.
 
 Getting Started
 ***************
-To use the ArrayViewer download the repository from `<https://github.com/alexschw/ArrayViewer>`_
-
-In the repository run ``python3 Viewer.py`` or ``./Viewer.py`` to start the application. You can append the name of one or more files you want to open, to load them directly.
+To install the Arrayviewer simply run ``pip3 install ArrayViewer``.
+Once installed you can run ``aview`` to start the application.
+You can append the name of one or more files you want to open, to load them directly.
 
 
 Technical Details
