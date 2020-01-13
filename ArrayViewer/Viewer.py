@@ -40,7 +40,7 @@ def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
 def _fl_cast(tpl):
     """ Try casting keys to float. """
     try:
-        return float(tpl)
+        return "{:10.2f}".format(float(tpl))
     except ValueError:
         return tpl
 

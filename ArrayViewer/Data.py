@@ -68,6 +68,9 @@ class Loader(QObject):
         elif isinstance(data, (h5py._hl.files.File, h5py._hl.group.Group)):
             dct = {}
             for key in data:
+                # Exclude matlab references
+                if key == "#refs#":
+                    continue
                 dct[key] = self._validate(data[key])
             data = dct
         elif not isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset, int,
@@ -104,7 +107,7 @@ class Loader(QObject):
                                                        struct_as_record=False))
             except NotImplementedError:
                 # v7.3
-                data = self._validate(h5py.File(str(fname)))
+                data = self._validate(h5py.File(str(fname), "r"))
         elif fname[-4:] == '.npy':
             try:
                 data = {'Value': np.load(str(fname))}
