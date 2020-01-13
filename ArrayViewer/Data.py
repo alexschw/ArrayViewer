@@ -12,6 +12,7 @@ import re
 import h5py
 import scipy.io
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PIL import Image
 import numpy as np
 
 class Loader(QObject):
@@ -128,8 +129,12 @@ class Loader(QObject):
             lil = [re.findall(numberRegEx, line) for line in lines]
             data = {'Value': np.array(lil, dtype=float)}
         else:
-            print('File type not recognized!')
-            return False
+            try:
+                img = Image.open(fname)
+                data = {'Value': np.swapaxes(np.array(img), 0, 1)}
+            except:
+                print('File type not recognized!')
+                return False
 
         self.doneLoading.emit(data, key)
         return True
