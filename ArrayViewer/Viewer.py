@@ -89,6 +89,7 @@ class ViewerWindow(QMainWindow):
         self.lMsg = 'loading...'
         self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
+        self.setAcceptDrops(True)
 
         # General Options
         self.setWindowTitle("Array Viewer")
@@ -749,6 +750,19 @@ class ViewerWindow(QMainWindow):
         self._update_tree()
 
     ## Overloaded PyQt Methods
+    def dragEnterEvent(self, ev):
+        """ Catch dragEnterEvents for file dropdown. """
+        if ev.mimeData().hasUrls():
+            ev.acceptProposedAction()
+
+    def dropEvent(self, ev):
+        """ Catch dropEvent to load the dropped file. """
+        for url in ev.mimeData().urls():
+            fname = url.toLocalFile()
+            splitted = fname.split("/")
+            key = str(splitted[-2] + " - " + splitted[-1])
+            self.loader.load.emit(fname, key, self.first_to_last)
+
     def keyPressEvent(self, ev):
         """ Catch keyPressEvents for [Delete] and [Ctrl]+[C]. """
         if ev.key() == Qt.Key_Delete:
@@ -803,6 +817,7 @@ class ViewerWindow(QMainWindow):
         self._set_slice()
 
 def main():
+    """ Main Function. """
     app = QApplication(sys.argv)
     window = ViewerWindow(app)
     for new_file in sys.argv[1:]:
