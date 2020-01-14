@@ -169,7 +169,7 @@ class ViewerWindow(QMainWindow):
         # Shape Widget
         self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
-        rex = "[+-]?\\d*(?::|:\+|:-|)\\d*(?::|:\+|:-|)\\d*"
+        rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
         self.Validator.setRegExp(QRegExp(rex))
         for n in range(self.maxDims):
             label = QLabel()
@@ -440,34 +440,7 @@ class ViewerWindow(QMainWindow):
             # For all files
             if isinstance(fnames[0], list):
                 fnames = fnames[0]
-            for fname in fnames:
-                # Check if the data already exists
-                splitted = fname.split("/")
-                key = str(splitted[-2] + " - " + splitted[-1])
-                # Show warning if data exists
-                if key in self.keys:
-                    txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
-                    replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
-                                             "Add new Dataset")
-                    msg = QMessageBox(QMessageBox.Warning, "Warning", txt)
-                    yesBtn = msg.addButton(QMessageBox.Yes)
-                    msg.addButton(QMessageBox.No)
-                    msg.addButton(replaceBtn, QMessageBox.AcceptRole)
-                    msg.setDefaultButton(QMessageBox.Yes)
-                    msg.exec_()
-                    if msg.clickedButton() == replaceBtn:
-                        n = 1
-                        while key + "_" + str(n) in self.keys:
-                            n += 1
-                        key = key + "_" + str(n)
-                    elif msg.clickedButton() != yesBtn:
-                        return
-                    else:
-                        self.keys.remove(key)
-                loadItem = QTreeWidgetItem([self.lMsg])
-                loadItem.setForeground(0, QColor("grey"))
-                self.Tree.addTopLevelItem(loadItem)
-                self.loader.load.emit(fname, key, self.first_to_last)
+            self.load_files(fnames)
 
     def _dlg_new_data(self):
         """ Open the new data dialog box to construct new data. """
@@ -726,6 +699,40 @@ class ViewerWindow(QMainWindow):
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
 
+    ## Public Methods
+    def load_files(self, fnames):
+        """ Load files to the tree. If key already exists, show a Warning. """
+        # Remove duplicates
+        fnames = list(dict.fromkeys(fnames))
+        for fname in fnames:
+            # Check if the data already exists
+            splitted = fname.split("/")
+            key = str(splitted[-2] + " - " + splitted[-1])
+            # Show warning if data exists
+            if key in self.keys:
+                txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
+                replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
+                                         "Add new Dataset")
+                msg = QMessageBox(QMessageBox.Warning, "Warning", txt)
+                yesBtn = msg.addButton(QMessageBox.Yes)
+                msg.addButton(QMessageBox.No)
+                msg.addButton(replaceBtn, QMessageBox.AcceptRole)
+                msg.setDefaultButton(QMessageBox.Yes)
+                msg.exec_()
+                if msg.clickedButton() == replaceBtn:
+                    n = 1
+                    while key + "_" + str(n) in self.keys:
+                        n += 1
+                    key = key + "_" + str(n)
+                elif msg.clickedButton() != yesBtn:
+                    continue
+                else:
+                    self.keys.remove(key)
+            loadItem = QTreeWidgetItem([self.lMsg])
+            loadItem.setForeground(0, QColor("grey"))
+            self.Tree.addTopLevelItem(loadItem)
+            self.loader.load.emit(fname, key, self.first_to_last)
+
     ## PyQt Slots
     @pyqtSlot(str, int)
     def info_msg(self, text, warn_level):
@@ -757,11 +764,10 @@ class ViewerWindow(QMainWindow):
 
     def dropEvent(self, ev):
         """ Catch dropEvent to load the dropped file. """
+        fnames = []
         for url in ev.mimeData().urls():
-            fname = url.toLocalFile()
-            splitted = fname.split("/")
-            key = str(splitted[-2] + " - " + splitted[-1])
-            self.loader.load.emit(fname, key, self.first_to_last)
+            fnames.append(url.toLocalFile())
+        self.load_files(fnames)
 
     def keyPressEvent(self, ev):
         """ Catch keyPressEvents for [Delete] and [Ctrl]+[C]. """
@@ -820,9 +826,8 @@ def main():
     """ Main Function. """
     app = QApplication(sys.argv)
     window = ViewerWindow(app)
-    for new_file in sys.argv[1:]:
-        window.loader.load.emit(os.path.abspath(new_file), "",
-                                window.first_to_last)
+    fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
+    window.load_files(fnames)
     window.show()
     sys.exit(app.exec_())
 
