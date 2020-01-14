@@ -1,8 +1,8 @@
 """ Setup Module """
 from setuptools import setup, find_packages
+from ArrayViewer import __version__
 
 PACKAGE_NAME = "ArrayViewer"
-VERSION = "1.0"
 
 with open('requirements.txt') as req_file:
     REQUIREMENTS = req_file.readlines()
@@ -13,7 +13,7 @@ with open("README.md", "r") as readme_file:
 if __name__ == "__main__":
     setup(
         name=PACKAGE_NAME,
-        version=VERSION,
+        version=__version__,
         license='GPLv3',
         packages=find_packages(),
         author="Alex Schwarz",
