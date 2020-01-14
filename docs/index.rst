@@ -1,10 +1,10 @@
-Documentation of the ArrayViewer
-################################
+Documentation of the ArrayViewer |release|
+##########################################
 What is the ArrayViewer?
 ************************
 
 The ArrayViewer is a tool to visualize data from different sources in a unified tool.
-It can load files containing different data structures (data, hdf5, mat, numpy, txt).
+It can load files containing different data structures (data, hdf5, mat, numpy, txt) and images (png, jpg, ...) using PIL.
 This data can than be plotted as a standard plot, image or 3d/4d representation.
 
 Getting Started

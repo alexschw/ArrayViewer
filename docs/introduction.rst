@@ -5,7 +5,7 @@ Basics
 
 Load Data
 *********
-To load a dataset click ``Start > Load data``. You can select a file of the types *.data, .hdf5, .mat, .npy, .txt*. If your data is structured such that the first dimension should be put to the end of the dataset, you can check the corresponding checkbox at the bottom of the load dialog. The selected option is saved for consecutive loadings, even after closing the program. If you are loading a dataset with the same name as an existing file you will be asked if the file should be replaced or if the dataset should be added with a different name instead.
+To load a dataset click ``Start > Load data``. You can select a file of the types *.data, .hdf5, .mat, .npy, .txt* or any image file. If your data is structured such that the first dimension should be put to the end of the dataset, you can check the corresponding checkbox at the bottom of the load dialog. The selected option is saved for consecutive loadings, even after closing the program. If you are loading a dataset with the same name as an existing file you will be asked if the file should be replaced or if the dataset should be added with a different name instead. Another way to open any file is by appending its name to the function call when opening the ArrayViewer, i.e. ``aview file.npy``. Finally you can also drag and drop a file inside the window to load it.
 
 Window Structure
 ****************
