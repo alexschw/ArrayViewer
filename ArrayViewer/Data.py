@@ -9,8 +9,9 @@ except ImportError:
 
 import os
 import re
-import h5py
 import scipy.io
+import h5py
+from h5py._hl import files, group, dataset
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PIL import Image
 import numpy as np
@@ -31,25 +32,20 @@ class Loader(QObject):
     def _validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
         if isinstance(data, dict):
-            # List of global variables (that should not be shown)
-            glob = []
-            for subdat in data:
-                # global variables start with two underscores
-                if subdat[:2] == "__":
-                    glob.append(subdat)
-                    continue
-                # Run the validation again for each subelement in the dict
-                data[subdat] = self._validate(data[subdat])
-            # Remove global variables
-            for g in glob:
-                data.pop(g)
+            # Run the validation again for each subelement in the dict
+            data = {key: self._validate(data[key])
+                    for key in data if key[:2] != "__"}
         elif isinstance(data, list):
             if data != [] and not isinstance(data[0], str):
                 # not all elements in the list have the same length
                 if isinstance(data[0], list) and len(set(map(len, data))) != 1:
                     maxlen = len(sorted(data, key=len, reverse=True)[0])
                     data = [[xi+[np.nan]*(maxlen - len(xi))] for xi in data]
-                data = np.array(data)
+                try:
+                    data = np.array(data)
+                except ValueError:
+                    data = self._validate(
+                        {str(k): v for k, v in enumerate(data)})
         elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # Create a dictionary from matlab structs
             dct = {}
@@ -58,40 +54,36 @@ class Loader(QObject):
             data = dct
         elif isinstance(data, np.ndarray) and data.dtype == "O":
             # Create numpy arrays from matlab cell types
-            ndata = []
-            subdat = []
-            for subdat in data:
-                ndata.append(self._validate(subdat))
-            if isinstance(subdat, str):
-                data = ndata
-            else:
-                data = np.array(ndata)
-        elif isinstance(data, (h5py._hl.files.File, h5py._hl.group.Group)):
-            dct = {}
-            for key in data:
-                # Exclude matlab references
-                if key == "#refs#":
-                    continue
-                dct[key] = self._validate(data[key])
-            data = dct
-        elif not isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset, int,
+            data = self._validate([self._validate(subdat) for subdat in data])
+        elif isinstance(data, (files.File, group.Group)):
+            data = {key: self._validate(data[key])
+                    for key in data if key != "#refs#"}
+        elif isinstance(data, dataset.Dataset) and data.dtype == "O":
+            dat = np.empty_like(data)
+            for x, d in enumerate(data[()]):
+                names = [h5py.h5r.get_name(sd, data.file.id) for sd in d]
+                dat[x, :] = [np.array(data.file[name]).tobytes()
+                             .decode(encoding="utf-16")
+                             if data.file[name].dtype == "uint16"
+                             else data.file[name] for name in names]
+            try:
+                data = dat.astype(str).squeeze().tolist()
+            except ValueError:
+                data = np.array([data.file.get(d[0]) for d in data[()]][0])
+        elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + type(data) +
                               ") not recognized. Skipping", 0)
             data = None
-        if self.switch_to_last and \
-           isinstance(data, (np.ndarray, h5py._hl.dataset.Dataset)):
-            if len(data.shape) > 1:
-                data = np.moveaxis(data, 0, -1)
+        if isinstance(data, (np.ndarray, dataset.Dataset)) and \
+           self.switch_to_last and len(data.shape) > 1:
+            data = np.moveaxis(data, 0, -1)
         return data
 
     @pyqtSlot(str, str, bool)
-    def _add_data(self, fname, key="", switch_to_last=False):
+    def _add_data(self, fname, key, switch_to_last=False):
         """ Add a new data to the dataset. Ask if the data already exists. """
         self.switch_to_last = switch_to_last
-        splitted = fname.split("/")
-        if key == "":
-            key = str(splitted[-2] + " - " + splitted[-1])
         # Check if the File is bigger than 15 GB, than it will not be loaded
         if os.path.getsize(fname) > 15e9:
             self.infoMsg.emit("File bigger than 15GB. Not loading!", -1)
@@ -111,12 +103,14 @@ class Loader(QObject):
                 data = self._validate(h5py.File(str(fname), "r"))
         elif fname[-4:] == '.npy':
             try:
-                data = {'Value': np.load(str(fname))}
+                data = {'Value': self._validate(np.load(str(fname),
+                                                        allow_pickle=True))}
             except UnicodeDecodeError:
-                data = {'Value': np.load(str(fname), encoding='latin1')}
+                data = {'Value': np.load(str(fname), allow_pickle=True,
+                                         encoding='latin1')}
             except ValueError:
-                data = self._validate(np.load(str(fname),
-                                              allow_pickle=True)[()])
+                data = {'Value': self._validate(
+                    np.load(str(fname), allow_pickle=True)[()])}
         elif fname[-5:] == '.data':
             try:
                 f = pickle.load(open(str(fname)))
@@ -132,7 +126,7 @@ class Loader(QObject):
             try:
                 img = Image.open(fname)
                 data = {'Value': np.swapaxes(np.array(img), 0, 1)}
-            except:
+            except (OSError, FileNotFoundError):
                 print('File type not recognized!')
                 return False
 

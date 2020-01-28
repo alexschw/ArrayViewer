@@ -20,9 +20,9 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
-from .Charts import GraphWidget, ReshapeDialog, NewDataDialog
-from .Slider import rangeSlider
-from .Data import Loader, h5py
+from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
+from ArrayViewer.Slider import rangeSlider
+from ArrayViewer.Data import Loader, h5py
 
 def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
