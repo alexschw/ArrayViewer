@@ -34,7 +34,7 @@ class Loader(QObject):
         if isinstance(data, dict):
             # Run the validation again for each subelement in the dict
             data = {str(key): self._validate(data[key]) for key in data.keys()
-                   if str(key)[:2] != "__"}
+                    if str(key)[:2] != "__"}
         elif isinstance(data, list):
             if data != [] and not isinstance(data[0], str):
                 # not all elements in the list have the same length
@@ -108,7 +108,8 @@ class Loader(QObject):
             try:
                 data = self._validate(np.load(str(fname), allow_pickle=True))
             except UnicodeDecodeError:
-                data = np.load(str(fname), allow_pickle=True, encoding='latin1')
+                data = self._validate(np.load(str(fname), allow_pickle=True,
+                                              encoding='latin1'))
         elif fname[-5:] == '.data':
             try:
                 f = pickle.load(open(str(fname)))

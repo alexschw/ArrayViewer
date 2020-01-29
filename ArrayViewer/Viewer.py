@@ -640,10 +640,14 @@ class ViewerWindow(QMainWindow):
 
     def _start_diff(self):
         """ Start the diff view. """
-        self.diffBtn.show()
-        self.Tree.setColumnHidden(1, False)
-        for item in self.checkableItems:
-            item.setCheckState(1, Qt.Unchecked)
+        if self.diffBtn.isVisible():
+            self.diffBtn.hide()
+            self.Tree.setColumnHidden(1, True)
+        else:
+            self.diffBtn.show()
+            self.Tree.setColumnHidden(1, False)
+            for item in self.checkableItems:
+                item.setCheckState(1, Qt.Unchecked)
 
     def _update_colorbar(self):
         """ Update the values of the colorbar according to the slider value."""
