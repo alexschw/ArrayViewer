@@ -33,8 +33,8 @@ class Loader(QObject):
         """ Data validation. Replace lists of numbers with np.ndarray."""
         if isinstance(data, dict):
             # Run the validation again for each subelement in the dict
-            data = {key: self._validate(data[key])
-                    for key in data if key[:2] != "__"}
+            data = {str(key): self._validate(data[key]) for key in data.keys()
+                   if str(key)[:2] != "__"}
         elif isinstance(data, list):
             if data != [] and not isinstance(data[0], str):
                 # not all elements in the list have the same length
@@ -54,7 +54,10 @@ class Loader(QObject):
             data = dct
         elif isinstance(data, np.ndarray) and data.dtype == "O":
             # Create numpy arrays from matlab cell types
-            data = self._validate([self._validate(subdat) for subdat in data])
+            if not data.shape:
+                data = self._validate(data[()])
+            else:
+                data = self._validate([self._validate(sd) for sd in data])
         elif isinstance(data, (files.File, group.Group)):
             data = {key: self._validate(data[key])
                     for key in data if key != "#refs#"}
@@ -103,14 +106,9 @@ class Loader(QObject):
                 data = self._validate(h5py.File(str(fname), "r"))
         elif fname[-4:] == '.npy':
             try:
-                data = {'Value': self._validate(np.load(str(fname),
-                                                        allow_pickle=True))}
+                data = self._validate(np.load(str(fname), allow_pickle=True))
             except UnicodeDecodeError:
-                data = {'Value': np.load(str(fname), allow_pickle=True,
-                                         encoding='latin1')}
-            except ValueError:
-                data = {'Value': self._validate(
-                    np.load(str(fname), allow_pickle=True)[()])}
+                data = np.load(str(fname), allow_pickle=True, encoding='latin1')
         elif fname[-5:] == '.data':
             try:
                 f = pickle.load(open(str(fname)))
@@ -129,6 +127,7 @@ class Loader(QObject):
             except (OSError, FileNotFoundError):
                 print('File type not recognized!')
                 return False
-
+        if not isinstance(data, dict):
+            data = {'Value': data}
         self.doneLoading.emit(data, key)
         return True

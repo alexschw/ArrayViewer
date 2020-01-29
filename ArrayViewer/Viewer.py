@@ -42,7 +42,7 @@ def _fl_cast(tpl):
     try:
         return "{:10.2f}".format(float(tpl))
     except ValueError:
-        return tpl
+        return str(tpl)
 
 def _get_obj_trace(item):
     """ Returns the trace to a given item in the TreeView. """
@@ -84,7 +84,7 @@ class ViewerWindow(QMainWindow):
         self.loadThread = QThread()
         self.loader.doneLoading.connect(self.on_done_loading)
         self.loader.infoMsg.connect(self.info_msg)
-        self.loader.moveToThread(self.loadThread)
+        # self.loader.moveToThread(self.loadThread)
         self.loadThread.start()
         self.lMsg = 'loading...'
         self.emptylabel = QLabel()
@@ -276,8 +276,11 @@ class ViewerWindow(QMainWindow):
         if item in [0, "data", ""]:
             item = self.cText
         if not self._data or not item:
-            return None
-        return reduce(getitem, item[:-1], self._data)[item[-1]]
+            return []
+        try:
+            return reduce(getitem, item[:-1], self._data)[item[-1]]
+        except KeyError:
+            return []
 
     def __setitem__(self, newkey, newData):
         """ Sets the current data to the new data. """
@@ -687,7 +690,7 @@ class ViewerWindow(QMainWindow):
                 data = self._data[i][str(item.child(j).text(0))]
                 if isinstance(data, dict):
                     for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
-                        item.child(j).addChild(QTreeWidgetItem([k]))
+                        item.child(j).addChild(QTreeWidgetItem([str(k)]))
                         if not isinstance(data[k], self.noPrintTypes):
                             cItem = item.child(j).child(n)
                             cItem.setCheckState(1, Qt.Unchecked)
