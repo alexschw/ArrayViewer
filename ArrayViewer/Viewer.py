@@ -678,26 +678,24 @@ class ViewerWindow(QMainWindow):
         # Redraw the graph
         self._draw_data()
 
+    def _update_subtree(self, item, data):
+        """ Add a new subtree to the current QTreeWidgetItem. """
+        for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
+            item.addChild(QTreeWidgetItem([k]))
+            child = item.child(n)
+            if isinstance(data[k], dict):
+                self._update_subtree(child, data[k])
+            elif not isinstance(data[k], self.noPrintTypes):
+                child.setCheckState(1, Qt.Unchecked)
+                self.checkableItems.append(child)
+
     def _update_tree(self):
         """ Add new data to TreeWidget. """
         itemList = []
         self.checkableItems = []
         for i in self.keys:
             item = QTreeWidgetItem([i])
-            for j in sorted(self._data[i].keys(), key=_fl_cast):
-                item.addChild(QTreeWidgetItem([j]))
-            for j in range(item.childCount()):
-                data = self._data[i][str(item.child(j).text(0))]
-                if isinstance(data, dict):
-                    for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
-                        item.child(j).addChild(QTreeWidgetItem([str(k)]))
-                        if not isinstance(data[k], self.noPrintTypes):
-                            cItem = item.child(j).child(n)
-                            cItem.setCheckState(1, Qt.Unchecked)
-                            self.checkableItems.append(cItem)
-                elif not isinstance(data, self.noPrintTypes):
-                    item.child(j).setCheckState(1, Qt.Unchecked)
-                    self.checkableItems.append(item.child(j))
+            self._update_subtree(item, self._data[i])
             itemList.append(item)
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
