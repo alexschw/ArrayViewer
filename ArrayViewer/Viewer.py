@@ -15,8 +15,8 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                              QHeaderView, QLabel, QLineEdit, QMainWindow,
                              QMenu, QMenuBar, QMessageBox, QPushButton,
-                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-                             QWidget)
+                             QTabWidget, QTreeWidget, QTreeWidgetItem,
+                             QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
 import numpy as np
@@ -44,14 +44,6 @@ def _fl_cast(tpl):
     except ValueError:
         return str(tpl)
 
-def _get_obj_trace(item):
-    """ Returns the trace to a given item in the TreeView. """
-    dText = [str(item.text(0))]
-    while item.parent() is not None:
-        item = item.parent()
-        dText.insert(0, str(item.text(0)))
-    return dText
-
 
 class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
@@ -65,6 +57,7 @@ class ViewerWindow(QMainWindow):
         self.cText = []
         self.keys = []
         self.checkableItems = []
+        self.similar_items = []
         self.old_trace = []
         self.diffNo = 0
         self.maxDims = 6
@@ -105,8 +98,14 @@ class ViewerWindow(QMainWindow):
         hLayout = QHBoxLayout(QFra)
         hLayout.addLayout(grLayout)
 
-        # Add the Tree Widget
-        self.Tree = QTreeWidget(QFra)
+        # Initialize the menu
+        self.__initMenu()
+
+        # Add the Tree Widgets
+        self.treetabs = QTabWidget(QFra)
+        self.treetabs.currentChanged.connect(self._update_treetab)
+        grLayout.addWidget(self.treetabs, 0, 0, 1, 2)
+        self.Tree = QTreeWidget(self.treetabs)
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
@@ -118,8 +117,23 @@ class ViewerWindow(QMainWindow):
         self.Tree.setColumnWidth(1, 10)
         self.Tree.setColumnHidden(1, True)
         self.Tree.currentItemChanged.connect(self._change_tree)
-        grLayout.addWidget(self.Tree, 0, 0, 1, 2)
+        self.treetabs.addTab(self.Tree, "Files")
         self.Tree.contextMenuEvent = self._dropdown
+
+        # Add an alternative Tree Widget
+        self.secTree = QTreeWidget(QFra)
+        self.secTree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
+        self.secTree.headerItem().setText(0, "")
+        self.secTree.headerItem().setText(1, "")
+        self.secTree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.secTree.header(
+            ).setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.secTree.header().setStretchLastSection(False)
+        self.secTree.header().setVisible(False)
+        self.secTree.setColumnWidth(1, 10)
+        self.secTree.setColumnHidden(1, True)
+        self.secTree.currentItemChanged.connect(self._change_tree)
+        self.treetabs.addTab(self.secTree, "Data")
 
         # Add a hidden Diff Button
         self.diffBtn = QPushButton(QFra)
@@ -164,8 +178,6 @@ class ViewerWindow(QMainWindow):
         self.Sldr.sliderReleased.connect(self._update_colorbar)
         grLayout.addWidget(self.Sldr, 0, 3, 0, 1)
 
-        self.__initMenu()
-
         # Shape Widget
         self.Shape = QGridLayout()
         self.Validator = QRegExpValidator(self)
@@ -203,6 +215,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menu, menuStart, "Difference", self._start_diff, "Ctrl+D")
         _menu_opt(menu, menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
+        self.menuStart = menuStart
 
         # Graph menu
         menuGraph = QMenu("Graph", menu)
@@ -301,7 +314,7 @@ class ViewerWindow(QMainWindow):
         checkedItems = 0
         for item in self.checkableItems:
             if item.checkState(1) == Qt.Checked:
-                text = _get_obj_trace(item)
+                text = self._get_obj_trace(item)
                 if checkedItems == 0:
                     text0 = '[0] ' + '/'.join(text)
                     item0 = self[text]
@@ -329,7 +342,7 @@ class ViewerWindow(QMainWindow):
             if current.childCount() != 0:
                 return
             # Get the currently selected FigureCanvasQTAggd data recursively
-            self.cText = _get_obj_trace(current)
+            self.cText = self._get_obj_trace(current)
             # Update the shape widgets based on the datatype
             if isinstance(self[0], self.noPrintTypes):
                 self._update_shape([0], False)
@@ -367,7 +380,7 @@ class ViewerWindow(QMainWindow):
         citem = self.Tree.currentItem()
         if str(citem.text(0)) == self.lMsg:
             return
-        dText = _get_obj_trace(citem)
+        dText = self._get_obj_trace(citem)
         citem = self.Tree.currentItem()
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
@@ -376,7 +389,7 @@ class ViewerWindow(QMainWindow):
 
     def _dlg_combine(self):
         """ Open a dialog to combine the dataset. """
-        trace = _get_obj_trace(self.Tree.currentItem())
+        trace = self._get_obj_trace(self.Tree.currentItem())
         data = self[trace]
         keys = sorted(data, key=_fl_cast)
         d0 = data.get(keys[0])
@@ -512,7 +525,7 @@ class ViewerWindow(QMainWindow):
         """ Finish the renaming of a data-key. """
         if not self.old_trace:
             return
-        new_trace = _get_obj_trace(self.changing_item)
+        new_trace = self._get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
             return
         self.Tree.itemChanged.disconnect(self._finish_renaming)
@@ -539,6 +552,17 @@ class ViewerWindow(QMainWindow):
         self.old_trace = []
         # Make Item non-editable
         self.changing_item.setFlags(Qt.ItemFlag(61))
+
+    def _get_obj_trace(self, item):
+        """ Returns the trace to a given item in the TreeView. """
+        dText = [str(item.text(0))]
+        while item.parent() is not None:
+            item = item.parent()
+            dText.insert(0, str(item.text(0)))
+        # If in secondary tree revert the order
+        if self.treetabs.currentWidget() == self.secTree:
+            dText = [dText[i-1] for i in range(len(dText))]
+        return dText
 
     def _load_slice(self):
         """ Returns the perviously seleced slice for the current array. """
@@ -594,7 +618,7 @@ class ViewerWindow(QMainWindow):
         self.changing_item = self.Tree.currentItem()
         if str(self.changing_item.text(0)) == self.lMsg:
             return
-        self.old_trace = _get_obj_trace(self.changing_item)
+        self.old_trace = self._get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
         self.Tree.editItem(self.changing_item, 0)
@@ -693,6 +717,27 @@ class ViewerWindow(QMainWindow):
                 child.setCheckState(1, Qt.Unchecked)
                 self.checkableItems.append(child)
 
+    def _update_subtree_sec(self, item, data):
+        """ Add a new subtree to the current QTreeWidgetItem. """
+        if not isinstance(data, dict):
+            for s in self.similar_items:
+                item.addChild(QTreeWidgetItem([s]))
+                if not isinstance(data, self.noPrintTypes):
+                    item.setCheckState(1, Qt.Unchecked)
+                    self.checkableItems.append(item)
+        else:
+            for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
+                item.addChild(QTreeWidgetItem([k]))
+                child = item.child(n)
+                if isinstance(data[k], dict):
+                    self._update_subtree(child, data[k])
+                else:
+                    for s in self.similar_items:
+                        child.addChild(QTreeWidgetItem([s]))
+                        if not isinstance(data[k], self.noPrintTypes):
+                            child.setCheckState(1, Qt.Unchecked)
+                            self.checkableItems.append(child)
+
     def _update_tree(self):
         """ Add new data to TreeWidget. """
         itemList = []
@@ -703,6 +748,48 @@ class ViewerWindow(QMainWindow):
             itemList.append(item)
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
+        if self.treetabs.currentWidget() == self.secTree:
+            self._update_tree_sec()
+
+    def _update_tree_sec(self):
+        """ Generate or hide the flipped tree. """
+        # get TopLevelItem of the current item as a reference
+        ref = self.Tree.currentItem()
+        self.secTree.clear()
+        if ref is None:
+            ref = self.Tree.topLevelItem(0)
+            if ref is None:
+                return
+        while ref.parent() is not None:
+            ref = ref.parent()
+        flipped_var = self._data[ref.text(0)].keys()
+        # Find all with a similar structure
+        self.similar_items = []
+        for i in range(self.Tree.topLevelItemCount()):
+            top_level_key = self.Tree.topLevelItem(i).text(0)
+            if self._data[top_level_key].keys() == flipped_var:
+                self.similar_items.append(top_level_key)
+        # Build the tree
+        itemList = []
+        for k in flipped_var:
+            item = QTreeWidgetItem([k])
+            self._update_subtree_sec(item, self._data[ref.text(0)][k])
+            itemList.append(item)
+        self.secTree.addTopLevelItems(itemList)
+
+    def _update_treetab(self, index):
+        """ Update the currently selected treetab, on switching. """
+        disOpt = ["Reshape", "Difference"]
+        if index == 1:
+            for option in self.menuStart.actions():
+                if option.text() in disOpt:
+                    option.setEnabled(False)
+            self._update_tree_sec()
+        else:
+            for option in self.menuStart.actions():
+                if option.text() in disOpt:
+                    option.setEnabled(True)
+
 
     ## Public Methods
     def load_files(self, fnames):
