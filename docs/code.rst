@@ -17,3 +17,8 @@ Charts module
 +++++++++++++
 .. automodule:: ArrayViewer.Charts
     :members:
+
+Slider module
++++++++++++++
+.. automodule:: ArrayViewer.Slider
+    :members:

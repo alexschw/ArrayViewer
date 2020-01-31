@@ -15,6 +15,7 @@
 import sphinx_rtd_theme
 import os
 import sys
+from ArrayViewer import __version__
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -25,7 +26,7 @@ copyright = '2019-2020, Alex Schwarz'
 author = 'Alex Schwarz'
 
 # The short X.Y version
-version = "1.0.2"
+version = __version__
 # The full version, including alpha/beta/rc tags
 release = version
 

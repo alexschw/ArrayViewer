@@ -61,6 +61,7 @@ class ViewerWindow(QMainWindow):
         self.old_trace = []
         self.diffNo = 0
         self.maxDims = 6
+        self.fixate_view = False
         self.changing_item = None
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
@@ -270,8 +271,12 @@ class ViewerWindow(QMainWindow):
         self.Plot2D.triggered.connect(self._draw_data)
         self.Plot3D = _menu_opt(menu, menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)
+        menuPlot.addSeparator()
         self.PrintFlat = _menu_opt(menu, menuPlot, "Print Values as text",
                                    self._draw_data, act_grp=ag_plt)
+        _menu_opt(menu, menuPlot, "Keep Slice on data change",
+                  self._set_fixate_view, act_grp=ag_plt)
+
 
         self.setMenuBar(menu)
 
@@ -369,6 +374,7 @@ class ViewerWindow(QMainWindow):
         del self._data
         del self.keys
         self._data = {}
+        self.diffNo = 0
         self.keys = []
         self.cText = []
         self.slices = {}
@@ -634,6 +640,9 @@ class ViewerWindow(QMainWindow):
             if fname:
                 figure.savefig(fname[0])
 
+    def _set_fixate_view(self, new_val):
+        self.fixate_view = new_val
+
     def _set_operation(self, operation="None"):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.Shape.columnCount()):
@@ -695,7 +704,9 @@ class ViewerWindow(QMainWindow):
             self.Prmt.setText("")
         for n, value in enumerate(shape):
             self.Shape.itemAtPosition(0, n).widget().setText(str(value))
-            if load_slice and curr_slice:
+            if self.fixate_view:
+                pass
+            elif load_slice and curr_slice:
                 self.Shape.itemAtPosition(1, n).widget().setText(curr_slice[n])
             else:
                 # Just show the first two dimensions in the beginning
