@@ -84,7 +84,7 @@ class ViewerWindow(QMainWindow):
         self.loadThread = QThread()
         self.loader.doneLoading.connect(self.on_done_loading)
         self.loader.infoMsg.connect(self.info_msg)
-        # self.loader.moveToThread(self.loadThread)
+        self.loader.moveToThread(self.loadThread)
         self.loadThread.start()
         self.lMsg = 'loading...'
         self.emptylabel = QLabel()

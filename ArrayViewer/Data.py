@@ -42,7 +42,12 @@ class Loader(QObject):
                     maxlen = len(sorted(data, key=len, reverse=True)[0])
                     data = [[xi+[np.nan]*(maxlen - len(xi))] for xi in data]
                 try:
-                    data = np.array(data)
+                    dat = np.array(data)
+                    if dat.dtype == "O":
+                        data = self._validate(
+                            {str(k): v for k, v in enumerate(data)})
+                    else:
+                        data = dat
                 except ValueError:
                     data = self._validate(
                         {str(k): v for k, v in enumerate(data)})
