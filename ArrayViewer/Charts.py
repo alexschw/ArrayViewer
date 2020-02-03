@@ -360,9 +360,9 @@ class ReshapeDialog(QDialog):
                 except ValueError:
                     self.info_msg("Data could not be reshaped!", -1)
                     continue
-                return data
+                return data, _get_shape_from_str(sStr)
             # If "CANCEL" is pressed
-            return data
+            return data, None
 
 
 class NewDataDialog(QDialog):

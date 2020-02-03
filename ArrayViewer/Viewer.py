@@ -477,11 +477,39 @@ class ViewerWindow(QMainWindow):
 
     def _dlg_reshape(self):
         """ Open the reshape box to reshape the current data. """
-        if isinstance(self[0], (np.ndarray, h5py._hl.dataset.Dataset)):
-            self[0] = self.reshapeBox.reshape_array(self[0])
+        cTree = self.treetabs.currentWidget()  # The current Tree
+        if cTree.currentItem().childCount() != 0:
+            # If the current item has children try to reshape all of them
+            tr = self._get_obj_trace(cTree.currentItem())
+            if cTree == self.Tree:
+                keys = [tr + [k] for k in self.similar_items
+                        if isinstance(self[tr + [k]],
+                                      (np.ndarray, h5py._hl.dataset.Dataset))]
+            else:
+                keys = [[k] + tr for k in self.similar_items
+                        if isinstance(self[[k] + tr],
+                                      (np.ndarray, h5py._hl.dataset.Dataset))]
+            if len(keys) == 0:
+                return
+            # All data must have the same number of elements
+            datalen = [np.prod(self[k].shape) for k in keys]
+            if np.any(datalen - datalen[0]):
+                self.info_msg("Shape is not equal in data. Aborting!", -1)
+                return
+            # Reshape the first using the dialog
+            self[keys[0]], s = self.reshapeBox.reshape_array(self[keys[0]])
+            # All further data will be reshaped accordingly
+            if s is not None:
+                for k in keys[1:]:
+                    self[k] = np.reshape(self[k], s)
+        elif isinstance(self[0], (np.ndarray, h5py._hl.dataset.Dataset)):
+            # If just one is chosen and has a numpy compatible type, reshape it
+            self[0], _ = self.reshapeBox.reshape_array(self[0])
             if self._slice_key() in self.slices:
                 del self.slices[self._slice_key()]
-            self._update_shape(self[0].shape)
+        else:
+            return
+        self._update_shape(self[0].shape)
 
     def _draw_data(self):
         """ Draw the selected data. """
@@ -790,7 +818,7 @@ class ViewerWindow(QMainWindow):
 
     def _update_treetab(self, index):
         """ Update the currently selected treetab, on switching. """
-        disOpt = ["Reshape", "Difference"]
+        disOpt = ["Difference"]
         if index == 1:
             for option in self.menuStart.actions():
                 if option.text() in disOpt:
