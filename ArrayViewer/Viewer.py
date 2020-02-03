@@ -104,7 +104,6 @@ class ViewerWindow(QMainWindow):
 
         # Add the Tree Widgets
         self.treetabs = QTabWidget(QFra)
-        self.treetabs.currentChanged.connect(self._update_treetab)
         grLayout.addWidget(self.treetabs, 0, 0, 1, 2)
         self.Tree = QTreeWidget(self.treetabs)
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
@@ -201,6 +200,9 @@ class ViewerWindow(QMainWindow):
         self.errMsgTimer = QTimer(self)
         self.errMsg = QLabel("")
         grLayout.addWidget(self.errMsg, 5, 2)
+
+        # Connect Signal at the end to avoid errors
+        self.treetabs.currentChanged.connect(self._update_treetab)
 
     def __initMenu(self):
         """ Setup the menu bar. """
@@ -334,7 +336,7 @@ class ViewerWindow(QMainWindow):
                                                       item0 - item1}
             self.keys.append("Diff " + str(self.diffNo))
             self.diffNo += 1
-            self.Tree.setColumnHidden(1, True)
+            self.treetabs.currentWidget().setColumnHidden(1, True)
             self.diffBtn.hide()
             self._update_tree()
 
@@ -594,8 +596,13 @@ class ViewerWindow(QMainWindow):
             item = item.parent()
             dText.insert(0, str(item.text(0)))
         # If in secondary tree revert the order
-        if self.treetabs.currentWidget() == self.secTree:
-            dText = [dText[i-1] for i in range(len(dText))]
+        cTree = self.treetabs.currentWidget()
+        if cTree == self.secTree:
+            tli = cTree.currentItem()
+            while tli.parent() is not None:
+                tli = tli.parent()
+            if tli.text(0)[:4] != "Diff":
+                dText = [dText[i-1] for i in range(len(dText))]
         return dText
 
     def _load_slice(self):
@@ -703,10 +710,10 @@ class ViewerWindow(QMainWindow):
         """ Start the diff view. """
         if self.diffBtn.isVisible():
             self.diffBtn.hide()
-            self.Tree.setColumnHidden(1, True)
+            self.treetabs.currentWidget().setColumnHidden(1, True)
         else:
             self.diffBtn.show()
-            self.Tree.setColumnHidden(1, False)
+            self.treetabs.currentWidget().setColumnHidden(1, False)
             for item in self.checkableItems:
                 item.setCheckState(1, Qt.Unchecked)
 
@@ -761,9 +768,10 @@ class ViewerWindow(QMainWindow):
         if not isinstance(data, dict):
             for s in self.similar_items:
                 item.addChild(QTreeWidgetItem([s]))
-                if not isinstance(data, self.noPrintTypes):
-                    item.setCheckState(1, Qt.Unchecked)
-                    self.checkableItems.append(item)
+            if not isinstance(data, self.noPrintTypes):
+                for c in range(item.childCount()):
+                    item.child(c).setCheckState(1, Qt.Unchecked)
+                    self.checkableItems.append(item.child(c))
         else:
             for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
                 item.addChild(QTreeWidgetItem([k]))
@@ -773,9 +781,10 @@ class ViewerWindow(QMainWindow):
                 else:
                     for s in self.similar_items:
                         child.addChild(QTreeWidgetItem([s]))
-                        if not isinstance(data[k], self.noPrintTypes):
-                            child.setCheckState(1, Qt.Unchecked)
-                            self.checkableItems.append(child)
+                    if not isinstance(data[k], self.noPrintTypes):
+                        for c in range(child.childCount()):
+                            child.child(c).setCheckState(1, Qt.Unchecked)
+                            self.checkableItems.append(child.child(c))
 
     def _update_tree(self):
         """ Add new data to TreeWidget. """
@@ -788,10 +797,11 @@ class ViewerWindow(QMainWindow):
         self.Tree.clear()
         self.Tree.addTopLevelItems(itemList)
         if self.treetabs.currentWidget() == self.secTree:
-            self._update_tree_sec()
+            self._update_treetab(1)
 
     def _update_tree_sec(self):
         """ Generate or hide the flipped tree. """
+        self.checkableItems = []
         # get TopLevelItem of the current item as a reference
         ref = self.Tree.currentItem()
         self.secTree.clear()
@@ -818,16 +828,26 @@ class ViewerWindow(QMainWindow):
 
     def _update_treetab(self, index):
         """ Update the currently selected treetab, on switching. """
-        disOpt = ["Difference"]
+        # disOpt = ["Difference"]
+        if self.diffBtn.isVisible():
+            self._start_diff()
         if index == 1:
-            for option in self.menuStart.actions():
-                if option.text() in disOpt:
-                    option.setEnabled(False)
+            # for option in self.menuStart.actions():
+            #     if option.text() in disOpt:
+            #         option.setEnabled(False)
             self._update_tree_sec()
+            pTree = self.Tree
         else:
-            for option in self.menuStart.actions():
-                if option.text() in disOpt:
-                    option.setEnabled(True)
+            pTree = self.secTree
+            # for option in self.menuStart.actions():
+            #     if option.text() in disOpt:
+            #         option.setEnabled(True)
+        cTree = self.treetabs.currentWidget()
+        for n in range(pTree.topLevelItemCount()):
+            tl_item = pTree.topLevelItem(n)
+            if tl_item.text(0)[:4] == "Diff":
+                cTree.addTopLevelItem(pTree.takeTopLevelItem(n))
+
 
 
     ## Public Methods
