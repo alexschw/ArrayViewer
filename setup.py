@@ -21,6 +21,7 @@ if __name__ == "__main__":
         url="https://github.com/alexschw/ArrayViewer",
         install_requires=REQUIREMENTS,
         scripts=['aview'],
+        entry_points={"gui_scripts": ["aview = ArrayViewer.Viewer:main",]},
         python_requires=">=3.0",
         description="ArrayViewer",
         package_data={'ArrayViewer':['*.py']},
