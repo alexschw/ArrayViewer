@@ -173,7 +173,7 @@ class GraphWidget(QWidget):
         """ Add a colorbar to the graph or remove it, if it is existing. """
         if self._img is None:
             return
-        if minmax is not None:
+        if minmax is not None and not isinstance(self._clim[0], bool):
             self._img.set_clim(
                 vmin=minmax[0] * (self._clim[1] - self._clim[0])
                 + self._clim[0], vmax=minmax[1] * self._clim[1]
