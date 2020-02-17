@@ -379,9 +379,18 @@ class ViewerWindow(QMainWindow):
         self.diffNo = 0
         self.keys = []
         self.cText = []
+        self.checkableItems = []
         self.slices = {}
         self._update_tree()
         self.Graph.clear()
+
+    def remove_from_checkables(self, item_list):
+        """ Remove items from the checkableItems list. As it causes errors. """
+        for item in item_list:
+            if item in self.checkableItems:
+                self.checkableItems.remove(item)
+            if item.childCount() > 0:
+                self.remove_from_checkables(item.takeChildren())
 
     def _delete_data(self):
         """ Delete the selected data. """
@@ -393,6 +402,8 @@ class ViewerWindow(QMainWindow):
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
             self.keys.remove(dText[0])
+        self.remove_from_checkables(citem.takeChildren())
+
         (citem.parent() or self.Tree.invisibleRootItem()).removeChild(citem)
 
     def _dlg_combine(self):
