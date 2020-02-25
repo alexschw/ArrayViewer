@@ -23,6 +23,7 @@ import numpy as np
 from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from ArrayViewer.Slider import rangeSlider
 from ArrayViewer.Data import Loader, h5py
+from ArrayViewer.Style import set_darkmode
 
 def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
@@ -278,6 +279,8 @@ class ViewerWindow(QMainWindow):
                                    self._draw_data, act_grp=ag_plt)
         _menu_opt(menu, menuPlot, "Keep Slice on data change",
                   self._set_fixate_view, act_grp=ag_plt)
+        _menu_opt(menu, menuPlot, "Dark Window mode",
+                  lambda x: set_darkmode(self.app, x), act_grp=ag_plt)
 
 
         self.setMenuBar(menu)
@@ -704,6 +707,9 @@ class ViewerWindow(QMainWindow):
         if isinstance(self[0], self.noPrintTypes):
             return
         curr_slice = []
+        # Check if the dimensions match and return silently otherwise
+        if len(self[0].shape) != self.Shape.columnCount():
+            return
         # For all (non-hidden) widgets
         for n in range(self.Shape.columnCount()):
             if self.Shape.itemAtPosition(1, n).widget().isHidden():
@@ -839,20 +845,13 @@ class ViewerWindow(QMainWindow):
 
     def _update_treetab(self, index):
         """ Update the currently selected treetab, on switching. """
-        # disOpt = ["Difference"]
         if self.diffBtn.isVisible():
             self._start_diff()
         if index == 1:
-            # for option in self.menuStart.actions():
-            #     if option.text() in disOpt:
-            #         option.setEnabled(False)
             self._update_tree_sec()
             pTree = self.Tree
         else:
             pTree = self.secTree
-            # for option in self.menuStart.actions():
-            #     if option.text() in disOpt:
-            #         option.setEnabled(True)
         cTree = self.treetabs.currentWidget()
         for n in range(pTree.topLevelItemCount()):
             tl_item = pTree.topLevelItem(n)
