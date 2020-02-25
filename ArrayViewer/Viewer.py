@@ -8,6 +8,7 @@ Base Script of the Array Viewer
 import sys
 from functools import reduce
 from operator import getitem
+from configparser import ConfigParser, MissingSectionHeaderError
 
 import os.path
 from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
@@ -23,7 +24,7 @@ import numpy as np
 from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from ArrayViewer.Slider import rangeSlider
 from ArrayViewer.Data import Loader, h5py
-from ArrayViewer.Style import set_darkmode
+from ArrayViewer.Style import dark_qpalette
 
 def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
@@ -48,11 +49,12 @@ def _fl_cast(tpl):
 
 class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
-    def __init__(self, application=None, parent=None):
+    def __init__(self, application=None, config=None, parent=None):
         """ Initialize the window. """
         super(ViewerWindow, self).__init__(parent)
         # set class variables
         self.app = application
+        self.config = config
         self._data = {}
         self.slices = {}
         self.cText = []
@@ -67,12 +69,6 @@ class ViewerWindow(QMainWindow):
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
-        try:
-            f = open(os.path.expanduser("~/.arrayviewer"), "r")
-            self.first_to_last = (f.read() == "1")
-            f.close()
-        except IOError:
-            self.first_to_last = False
 
         # set the loader from a separate class
         self.loader = Loader()
@@ -262,10 +258,8 @@ class ViewerWindow(QMainWindow):
         # Plot menu
         menuPlot = QMenu("Plot", menu)
         menu.addAction(menuPlot.menuAction())
-
         ag_plt = QActionGroup(self)
         ag_plt.setExclusive(False)
-
         self.MMM = _menu_opt(menu, menuPlot, "min-mean-max plot",
                              lambda: self._checkboxes(False), act_grp=ag_plt)
         self.MMM.triggered.connect(self._draw_data)
@@ -274,20 +268,20 @@ class ViewerWindow(QMainWindow):
         self.Plot2D.triggered.connect(self._draw_data)
         self.Plot3D = _menu_opt(menu, menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)
-        menuPlot.addSeparator()
         self.PrintFlat = _menu_opt(menu, menuPlot, "Print Values as text",
                                    self._draw_data, act_grp=ag_plt)
+        menuPlot.addSeparator()
         _menu_opt(menu, menuPlot, "Keep Slice on data change",
                   self._set_fixate_view, act_grp=ag_plt)
-        _menu_opt(menu, menuPlot, "Dark Window mode",
-                  lambda x: set_darkmode(self.app, x), act_grp=ag_plt)
-
-
+        dm = _menu_opt(menu, menuPlot, "Dark Window mode", self._set_dark_mode,
+                       act_grp=ag_plt)
+        if self.config.getboolean('opt', 'darkmode'):
+            dm.setChecked(True)
+            self._set_dark_mode(True)
         self.setMenuBar(menu)
 
         # Add a context menu
         self.contextMenu = QMenu(self)
-
         _menu_opt(self, self.contextMenu, "Rename", self._rename_key)
         _menu_opt(self, self.contextMenu, "Reshape", self._dlg_reshape)
         self.combine_opt = _menu_opt(self, self.contextMenu, "Combine Dataset",
@@ -461,20 +455,12 @@ class ViewerWindow(QMainWindow):
         FD.setOptions(QFileDialog.DontUseNativeDialog)
         FD.setFileMode(QFileDialog.ExistingFiles)
         checkbox = QCheckBox("Put first dimension to the end", FD)
-        checkbox.setChecked(self.first_to_last)
+        checkbox.setChecked(self.config.getboolean('opt', 'first_to_last'))
         FD.layout().addWidget(checkbox, 4, 1, 1, 1)
         if FD.exec_():
             fnames = FD.selectedFiles()
-            new_ftl = checkbox.checkState()
-            if self.first_to_last != new_ftl:
-                self.first_to_last = new_ftl
-                f = open(os.path.expanduser("~/.arrayviewer"), "w")
-                if self.first_to_last:
-                    f.write("1")
-                else:
-                    f.write("0")
-                f.close()
-
+            self.config.set('opt', 'first_to_last',
+                            str(checkbox.checkState() != 0))
             # For all files
             if isinstance(fnames[0], list):
                 fnames = fnames[0]
@@ -688,6 +674,14 @@ class ViewerWindow(QMainWindow):
                                                 './figure.png', ftyp)
             if fname:
                 figure.savefig(fname[0])
+
+    def _set_dark_mode(self, dm=True):
+        """ Set a dark mode for the Application. """
+        self.config.set('opt', 'darkmode', str(dm))
+        if dm:
+            self.app.setPalette(dark_qpalette())
+        else:
+            self.app.setPalette(self.app.style().standardPalette())
 
     def _set_fixate_view(self, new_val):
         self.fixate_view = new_val
@@ -986,11 +980,21 @@ class ViewerWindow(QMainWindow):
 def main():
     """ Main Function. """
     app = QApplication(sys.argv)
-    window = ViewerWindow(app)
+    config = ConfigParser()
+    try:
+        assert config.read(os.path.expanduser("~/.arrayviewer"))
+    except (AssertionError, MissingSectionHeaderError) as e:
+        config.add_section('opt')
+        config.set('opt', 'first_to_last', 'False')
+        config.set('opt', 'darkmode', 'False')
+    window = ViewerWindow(app, config)
     fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
     window.load_files(fnames)
     window.show()
-    sys.exit(app.exec_())
+    app.exec_()
+    with open(os.path.expanduser("~/.arrayviewer"), "w") as conf_file:
+        config.write(conf_file)
+    sys.exit()
 
 if __name__ == '__main__':
     main()
