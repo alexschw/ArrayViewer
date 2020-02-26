@@ -864,8 +864,8 @@ class ViewerWindow(QMainWindow):
         fnames = list(dict.fromkeys(fnames))
         for fname in fnames:
             # Check if the data already exists
-            splitted = fname.split("/")
-            key = str(splitted[-2] + " - " + splitted[-1])
+            splitted = os.path.split(fname)
+            key = str(os.path.split(splitted[0])[1] + " - " + splitted[1])
             # Show warning if data exists
             if key in self.keys:
                 txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
