@@ -702,15 +702,15 @@ class ViewerWindow(QMainWindow):
         if isinstance(self[0], self.noPrintTypes):
             return
         curr_slice = []
-        # Check if the dimensions match and return silently otherwise
-        if len(self[0].shape) != self.Shape.columnCount():
-            return
         # For all (non-hidden) widgets
         for n in range(self.Shape.columnCount()):
             if self.Shape.itemAtPosition(1, n).widget().isHidden():
                 break
             # Get the text and the maximum value within the dimension
             curr_slice.append(self.Shape.itemAtPosition(1, n).widget().text())
+        # Check if the dimensions match and return silently otherwise
+        if len(self[0].shape) != len(curr_slice):
+            return
         self.slices[self._slice_key()] = curr_slice
         self._draw_data()
 
