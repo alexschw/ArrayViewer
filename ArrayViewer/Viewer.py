@@ -452,7 +452,9 @@ class ViewerWindow(QMainWindow):
     def _dlg_load_data(self):
         """ Open file-dialog to choose one or multiple files. """
         FD = QFileDialog(self, 'Open data file', '.',
-                         "(*.data *.hdf5 *.mat *.npy *.txt)")
+                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt);;
+                          Images (*.jpg *.bmp *.png *.tiff);;
+                          All (*)""")
         FD.setOptions(QFileDialog.DontUseNativeDialog)
         FD.setFileMode(QFileDialog.ExistingFiles)
         checkbox = QCheckBox("Put first dimension to the end", FD)
