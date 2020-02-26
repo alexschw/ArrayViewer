@@ -84,6 +84,7 @@ class ViewerWindow(QMainWindow):
 
         # General Options
         self.setWindowTitle("Array Viewer")
+        self.app.setStyle("Fusion")
 
         CWgt = QWidget(self)
         self.setCentralWidget(CWgt)
@@ -886,7 +887,7 @@ class ViewerWindow(QMainWindow):
             loadItem = QTreeWidgetItem([self.lMsg])
             loadItem.setForeground(0, QColor("grey"))
             self.Tree.addTopLevelItem(loadItem)
-            self.loader.load.emit(fname, key, self.first_to_last)
+            self.loader.load.emit(fname, key, self.config.getboolean('opt', 'first_to_last'))
 
     ## PyQt Slots
     @pyqtSlot(str, int)
