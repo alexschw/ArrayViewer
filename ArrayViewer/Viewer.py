@@ -39,12 +39,21 @@ def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     submenu.addAction(btn)
     return btn
 
+class str_key(str):
+    """ A string overload for sorting keys. Strings before numbers. """
+    def __init__(self, string):
+        super(str, self).__init__()
+    def __lt__(self, other):
+        if not isinstance(other, str):
+            return True
+        return super(str, self).__lt__(other)
+
 def _fl_cast(tpl):
     """ Try casting keys to float. """
     try:
-        return "{:10.2f}".format(float(tpl))
+        return float(tpl)
     except ValueError:
-        return str(tpl)
+        return str_key(tpl)
 
 
 class ViewerWindow(QMainWindow):
