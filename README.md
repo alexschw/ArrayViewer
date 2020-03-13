@@ -12,3 +12,5 @@ The ArrayViewer requires the following python-packages:
 * scipy
 * h5py
 * matplotlib
+* Pillow
+* natsort

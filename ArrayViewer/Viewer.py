@@ -8,6 +8,7 @@ Base Script of the Array Viewer
 import sys
 from functools import reduce
 from operator import getitem
+from natsort import realsorted
 from configparser import ConfigParser, MissingSectionHeaderError
 
 import os.path
@@ -39,22 +40,9 @@ def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     submenu.addAction(btn)
     return btn
 
-class str_key(str):
-    """ A string overload for sorting keys. Strings before numbers. """
-    def __init__(self, string):
-        super(str, self).__init__()
-    def __lt__(self, other):
-        if not isinstance(other, str):
-            return True
-        return super(str, self).__lt__(other)
-
-def _fl_cast(tpl):
-    """ Try casting keys to float. """
-    try:
-        return float(tpl)
-    except ValueError:
-        return str_key(tpl)
-
+def _lowercase(key):
+    """ Convenience Function. Return lowercase of string. """
+    return key.lower()
 
 class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
@@ -417,7 +405,7 @@ class ViewerWindow(QMainWindow):
         """ Open a dialog to combine the dataset. """
         trace = self._get_obj_trace(self.Tree.currentItem())
         data = self[trace]
-        keys = sorted(data, key=_fl_cast)
+        keys = realsorted(data, key=_lowercase)
         d0 = data.get(keys[0])
         npt = self.noPrintTypes + (dict,)
         # Search for occurences of arrays with the same shape as the first one
@@ -777,7 +765,7 @@ class ViewerWindow(QMainWindow):
 
     def _update_subtree(self, item, data):
         """ Add a new subtree to the current QTreeWidgetItem. """
-        for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
+        for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
             item.addChild(QTreeWidgetItem([k]))
             child = item.child(n)
             if isinstance(data[k], dict):
@@ -796,7 +784,7 @@ class ViewerWindow(QMainWindow):
                     item.child(c).setCheckState(1, Qt.Unchecked)
                     self.checkableItems.append(item.child(c))
         else:
-            for n, k in enumerate(sorted(data.keys(), key=_fl_cast)):
+            for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
                 item.addChild(QTreeWidgetItem([k]))
                 child = item.child(n)
                 if isinstance(data[k], dict):
