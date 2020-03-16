@@ -14,13 +14,11 @@ import os.path
 from natsort import realsorted
 from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
-                             QFileDialog, QFrame, QGridLayout, QHBoxLayout,
-                             QHeaderView, QLabel, QLineEdit, QMainWindow,
-                             QMenu, QMenuBar, QMessageBox, QPushButton,
-                             QTabWidget, QTreeWidget, QTreeWidgetItem,
-                             QVBoxLayout, QWidget)
+                             QFileDialog, QGridLayout, QLabel, QLineEdit,
+                             QMainWindow, QMenu, QMenuBar, QMessageBox,
+                             QPushButton, QTreeWidgetItem, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
-from PyQt5.QtCore import pyqtSlot, QRect, QRegExp, Qt, QThread, QTimer
+from PyQt5.QtCore import pyqtSlot, QRegExp, Qt, QThread, QTimer
 import numpy as np
 from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from ArrayViewer.Slider import rangeSlider
@@ -28,9 +26,9 @@ from ArrayViewer.Data import Loader, h5py
 from ArrayViewer.Style import dark_qpalette
 from ArrayViewer.DataTree import DataTree
 
-def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
+def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
-    btn = QAction(mbar)
+    btn = QAction(menu)
     btn.setText(text)
     btn.triggered.connect(function)
     if shortcut:
@@ -38,7 +36,7 @@ def _menu_opt(mbar, submenu, text, function, shortcut=None, act_grp=None):
     if act_grp:
         btn.setActionGroup(act_grp)
         btn.setCheckable(True)
-    submenu.addAction(btn)
+    menu.addAction(btn)
     return btn
 
 
@@ -59,7 +57,6 @@ class ViewerWindow(QMainWindow):
         self.diffNo = 0
         self.maxDims = 6
         self.fixate_view = False
-        self.changing_item = None
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -74,72 +71,68 @@ class ViewerWindow(QMainWindow):
         self.lMsg = 'loading...'
         self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
-        self.setAcceptDrops(True)
 
         # General Options
         self.setWindowTitle("Array Viewer")
         self.app.setStyle("Fusion")
 
-        CWgt = QWidget(self)
-        self.setCentralWidget(CWgt)
-        vLayout = QVBoxLayout(CWgt)
-
-        # Get the general Frame/Box Structure
-        QFra = QFrame(CWgt)
-        vLayout.addWidget(QFra)
-        grLayout = QGridLayout()
-        hLayout = QHBoxLayout(QFra)
-        hLayout.addLayout(grLayout)
-
-        # Add the Tree Widgets
-        self.treetabs = DataTree(self, QFra)
-        grLayout.addWidget(self.treetabs, 0, 0, 1, 2)
+        self.__addWidgets()
 
         # Initialize the menu
         self.__initMenu()
 
+    def __addWidgets(self):
+        """ Add the widgets in the main Window. """
+        # Create the general Structure
+        CWgt = QWidget(self)
+        self.setCentralWidget(CWgt)
+        grLayout = QGridLayout(CWgt)
+
+        # Add the Tree Widgets
+        self.datatree = DataTree(self, CWgt)
+        grLayout.addWidget(self.datatree, 0, 0, 1, 2)
+
         # Add a hidden Diff Button
-        self.diffBtn = QPushButton(QFra)
-        self.diffBtn.setText("Calculate the difference")
+        self.diffBtn = QPushButton("Calculate the difference", CWgt)
         self.diffBtn.released.connect(self._calc_diff)
         self.diffBtn.hide()
         grLayout.addWidget(self.diffBtn, 1, 0, 1, 2)
 
         # Add the min and max labels
-        self.txtMin = QLabel(QFra)
-        self.txtMin.setText("min : ")
+        self.txtMin = QLabel("min : ", CWgt)
         grLayout.addWidget(self.txtMin, 2, 0)
-        self.txtMax = QLabel(QFra)
-        self.txtMax.setText("max : ")
+        self.txtMax = QLabel("max : ", CWgt)
         grLayout.addWidget(self.txtMax, 2, 1)
 
         # Add the "Transpose"-Checkbox
-        self.Transp = QCheckBox(QFra)
-        self.Transp.setText("Transpose")
+        self.Transp = QCheckBox("Transpose", CWgt)
         self.Transp.stateChanged.connect(self._draw_data)
         grLayout.addWidget(self.Transp, 3, 0, 1, 2)
 
         # Add the Permute Field
-        self.Prmt = QLineEdit(QFra)
-        self.Prmt.setText("")
+        self.Prmt = QLineEdit("", CWgt)
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         self.Prmt.returnPressed.connect(self._permute_data)
         grLayout.addWidget(self.Prmt, 4, 0)
-        self.PrmtBtn = QPushButton(QFra)
-        self.PrmtBtn.setText("Permute")
+        self.PrmtBtn = QPushButton("Permute", CWgt)
         self.PrmtBtn.released.connect(self._permute_data)
         grLayout.addWidget(self.PrmtBtn, 4, 1)
 
         # Add the Basic Graph Widget
-        self.Graph = GraphWidget(QFra)
+        self.Graph = GraphWidget(self)
         self.Graph.setSizePolicy(QSP.Expanding, QSP.Expanding)
-        grLayout.addWidget(self.Graph, 0, 2, 0, 1)
+        grLayout.addWidget(self.Graph, 0, 2, 4, 1)
+
+        # Message Field
+        self.errMsgTimer = QTimer(self)
+        self.errMsg = QLabel("", CWgt)
+        grLayout.addWidget(self.errMsg, 4, 2)
 
         # Add the Color Slider
-        self.Sldr = rangeSlider(QFra)
+        self.Sldr = rangeSlider(CWgt)
         self.Sldr.setSizePolicy(QSP.Fixed, QSP.Expanding)
         self.Sldr.sliderReleased.connect(self._update_colorbar)
-        grLayout.addWidget(self.Sldr, 0, 3, 0, 1)
+        grLayout.addWidget(self.Sldr, 0, 3, 5, 1)
 
         # Shape Widget
         self.Shape = QGridLayout()
@@ -147,8 +140,7 @@ class ViewerWindow(QMainWindow):
         rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
         self.Validator.setRegExp(QRegExp(rex))
         for n in range(self.maxDims):
-            label = QLabel()
-            label.setText("0")
+            label = QLabel("0")
             label.mousePressEvent = self._perform_operation
             label.hide()
             self.Shape.addWidget(label, 0, n, 1, 1)
@@ -157,47 +149,40 @@ class ViewerWindow(QMainWindow):
             lineedit.editingFinished.connect(self._set_slice)
             lineedit.hide()
             self.Shape.addWidget(lineedit, 1, n, 1, 1)
-        vLayout.addLayout(self.Shape)
+        grLayout.addLayout(self.Shape, 5, 0, 1, 4)
 
-        # Message Field
-        self.errMsgTimer = QTimer(self)
-        self.errMsg = QLabel("")
-        grLayout.addWidget(self.errMsg, 5, 2)
 
     def __initMenu(self):
         """ Setup the menu bar. """
         menu = QMenuBar(self)
-        menu.setGeometry(QRect(0, 0, 800, 10))
         menuStart = QMenu("Start", menu)
         menu.addAction(menuStart.menuAction())
 
-        _menu_opt(menu, menuStart, "Load data", self._dlg_load_data, "Ctrl+O")
-        _menu_opt(menu, menuStart, "Save", self._save_chart, "Ctrl+S")
-        _menu_opt(menu, menuStart, "New Data", self._dlg_new_data, "Ctrl+N")
-        _menu_opt(menu, menuStart, "Reshape", self._dlg_reshape, "Ctrl+R")
-        _menu_opt(menu, menuStart, "Difference", self._start_diff, "Ctrl+D")
-        _menu_opt(menu, menuStart, "Delete All Data", self._delete_all_data,
+        _menu_opt(menuStart, "Load data", self._dlg_load_data, "Ctrl+O")
+        _menu_opt(menuStart, "Save", self._save_chart, "Ctrl+S")
+        _menu_opt(menuStart, "New Data", self._dlg_new_data, "Ctrl+N")
+        _menu_opt(menuStart, "Reshape", self._dlg_reshape, "Ctrl+R")
+        _menu_opt(menuStart, "Difference", self._start_diff, "Ctrl+D")
+        _menu_opt(menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
-        self.menuStart = menuStart
 
         # Graph menu
         menuGraph = QMenu("Graph", menu)
         menu.addAction(menuGraph.menuAction())
 
-        _menu_opt(menu, menuGraph, "Colorbar",
-                  self._add_colorbar).setCheckable(True)
+        _menu_opt(menuGraph, "Colorbar", self._add_colorbar).setCheckable(True)
         menuGraph.addSeparator()
 
         ag_cm = QActionGroup(self)
-        _menu_opt(menu, menuGraph, "Colormap 'jet'",
+        _menu_opt(menuGraph, "Colormap 'jet'",
                   lambda: self.Graph.colormap('jet'), act_grp=ag_cm)
-        _menu_opt(menu, menuGraph, "Colormap 'gray'",
+        _menu_opt(menuGraph, "Colormap 'gray'",
                   lambda: self.Graph.colormap('gray'), act_grp=ag_cm)
-        _menu_opt(menu, menuGraph, "Colormap 'hot'",
+        _menu_opt(menuGraph, "Colormap 'hot'",
                   lambda: self.Graph.colormap('hot'), act_grp=ag_cm)
-        _menu_opt(menu, menuGraph, "Colormap 'bwr'",
+        _menu_opt(menuGraph, "Colormap 'bwr'",
                   lambda: self.Graph.colormap('bwr'), act_grp=ag_cm)
-        _menu_opt(menu, menuGraph, "Colormap 'viridis'",
+        _menu_opt(menuGraph, "Colormap 'viridis'",
                   lambda: self.Graph.colormap('viridis'),
                   act_grp=ag_cm).setChecked(True)
 
@@ -206,15 +191,15 @@ class ViewerWindow(QMainWindow):
         menu.addAction(menuOpr.menuAction())
 
         ag_op = QActionGroup(self)
-        _menu_opt(menu, menuOpr, "None", self._set_operation,
+        _menu_opt(menuOpr, "None", self._set_operation,
                   act_grp=ag_op).setChecked(True)
-        _menu_opt(menu, menuOpr, "Min", lambda: self._set_operation('min'),
+        _menu_opt(menuOpr, "Min", lambda: self._set_operation('min'),
                   act_grp=ag_op)
-        _menu_opt(menu, menuOpr, "Mean", lambda: self._set_operation('mean'),
+        _menu_opt(menuOpr, "Mean", lambda: self._set_operation('mean'),
                   act_grp=ag_op)
-        _menu_opt(menu, menuOpr, "Median",
-                  lambda: self._set_operation('median'), act_grp=ag_op)
-        _menu_opt(menu, menuOpr, "Max", lambda: self._set_operation('max'),
+        _menu_opt(menuOpr, "Median", lambda: self._set_operation('median'),
+                  act_grp=ag_op)
+        _menu_opt(menuOpr, "Max", lambda: self._set_operation('max'),
                   act_grp=ag_op)
 
 
@@ -223,20 +208,20 @@ class ViewerWindow(QMainWindow):
         menu.addAction(menuPlot.menuAction())
         ag_plt = QActionGroup(self)
         ag_plt.setExclusive(False)
-        self.MMM = _menu_opt(menu, menuPlot, "min-mean-max plot",
+        self.MMM = _menu_opt(menuPlot, "min-mean-max plot",
                              lambda: self._checkboxes(False), act_grp=ag_plt)
         self.MMM.triggered.connect(self._draw_data)
-        self.Plot2D = _menu_opt(menu, menuPlot, "2D as plot",
+        self.Plot2D = _menu_opt(menuPlot, "2D as plot",
                                 lambda: self._checkboxes(True), act_grp=ag_plt)
         self.Plot2D.triggered.connect(self._draw_data)
-        self.Plot3D = _menu_opt(menu, menuPlot, "3D as RGB", self._draw_data,
+        self.Plot3D = _menu_opt(menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)
-        self.PrintFlat = _menu_opt(menu, menuPlot, "Print Values as text",
+        self.PrintFlat = _menu_opt(menuPlot, "Print Values as text",
                                    self._draw_data, act_grp=ag_plt)
         menuPlot.addSeparator()
-        _menu_opt(menu, menuPlot, "Keep Slice on data change",
-                  self._set_fixate_view, act_grp=ag_plt)
-        dm = _menu_opt(menu, menuPlot, "Dark Window mode", self._set_dark_mode,
+        _menu_opt(menuPlot, "Keep Slice on data change", self._set_fixate_view,
+                  act_grp=ag_plt)
+        dm = _menu_opt(menuPlot, "Dark Window mode", self._set_dark_mode,
                        act_grp=ag_plt)
         if self.config.getboolean('opt', 'darkmode'):
             dm.setChecked(True)
@@ -245,11 +230,11 @@ class ViewerWindow(QMainWindow):
 
         # Add a context menu
         self.contextMenu = QMenu(self)
-        _menu_opt(self, self.contextMenu, "Rename", self.treetabs.rename_key)
-        _menu_opt(self, self.contextMenu, "Reshape", self._dlg_reshape)
-        self.combine_opt = _menu_opt(self, self.contextMenu, "Combine Dataset",
+        _menu_opt(self.contextMenu, "Rename", self.datatree.rename_key)
+        _menu_opt(self.contextMenu, "Reshape", self._dlg_reshape)
+        self.combine_opt = _menu_opt(self.contextMenu, "Combine Dataset",
                                      self._dlg_combine)
-        _menu_opt(self, self.contextMenu, "Delete Data", self._delete_data)
+        _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
 
     def __getitem__(self, item):
         """ Gets the current data. """
@@ -296,9 +281,9 @@ class ViewerWindow(QMainWindow):
                                                       item0 - item1}
             self.keys.append("Diff " + str(self.diffNo))
             self.diffNo += 1
-            self.treetabs.currentWidget().setColumnHidden(1, True)
+            self.datatree.currentWidget().setColumnHidden(1, True)
             self.diffBtn.hide()
-            self.treetabs.update_tree()
+            self.datatree.update_tree()
 
     def _change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
@@ -339,16 +324,17 @@ class ViewerWindow(QMainWindow):
         self.diffNo = 0
         self.keys = []
         self.cText = []
-        self.checkableItems = []
         self.slices = {}
-        self.treetabs.update_tree()
+        self.datatree.clear_tree()
         self.Graph.clear()
 
     def _dropdown(self, _):
         """ Add a context menu. """
-        if self.treetabs.current_item():
+        if self.datatree.current_item():
+            if str(self.datatree.current_item().text(0)) == self.lMsg:
+                return
             self.combine_opt.setVisible(
-                self.treetabs.current_item().childCount() != 0)
+                self.datatree.current_item().childCount() != 0)
             self.contextMenu.popup(QCursor.pos())
 
     def remove_from_checkables(self, item_list):
@@ -361,20 +347,20 @@ class ViewerWindow(QMainWindow):
 
     def _delete_data(self):
         """ Delete the selected data. """
-        citem = self.treetabs.current_item()
+        citem = self.datatree.current_item()
         if str(citem.text(0)) == self.lMsg:
             return
         dText = self._get_obj_trace(citem)
-        citem = self.treetabs.current_item()
+        citem = self.datatree.current_item()
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
             self.keys.remove(dText[0])
         self.remove_from_checkables(citem.takeChildren())
-        (citem.parent() or self.treetabs.root).removeChild(citem)
+        (citem.parent() or self.datatree.root).removeChild(citem)
 
     def _dlg_combine(self):
         """ Open a dialog to combine the dataset. """
-        trace = self._get_obj_trace(self.treetabs.current_item())
+        trace = self._get_obj_trace(self.datatree.current_item())
         data = self[trace]
         keys = realsorted(data, key=lambda x: x.lower())
         d0 = data.get(keys[0])
@@ -415,7 +401,7 @@ class ViewerWindow(QMainWindow):
             _ = [self[trace[:-1]].pop(key) for key in n_keys]
         # Put new dimension at the end and remove singleton dimensions.
         self[trace] = np.moveaxis(self[trace], 0, -1).squeeze()
-        self.treetabs.update_tree()
+        self.datatree.update_tree()
 
     def _dlg_load_data(self):
         """ Open file-dialog to choose one or multiple files. """
@@ -446,15 +432,15 @@ class ViewerWindow(QMainWindow):
         elif key != 0:
             self._data[key] = {"Value": _data}
             self.keys.append(key)
-            self.treetabs.update_tree()
+            self.datatree.update_tree()
 
     def _dlg_reshape(self):
         """ Open the reshape box to reshape the current data. """
-        cTree = self.treetabs.currentWidget()  # The current Tree
+        cTree = self.datatree.currentWidget()  # The current Tree
         if cTree.currentItem().childCount() != 0:
             # If the current item has children try to reshape all of them
             tr = self._get_obj_trace(cTree.currentItem())
-            if self.treetabs.is_files_tree():
+            if self.datatree.is_files_tree():
                 keys = [tr + [k] for k in self.similar_items
                         if isinstance(self[tr + [k]],
                                       (np.ndarray, h5py._hl.dataset.Dataset))]
@@ -526,8 +512,8 @@ class ViewerWindow(QMainWindow):
             item = item.parent()
             dText.insert(0, str(item.text(0)))
         # If in secondary tree revert the order
-        if not self.treetabs.is_files_tree():
-            tli = self.treetabs.current_item()
+        if not self.datatree.is_files_tree():
+            tli = self.datatree.current_item()
             while tli.parent() is not None:
                 tli = tli.parent()
             if tli.text(0)[:4] != "Diff":
@@ -579,7 +565,7 @@ class ViewerWindow(QMainWindow):
         self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
                       " to " + str(sh), 0)
 
-    def _pop(self, key):
+    def pop(self, key):
         """ Returns the current data and removes it from the dict. """
         return reduce(getitem, key[:-1], self._data).pop(key[-1])
 
@@ -639,10 +625,10 @@ class ViewerWindow(QMainWindow):
         """ Start the diff view. """
         if self.diffBtn.isVisible():
             self.diffBtn.hide()
-            self.treetabs.currentWidget().setColumnHidden(1, True)
+            self.datatree.currentWidget().setColumnHidden(1, True)
         else:
             self.diffBtn.show()
-            self.treetabs.currentWidget().setColumnHidden(1, False)
+            self.datatree.currentWidget().setColumnHidden(1, False)
             for item in self.checkableItems:
                 item.setCheckState(1, Qt.Unchecked)
 
@@ -714,7 +700,7 @@ class ViewerWindow(QMainWindow):
                     self.keys.remove(key)
             loadItem = QTreeWidgetItem([self.lMsg])
             loadItem.setForeground(0, QColor("grey"))
-            self.treetabs.Tree.addTopLevelItem(loadItem)
+            self.datatree.Tree.addTopLevelItem(loadItem)
             self.loader.load.emit(fname, key, self.config.getboolean(
                 'opt', 'first_to_last'))
 
@@ -739,21 +725,9 @@ class ViewerWindow(QMainWindow):
         if key != "":
             self._data[key] = data
             self.keys.append(key)
-        self.treetabs.update_tree()
+        self.datatree.update_tree()
 
     ## Overloaded PyQt Methods
-    def dragEnterEvent(self, ev):
-        """ Catch dragEnterEvents for file dropdown. """
-        if ev.mimeData().hasUrls():
-            ev.acceptProposedAction()
-
-    def dropEvent(self, ev):
-        """ Catch dropEvent to load the dropped file. """
-        fnames = []
-        for url in ev.mimeData().urls():
-            fnames.append(url.toLocalFile())
-        self.load_files(fnames)
-
     def keyPressEvent(self, ev):
         """ Catch keyPressEvents for [Delete] and [Ctrl]+[C]. """
         if ev.key() == Qt.Key_Delete:

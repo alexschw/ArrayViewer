@@ -113,7 +113,7 @@ class GraphWidget(QWidget):
         self._canv.ax = self._figure.add_axes([.15, .15, .75, .75])
         self._canv.canvas = self._canv.ax.figure.canvas
         self._canv.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.noPrintTypes = parent.parent().parent().noPrintTypes
+        self.noPrintTypes = parent.noPrintTypes
         self._clim = (0, 1)
         self._img = None
         self._cb = None

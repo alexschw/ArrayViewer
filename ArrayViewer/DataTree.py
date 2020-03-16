@@ -2,11 +2,7 @@
 Data Tree for the ArrayViewer
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
-from functools import reduce
-from operator import getitem
-
 from natsort import realsorted
-from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import (QHeaderView, QTabWidget, QTreeWidget,
                              QTreeWidgetItem)
 from PyQt5.QtWidgets import QSizePolicy as QSP
@@ -18,13 +14,16 @@ def _lowercase(key):
 
 
 class DataTree(QTabWidget):
+    """ Class Definition for the Data Tree. """
     def __init__(self, viewer, parent=None):
         """ Initialize the Datatree """
         super(DataTree, self).__init__(parent)
         self.old_trace = []
+        self.changing_item = None
         self.viewer = viewer
         self.keys = viewer.keys
         self.noPrintTypes = viewer.noPrintTypes
+        self.checkableItems = viewer.checkableItems
 
         # Add the Tree Widgets
         self.Tree = QTreeWidget(self)
@@ -60,6 +59,13 @@ class DataTree(QTabWidget):
         # Connect Signal at the end to avoid errors
         self.root = self.currentWidget().invisibleRootItem()
         self.currentChanged.connect(self._update_treetab)
+        self.setAcceptDrops(True)
+
+
+    def clear_tree(self):
+        """ Clear the Tree. """
+        self.checkableItems = []
+        self.update_tree()
 
     def current_item(self):
         """ Return the currently selected Item. """
@@ -93,7 +99,7 @@ class DataTree(QTabWidget):
             self.old_trace = []
             return
         # Replace the key
-        self[new_trace] = self._pop(self.old_trace)
+        self.viewer[new_trace] = self.viewer.pop(self.old_trace)
         # If element is top-level-item
         if not self.changing_item.parent() and self.old_trace[0] in self.keys:
             self.keys[self.keys.index(self.old_trace[0])] = new_trace[0]
@@ -104,8 +110,6 @@ class DataTree(QTabWidget):
     def rename_key(self):
         """ Start the renaming of a data-key. """
         self.changing_item = self.Tree.currentItem()
-        if str(self.changing_item.text(0)) == self.lMsg:
-            return
         self.old_trace = self._get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
@@ -200,3 +204,16 @@ class DataTree(QTabWidget):
             self._update_subtree_sec(item, self.viewer._data[ref.text(0)][k])
             itemList.append(item)
         self.secTree.addTopLevelItems(itemList)
+
+    def dragEnterEvent(self, ev):
+        """ Catch dragEnterEvents for file dropdown. """
+        if ev.mimeData().hasUrls():
+            ev.acceptProposedAction()
+
+    def dropEvent(self, ev):
+        """ Catch dropEvent to load the dropped file. """
+        fnames = []
+        for url in ev.mimeData().urls():
+            fnames.append(url.toLocalFile())
+        self.viewer.load_files(fnames)
+
