@@ -674,12 +674,13 @@ class ViewerWindow(QMainWindow):
         """ Load files to the tree. If key already exists, show a Warning. """
         # Remove duplicates
         fnames = list(dict.fromkeys(fnames))
+        new_keys = []
         for fname in fnames:
             # Check if the data already exists
             splitted = os.path.split(fname)
             key = str(os.path.split(splitted[0])[1] + " - " + splitted[1])
             # Show warning if data exists
-            if key in self.keys:
+            if key in self.keys or key in new_keys:
                 txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
                 replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
                                          "Add new Dataset")
@@ -698,6 +699,7 @@ class ViewerWindow(QMainWindow):
                     continue
                 else:
                     self.keys.remove(key)
+            new_keys.append(key)
             loadItem = QTreeWidgetItem([self.lMsg])
             loadItem.setForeground(0, QColor("grey"))
             self.datatree.Tree.addTopLevelItem(loadItem)
