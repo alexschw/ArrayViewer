@@ -12,19 +12,20 @@ from configparser import ConfigParser, MissingSectionHeaderError
 
 import os.path
 from natsort import realsorted
-from PyQt5.QtGui import QColor, QCursor, QIcon, QRegExpValidator
+from PyQt5.QtGui import QColor, QCursor, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QFileDialog, QGridLayout, QLabel, QLineEdit,
                              QMainWindow, QMenu, QMenuBar, QMessageBox,
                              QPushButton, QTreeWidgetItem, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
-from PyQt5.QtCore import pyqtSlot, QRegExp, Qt, QThread, QTimer
+from PyQt5.QtCore import pyqtSlot, Qt, QThread, QTimer
 import numpy as np
 from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from ArrayViewer.Slider import rangeSlider
 from ArrayViewer.Data import Loader, h5py
 from ArrayViewer.Style import dark_qpalette
 from ArrayViewer.DataTree import DataTree
+from ArrayViewer.Shape import ShapeSelector
 
 def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
@@ -52,10 +53,7 @@ class ViewerWindow(QMainWindow):
         self.slices = {}
         self.cText = []
         self.keys = []
-        self.checkableItems = []
         self.diffNo = 0
-        self.maxDims = 6
-        self.fixate_view = False
         self.noPrintTypes = (int, float, str, type(u''), list, tuple)
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -134,21 +132,8 @@ class ViewerWindow(QMainWindow):
         grLayout.addWidget(self.Sldr, 0, 3, 5, 1)
 
         # Shape Widget
-        self.Shape = QGridLayout()
-        self.Validator = QRegExpValidator(self)
-        rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
-        self.Validator.setRegExp(QRegExp(rex))
-        for n in range(self.maxDims):
-            label = QLabel("0")
-            label.mousePressEvent = self._perform_operation
-            label.hide()
-            self.Shape.addWidget(label, 0, n, 1, 1)
-            lineedit = QLineEdit()
-            lineedit.setValidator(self.Validator)
-            lineedit.editingFinished.connect(self._set_slice)
-            lineedit.hide()
-            self.Shape.addWidget(lineedit, 1, n, 1, 1)
-        grLayout.addLayout(self.Shape, 5, 0, 1, 4)
+        self.Shape = ShapeSelector(self)
+        grLayout.addWidget(self.Shape, 5, 0, 1, 4)
 
 
     def __initMenu(self):
@@ -190,15 +175,15 @@ class ViewerWindow(QMainWindow):
         menu.addAction(menuOpr.menuAction())
 
         ag_op = QActionGroup(self)
-        _menu_opt(menuOpr, "None", self._set_operation,
+        _menu_opt(menuOpr, "None", self.Shape.set_operation,
                   act_grp=ag_op).setChecked(True)
-        _menu_opt(menuOpr, "Min", lambda: self._set_operation('min'),
+        _menu_opt(menuOpr, "Min", lambda: self.Shape.set_operation('min'),
                   act_grp=ag_op)
-        _menu_opt(menuOpr, "Mean", lambda: self._set_operation('mean'),
+        _menu_opt(menuOpr, "Mean", lambda: self.Shape.set_operation('mean'),
                   act_grp=ag_op)
-        _menu_opt(menuOpr, "Median", lambda: self._set_operation('median'),
-                  act_grp=ag_op)
-        _menu_opt(menuOpr, "Max", lambda: self._set_operation('max'),
+        _menu_opt(menuOpr, "Median",
+                  lambda: self.Shape.set_operation('median'), act_grp=ag_op)
+        _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('max'),
                   act_grp=ag_op)
 
 
@@ -296,10 +281,10 @@ class ViewerWindow(QMainWindow):
             self.cText = self._get_obj_trace(current)
             # Update the shape widgets based on the datatype
             if isinstance(self[0], self.noPrintTypes):
-                self._update_shape([0], False)
+                self.Shape.update_shape([0], False)
                 self.PrmtBtn.setEnabled(False)
             else:
-                self._update_shape(self[0].shape)
+                self.Shape.update_shape(self[0].shape)
                 self.PrmtBtn.setEnabled(True)
 
     def _checkboxes(self, fromP2D):
@@ -419,7 +404,7 @@ class ViewerWindow(QMainWindow):
         key, _data = self.newDataBox.new_data(self[0], self.Graph.cutout)
         if key == 1:
             self[0] = _data
-            self._update_shape(self[0].shape)
+            self.Shape.update_shape(self[0].shape)
         elif key != 0:
             self._data[key] = {"Value": _data}
             self.keys.append(key)
@@ -459,39 +444,11 @@ class ViewerWindow(QMainWindow):
                 del self.slices[self._slice_key()]
         else:
             return
-        self._update_shape(self[0].shape)
+        self.Shape.update_shape(self[0].shape)
 
     def _draw_data(self):
         """ Draw the selected data. """
-        shapeStr = "["
-        scalarDims = []  # scalar Dimensions
-        # For all (non-hidden) widgets
-        for n in range(self.Shape.columnCount()):
-            if self.Shape.itemAtPosition(1, n).widget().isHidden():
-                break
-            # Get the text and the maximum value within the dimension
-            txt = self.Shape.itemAtPosition(1, n).widget().text()
-            maxt = int(self.Shape.itemAtPosition(0, n).widget().text())
-            if txt == "":
-                shapeStr += ":,"
-            elif ":" in txt:
-                shapeStr += txt + ','
-            else:
-                scalarDims.append(n)
-                try:
-                    int(txt)
-                except ValueError:
-                    self.info_msg("Could not convert value to int.", -1)
-                    shapeStr += ':,'
-                    continue
-                if int(txt) >= maxt:
-                    txt = str(maxt - 1)
-                    self.Shape.itemAtPosition(1, n).widget().setText(txt)
-                elif int(txt) < -maxt:
-                    txt = str(-maxt)
-                    self.Shape.itemAtPosition(1, n).widget().setText(txt)
-                shapeStr += txt + ','
-        shapeStr = str(shapeStr[:-1] + "]")
+        shapeStr, scalarDims = self.Shape.get_shape()
         if shapeStr or self[0].shape == (1,):
             self.Graph.renewPlot(self[0], shapeStr, np.array(scalarDims), self)
             self._update_colorbar()
@@ -531,8 +488,7 @@ class ViewerWindow(QMainWindow):
             self.previous_opr_widget = self.emptylabel
         else:
             this_wgt.setStyleSheet("background-color:lightgreen;")
-            index = self.Shape.indexOf(this_wgt) // self.Shape.rowCount()
-            self.Graph.set_oprdim(index)
+            self.Graph.set_oprdim(self.Shape.get_index(this_wgt))
             self._draw_data()
             self.previous_opr_widget = this_wgt
 
@@ -551,7 +507,7 @@ class ViewerWindow(QMainWindow):
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
-        self._update_shape(self[0].shape)
+        self.Shape.update_shape(self[0].shape)
         sh = self[0].shape
         self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
                       " to " + str(sh), 0)
@@ -579,33 +535,17 @@ class ViewerWindow(QMainWindow):
             self.app.setPalette(self.app.style().standardPalette())
 
     def _set_fixate_view(self, new_val):
-        self.fixate_view = new_val
-
-    def _set_operation(self, operation="None"):
-        """ Make Dimension-titles (not) clickable and pass the operation. """
-        for n in range(self.Shape.columnCount()):
-            self.Shape.itemAtPosition(0, n).widget().setStyleSheet("")
-        oprdim = self.Graph.set_operation(operation)
-        if oprdim != -1:
-            prev_wid = self.Shape.itemAtPosition(0, oprdim).widget()
-            prev_wid.setStyleSheet("background-color:lightgreen;")
-        self._draw_data()
+        self.Shape.fixate_view = new_val
 
     def _set_slice(self):
         """ Get the current slice in the window and save it in a dict. """
         if isinstance(self[0], self.noPrintTypes):
             return
-        curr_slice = []
-        # For all (non-hidden) widgets
-        for n in range(self.Shape.columnCount()):
-            if self.Shape.itemAtPosition(1, n).widget().isHidden():
-                break
-            # Get the text and the maximum value within the dimension
-            curr_slice.append(self.Shape.itemAtPosition(1, n).widget().text())
+        curr_slice = self.Shape.current_slice()
         # Check if the dimensions match and return silently otherwise
         if len(self[0].shape) != len(curr_slice):
-            return
-        self.slices[self._slice_key()] = curr_slice
+            return None
+            self.slices[self._slice_key()] = curr_slice
         self._draw_data()
 
     def _slice_key(self):
@@ -626,38 +566,6 @@ class ViewerWindow(QMainWindow):
     def _update_colorbar(self):
         """ Update the values of the colorbar according to the slider value."""
         self.Graph.colorbar(self.Sldr.value())
-
-    def _update_shape(self, shape, load_slice=True):
-        """ Update the shape widgets in the window based on the new data. """
-        # Show a number of widgets equal to the dimension, hide the others
-        for n in range(self.Shape.columnCount()):
-            for m in range(self.Shape.rowCount()):
-                wgt = self.Shape.itemAtPosition(m, n)
-                if n < len(shape):
-                    wgt.widget().show()
-                else:
-                    wgt.widget().hide()
-        # Initialize the Values of those widgets. Could not be done previously
-        if load_slice:
-            curr_slice = self._load_slice()
-            self.Prmt.setText(str(list(range(self[0].ndim))))
-        else:
-            self.Prmt.setText("")
-        for n, value in enumerate(shape):
-            self.Shape.itemAtPosition(0, n).widget().setText(str(value))
-            if self.fixate_view:
-                pass
-            elif load_slice and curr_slice:
-                self.Shape.itemAtPosition(1, n).widget().setText(curr_slice[n])
-            else:
-                # Just show the first two dimensions in the beginning
-                if n > 1:
-                    self.Shape.itemAtPosition(1, n).widget().setText("0")
-                else:
-                    self.Shape.itemAtPosition(1, n).widget().clear()
-        # Redraw the graph
-        self._draw_data()
-
 
 
     ## Public Methods
@@ -729,50 +637,10 @@ class ViewerWindow(QMainWindow):
             modifiers = QApplication.keyboardModifiers()
             if modifiers == Qt.ControlModifier:
                 sys.exit()
-
     def wheelEvent(self, event):
-        """ Catch wheelEvents on the Shape widgets making them scrollable. """
-        onField = False
-        from_wgt = self.app.widgetAt(event.globalPos())
-        for n in range(self.maxDims):
-            if self.Shape.itemAtPosition(1, n).widget() == from_wgt:
-                onField = True
-                break
-        if not onField:
-            return
-        txt = from_wgt.text()
-        modifiers = QApplication.keyboardModifiers()
-        mod = np.sign(event.angleDelta().y())
-        if modifiers == Qt.ControlModifier:
-            mod *= 10
-        elif modifiers == Qt.ShiftModifier:
-            mod *= 100
-        try:
-            from_wgt.setText(str(int(txt)+mod))
-        except ValueError:
-            txt = txt.split(':')
-            try:
-                for t in txt:
-                    if t != "":
-                        int(t)
-            except ValueError:
-                self.info_msg("Could not convert value to int.", -1)
-                return
-            if len(txt) == 1:
-                return
-            if len(txt) == 3 and txt[2] != "":
-                if modifiers == Qt.ControlModifier:
-                    mod //= 10
-                    mod *= int(txt[2])
-            if txt[0] != "":
-                txt[0] = str(int(txt[0])+mod)
-            if txt[1] != "":
-                txt[1] = str(int(txt[1])+mod)
-            if "0" in txt:
-                txt = np.array(txt)
-                txt[txt == "0"] = ""
-            from_wgt.setText(':'.join(txt))
-        self._set_slice()
+        """ Catch wheelEvents and pipe it to Shape. """
+        self.Shape.wheelEvent(event)
+
 
 def main():
     """ Main Function. """

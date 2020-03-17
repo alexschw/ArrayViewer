@@ -174,7 +174,7 @@ class DataTree(QTabWidget):
 
     def _update_treetab(self, index):
         """ Update the currently selected treetab, on switching. """
-        if self.diffBtn.isVisible():
+        if self.viewer.diffBtn.isVisible():
             self._start_diff()
         if index == 1:
             self._update_tree_sec()
