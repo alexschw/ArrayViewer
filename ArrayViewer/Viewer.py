@@ -53,7 +53,6 @@ class ViewerWindow(QMainWindow):
         self.cText = []
         self.keys = []
         self.checkableItems = []
-        self.similar_items = []
         self.diffNo = 0
         self.maxDims = 6
         self.fixate_view = False
@@ -264,7 +263,7 @@ class ViewerWindow(QMainWindow):
     def _calc_diff(self):
         """ Calculate the difference and end the diff view. """
         checkedItems = 0
-        for item in self.checkableItems:
+        for item in self.datatree.checkableItems:
             if item.checkState(1) == Qt.Checked:
                 text = self._get_obj_trace(item)
                 if checkedItems == 0:
@@ -337,14 +336,6 @@ class ViewerWindow(QMainWindow):
                 self.datatree.current_item().childCount() != 0)
             self.contextMenu.popup(QCursor.pos())
 
-    def remove_from_checkables(self, item_list):
-        """ Remove items from the checkableItems list. As it causes errors. """
-        for item in item_list:
-            if item in self.checkableItems:
-                self.checkableItems.remove(item)
-            if item.childCount() > 0:
-                self.remove_from_checkables(item.takeChildren())
-
     def _delete_data(self):
         """ Delete the selected data. """
         citem = self.datatree.current_item()
@@ -355,7 +346,7 @@ class ViewerWindow(QMainWindow):
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
             self.keys.remove(dText[0])
-        self.remove_from_checkables(citem.takeChildren())
+        self.datatree.remove_from_checkables(citem.takeChildren())
         (citem.parent() or self.datatree.root).removeChild(citem)
 
     def _dlg_combine(self):
@@ -441,11 +432,11 @@ class ViewerWindow(QMainWindow):
             # If the current item has children try to reshape all of them
             tr = self._get_obj_trace(cTree.currentItem())
             if self.datatree.is_files_tree():
-                keys = [tr + [k] for k in self.similar_items
+                keys = [tr + [k] for k in self.datatree.similar_items
                         if isinstance(self[tr + [k]],
                                       (np.ndarray, h5py._hl.dataset.Dataset))]
             else:
-                keys = [[k] + tr for k in self.similar_items
+                keys = [[k] + tr for k in self.datatree.similar_items
                         if isinstance(self[[k] + tr],
                                       (np.ndarray, h5py._hl.dataset.Dataset))]
             if len(keys) == 0:
@@ -629,7 +620,7 @@ class ViewerWindow(QMainWindow):
         else:
             self.diffBtn.show()
             self.datatree.currentWidget().setColumnHidden(1, False)
-            for item in self.checkableItems:
+            for item in self.datatree.checkableItems:
                 item.setCheckState(1, Qt.Unchecked)
 
     def _update_colorbar(self):

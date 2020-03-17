@@ -19,11 +19,12 @@ class DataTree(QTabWidget):
         """ Initialize the Datatree """
         super(DataTree, self).__init__(parent)
         self.old_trace = []
+        self.similar_items = []
+        self.checkableItems = []
         self.changing_item = None
         self.viewer = viewer
         self.keys = viewer.keys
         self.noPrintTypes = viewer.noPrintTypes
-        self.checkableItems = viewer.checkableItems
 
         # Add the Tree Widgets
         self.Tree = QTreeWidget(self)
@@ -106,6 +107,14 @@ class DataTree(QTabWidget):
         self.old_trace = []
         # Make Item non-editable
         self.changing_item.setFlags(Qt.ItemFlag(61))
+
+    def remove_from_checkables(self, item_list):
+        """ Remove items from the checkableItems list. As it causes errors. """
+        for item in item_list:
+            if item in self.checkableItems:
+                self.checkableItems.remove(item)
+            if item.childCount() > 0:
+                self.remove_from_checkables(item.takeChildren())
 
     def rename_key(self):
         """ Start the renaming of a data-key. """
@@ -216,4 +225,3 @@ class DataTree(QTabWidget):
         for url in ev.mimeData().urls():
             fnames.append(url.toLocalFile())
         self.viewer.load_files(fnames)
-
