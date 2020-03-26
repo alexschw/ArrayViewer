@@ -144,6 +144,8 @@ class GraphWidget(QWidget):
             dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
         else:
             dat = _flat_with_padding(self.cutout, nPad)
+        if (self.cutout.dtype == np.float16):
+            dat = dat.astype(np.float32)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
         locx = TickMultLoc(sh[0] + nPad)
         ax.xaxis.set_major_locator(locx)
@@ -160,8 +162,10 @@ class GraphWidget(QWidget):
             ax.plot(self.cutout.min(axis=0), 'b')
             ax.legend(["Max", "Mean", "Min"])
         else:
-            self._img = ax.imshow(self.cutout.T, interpolation='none',
-                                  aspect='auto')
+            dat = self.cutout.T
+            if (self.cutout.dtype == np.float16):
+                dat = dat.astype(np.float32)
+            self._img = ax.imshow(dat, interpolation='none', aspect='auto')
         _set_ticks(ax, s, ui.Transp.isChecked())
 
     def clear(self):
