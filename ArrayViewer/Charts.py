@@ -122,8 +122,8 @@ class GraphWidget(QWidget):
         self._colormap = 'viridis'
         self._operation = 'None'
         self._opr = (lambda x: x)
-        self._oprdim = -1
-        self._oprcorr = -1
+        self._oprdim = np.array([], dtype=int)
+        self._oprcorr = 'None'
         self.cutout = np.array([])
 
         # Add a label Text that may be changed in later Versions to display the
@@ -232,9 +232,14 @@ class GraphWidget(QWidget):
             # Cut out the chosen piece of the array and plot it
             self.cutout = np.array([])
             self.cutout = eval("data%s.squeeze()"%s)
-            if self._oprdim != -1 and self._oprdim not in scalDims:
-                self._oprcorr = self._oprdim - (scalDims <= self._oprdim).sum()
+            if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
+                a = np.setdiff1d(self._oprdim, scalDims)
+                self._oprcorr = str(tuple(
+                    b - (scalDims <= b).sum() for b in a
+                ))
                 self.cutout = self._opr(self.cutout)
+            else:
+                self._oprcorr = "None"
             # Transpose the first two dimensions if it is chosen
             if ui.Transp.isChecked() and self.cutout.ndim > 1:
                 self.cutout = np.swapaxes(self.cutout, 0, 1)
@@ -279,16 +284,26 @@ class GraphWidget(QWidget):
         """ Set an operation to be performed on click on a dimension. """
         self.has_operation = (operation != "None")
         if not self.has_operation:
-            self._oprdim = -1
+            self._oprdim = np.array([], dtype=int)
             self._opr = (lambda x: x)
         else:
             self._opr = (lambda x: eval("np." + operation + "(x, axis="
-                                        + str(self._oprcorr) + ")"))
+                                        + self._oprcorr + ")"))
         return self._oprdim
 
     def set_oprdim(self, value):
         """ Set the operation dimension. """
-        self._oprdim = value
+        if value == -1:
+            self._oprdim = np.array([], dtype=int)
+        else:
+            if value in self._oprdim:
+                self._oprdim = self._oprdim[self._oprdim != value]
+            else:
+                self._oprdim = np.append(self._oprdim, value)
+        if self.has_operation:
+            return self._oprdim
+        else:
+            return []
 
     def toggle_colorbar(self):
         """ Toggle the state of the colorbar """

@@ -175,7 +175,7 @@ class ViewerWindow(QMainWindow):
         menu.addAction(menuOpr.menuAction())
 
         ag_op = QActionGroup(self)
-        _menu_opt(menuOpr, "None", self.Shape.set_operation,
+        _menu_opt(menuOpr, "None", lambda: self.Shape.set_operation('None'),
                   act_grp=ag_op).setChecked(True)
         _menu_opt(menuOpr, "Min", lambda: self.Shape.set_operation('min'),
                   act_grp=ag_op)
@@ -476,22 +476,6 @@ class ViewerWindow(QMainWindow):
             return self.slices[self._slice_key()]
         return None
 
-    def _perform_operation(self, event):
-        """ Perform the chosen Operation on the graph.
-        If the field is clicked again the operation will be undone.
-        """
-        this_wgt = self.app.widgetAt(event.globalPos())
-        self.previous_opr_widget.setStyleSheet("")
-        if this_wgt == self.previous_opr_widget or not self.Graph.has_opr():
-            self.Graph.set_oprdim(-1)
-            self._draw_data()
-            self.previous_opr_widget = self.emptylabel
-        else:
-            this_wgt.setStyleSheet("background-color:lightgreen;")
-            self.Graph.set_oprdim(self.Shape.get_index(this_wgt))
-            self._draw_data()
-            self.previous_opr_widget = this_wgt
-
     def _permute_data(self):
         """ Check the input in the permute box and reshape the array. """
         content = str(self.Prmt.text()).strip("([])").replace(" ", "")
@@ -637,9 +621,6 @@ class ViewerWindow(QMainWindow):
             modifiers = QApplication.keyboardModifiers()
             if modifiers == Qt.ControlModifier:
                 sys.exit()
-    def wheelEvent(self, event):
-        """ Catch wheelEvents and pipe it to Shape. """
-        self.Shape.wheelEvent(event)
 
 
 def main():

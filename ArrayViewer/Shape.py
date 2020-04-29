@@ -10,12 +10,14 @@ import numpy as np
 
 class singleShape(QWidget):
     """ A single Shape widget with one label and one lineedit. """
-    def __init__(self, validator, parent):
+    def __init__(self, validator, parent, index):
         super(singleShape, self).__init__()
         layout = QVBoxLayout()
+        self.index = index
+        self.parent = parent
 
         self.label = QLabel("0", self)
-        self.label.mousePressEvent = parent._perform_operation # TODO
+        self.label.mousePressEvent = self._perform_operation
         layout.addWidget(self.label)
 
         self.lineedit = QLineEdit(self)
@@ -24,6 +26,16 @@ class singleShape(QWidget):
         layout.addWidget(self.lineedit)
 
         self.setLayout(layout)
+
+    def _perform_operation(self, event):
+        """ Perform the chosen Operation on the graph.
+        If the field is clicked again the operation will be undone.
+        """
+        if self.index in self.parent.Graph.set_oprdim(self.index):
+            self.label.setStyleSheet("background-color:lightgreen;")
+        else:
+            self.label.setStyleSheet("")
+        self.parent._draw_data()
 
 class ShapeSelector(QWidget):
     """ Array Shape selectors"""
@@ -38,8 +50,8 @@ class ShapeSelector(QWidget):
         validator = QRegExpValidator(self)
         rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
         validator.setRegExp(QRegExp(rex))
-        for _ in range(self.maxDims):
-            shape = singleShape(validator, self.parent)
+        for i in range(self.maxDims):
+            shape = singleShape(validator, self.parent, i)
             layout.addWidget(shape)
             shape.hide()
 
@@ -53,7 +65,7 @@ class ShapeSelector(QWidget):
         curr_slice = []
         # For all (non-hidden) widgets
         for n in range(self.maxDims):
-            if self._get(n).isHidden:
+            if self._get(n).isHidden():
                 break
             # Get the text and the maximum value within the dimension
             curr_slice.append(self._get(n).label.text())
@@ -107,6 +119,7 @@ class ShapeSelector(QWidget):
                 self._get(n).show()
             else:
                 self._get(n).hide()
+            self._get(n).label.setStyleSheet("")
         # Initialize the Values of those widgets. Could not be done previously
         if load_slice:
             curr_slice = self.parent._load_slice()
@@ -133,9 +146,8 @@ class ShapeSelector(QWidget):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.maxDims):
             self._get(n).label.setStyleSheet("")
-        d = self.parent.Graph.set_operation(operation)
-        if d != -1:
-            self._get(d).label.setStyleSheet("background-color:lightgreen;")
+        for i in self.parent.Graph.set_operation(operation):
+            self._get(i).label.setStyleSheet("background-color:lightgreen;")
         self.parent._draw_data()
 
     def wheelEvent(self, event):
@@ -147,7 +159,7 @@ class ShapeSelector(QWidget):
                 break
         if onField < 0:
             return
-        from_wgt = self._lineedit(onField)
+        from_wgt = self._get(onField).lineedit
         txt = from_wgt.text()
         modifiers = QApplication.keyboardModifiers()
         mod = np.sign(event.angleDelta().y())
