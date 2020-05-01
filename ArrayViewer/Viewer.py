@@ -193,11 +193,14 @@ class ViewerWindow(QMainWindow):
         ag_plt = QActionGroup(self)
         ag_plt.setExclusive(False)
         self.MMM = _menu_opt(menuPlot, "min-mean-max plot",
-                             lambda: self._checkboxes(False), act_grp=ag_plt)
+                             lambda: self._checkboxes(0), act_grp=ag_plt)
         self.MMM.triggered.connect(self._draw_data)
         self.Plot2D = _menu_opt(menuPlot, "2D as plot",
-                                lambda: self._checkboxes(True), act_grp=ag_plt)
+                                lambda: self._checkboxes(1), act_grp=ag_plt)
         self.Plot2D.triggered.connect(self._draw_data)
+        self.PlotScat = _menu_opt(menuPlot, "2D as Scatter",
+                                lambda: self._checkboxes(2), act_grp=ag_plt)
+        self.PlotScat.triggered.connect(self._draw_data)
         self.Plot3D = _menu_opt(menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)
         self.PrintFlat = _menu_opt(menuPlot, "Print Values as text",
@@ -287,12 +290,17 @@ class ViewerWindow(QMainWindow):
                 self.Shape.update_shape(self[0].shape)
                 self.PrmtBtn.setEnabled(True)
 
-    def _checkboxes(self, fromP2D):
+    def _checkboxes(self, fromCheckbox):
         """ Validate the value of the checkboxes and toggle their values. """
-        if self.Plot2D.isChecked() and not fromP2D:
-            self.Plot2D.setChecked(0)
-        elif self.MMM.isChecked() and fromP2D:
-            self.MMM.setChecked(0)
+        if fromCheckbox == 0:
+            self.Plot2D.setChecked(False)
+            self.PlotScat.setChecked(False)
+        elif fromCheckbox == 1:
+            self.MMM.setChecked(False)
+            self.PlotScat.setChecked(False)
+        elif fromCheckbox == 2:
+            self.MMM.setChecked(False)
+            self.Plot2D.setChecked(False)
 
     def _delete_all_data(self):
         """ Delete all data from the Treeview. """

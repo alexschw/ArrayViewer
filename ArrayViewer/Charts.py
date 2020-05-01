@@ -168,6 +168,21 @@ class GraphWidget(QWidget):
             self._img = ax.imshow(dat, interpolation='none', aspect='auto')
         _set_ticks(ax, s, ui.Transp.isChecked())
 
+    def _n_D_scatter(self, ax):
+        """ Plot up to four rows as a scatter (x, y, size, color)"""
+        if self.cutout.shape[1] < 4:
+            col = 'b'
+        else:
+            col = self.cutout[:, 3] - self.cutout[:, 3].min()
+            col /= col.max()
+        if self.cutout.shape[1] < 3:
+            siz = 25
+        else:
+            siz = self.cutout[:, 2] - self.cutout[:, 2].min()
+            siz = 1 + 100 * siz / siz.max()
+        self._img = ax.scatter(self.cutout[:, 0], self.cutout[:, 1], c=col,
+                               s=siz, cmap=self._colormap)
+
     def clear(self):
         """ Clear the figure. """
         self._cb = None
@@ -196,6 +211,8 @@ class GraphWidget(QWidget):
             self._colormap = mapname
         if self._img is None:
             return
+        if self._cb:
+            self._cb.mappable.set_cmap(mapname)
         self._img.set_cmap(self._colormap)
         self._canv.draw()
 
@@ -255,7 +272,7 @@ class GraphWidget(QWidget):
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
-            # 2D-cutout will be shown using imshow or plot
+            # 2D-cutout will be shown using imshow, scatter or plot
             elif self.cutout.ndim == 2:
                 if ui.Plot2D.isChecked():
                     if self.cutout.shape[1] > 500:
@@ -264,6 +281,8 @@ class GraphWidget(QWidget):
                         return
                     ax.plot(self.cutout)
                     _set_ticks(ax, s, not ui.Transp.isChecked(), True)
+                elif ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
+                    self._n_D_scatter(ax)
                 else:
                     self._two_D_plot(ui, ax, s)
             # higher-dimensional cutouts will first be flattened
