@@ -23,6 +23,7 @@ class singleShape(QWidget):
         layout.addWidget(self.label)
         clayout = QVBoxLayout()
         clayout.addWidget(self.dock)
+        clayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(clayout)
         self.dragging = True
         self.dragSty = "singleShape > QWidget { border: 1px solid #0F0; }"
@@ -96,6 +97,8 @@ class ShapeSelector(QWidget):
         super(ShapeSelector, self).__init__()
         self.parent = parent
         layout = QHBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.maxDims = 6
         self.fixate_view = False
