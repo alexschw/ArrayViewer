@@ -2,30 +2,38 @@
 Slice Selectors for the ArrayViewer
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
-from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
+from PyQt5.QtGui import QDrag, QRegExpValidator
+from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout, 
                              QVBoxLayout, QWidget)
-from PyQt5.QtCore import QRegExp, Qt
+from PyQt5.QtCore import QRegExp, Qt, QMimeData, QPoint, QSize
 import numpy as np
 
 class singleShape(QWidget):
     """ A single Shape widget with one label and one lineedit. """
     def __init__(self, validator, parent, index):
         super(singleShape, self).__init__()
-        layout = QVBoxLayout()
         self.index = index
         self.parent = parent
+        self.dock = QWidget()
+        self.start = QPoint(0, 0)
+        self.setAcceptDrops(True)
 
-        self.label = QLabel("0", self)
-        self.label.mousePressEvent = self._perform_operation
+        layout = QVBoxLayout()
+        self.label = QLabel("0", self.dock)
         layout.addWidget(self.label)
+        clayout = QVBoxLayout()
+        clayout.addWidget(self.dock)
+        self.setLayout(clayout)
+        self.dragging = True
+        self.dragSty = "singleShape > QWidget { border: 1px solid #0F0; }"
+        self.noDragSty = "singleShape > QWidget { border: 0px solid #000; }"
 
         self.lineedit = QLineEdit(self)
         self.lineedit.setValidator(validator)
         self.lineedit.editingFinished.connect(parent._set_slice)  # TODO
         layout.addWidget(self.lineedit)
 
-        self.setLayout(layout)
+        self.dock.setLayout(layout)
 
     def _perform_operation(self, event):
         """ Perform the chosen Operation on the graph.
@@ -36,6 +44,51 @@ class singleShape(QWidget):
         else:
             self.label.setStyleSheet("")
         self.parent._draw_data()
+
+    def mousePressEvent(self, event):
+        """ Catch mousePressEvent for the dragging action. """
+        if event.button() == Qt.LeftButton:
+            self.start = event.pos()
+            self.dragging = False
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """ Chatch mouseReleaseEvent and perform operation if not dragged. """
+        if not self.dragging:
+            self._perform_operation(event)
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        """ Catch mouseMoveEvent and start dragging when needed. """
+        if not self.dragging:
+            diff = (event.pos() - self.start).manhattanLength()
+            if diff > QApplication.startDragDistance():
+                self.dock.setStyleSheet(self.dragSty)
+                self.drag = QDrag(self)
+                self.drag.setMimeData(QMimeData())
+                pixmap = self.dock.grab()
+                x, y = (pixmap.width() * 0.8, pixmap.height() * 0.8)
+                self.drag.setPixmap(pixmap.scaled(QSize(x, y)))
+                self.drag.setHotSpot(QPoint(x/2, y/2))
+                self.update()
+                self.drag.exec_()
+                self.dock.setStyleSheet(self.noDragSty)
+                self.dragging = True
+        event.accept()
+
+    def dragEnterEvent(self, event):
+        """ Catch dragEnterEvents only for other widgets. """
+        if not event.source() == self:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """ Catch dropEvents to permute the dimensions. """
+        id_from, id_to = event.source().index, self.index
+        new_order = np.arange(self.parent[0].ndim)
+        new_order[id_from], new_order[id_to] = id_to, id_from
+        self.parent.transpose_data(new_order)
 
 class ShapeSelector(QWidget):
     """ Array Shape selectors"""

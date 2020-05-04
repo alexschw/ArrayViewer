@@ -495,6 +495,10 @@ class ViewerWindow(QMainWindow):
         new_order = tuple(np.array(content.split(","), dtype="i"))
         if new_order == tuple(sorted(new_order)):
             return
+        self.transpose_data(new_order)
+
+    def transpose_data(self, new_order):
+        """ Transpose dimensions of the data. """
         self[0] = np.transpose(self[0], new_order)
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
@@ -503,6 +507,7 @@ class ViewerWindow(QMainWindow):
         sh = self[0].shape
         self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
                       " to " + str(sh), 0)
+
 
     def pop(self, key):
         """ Returns the current data and removes it from the dict. """
