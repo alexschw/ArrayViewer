@@ -542,7 +542,7 @@ class ViewerWindow(QMainWindow):
         # Check if the dimensions match and return silently otherwise
         if len(self[0].shape) != len(curr_slice):
             return None
-            self.slices[self._slice_key()] = curr_slice
+        self.slices[self._slice_key()] = curr_slice
         self._draw_data()
 
     def _slice_key(self):

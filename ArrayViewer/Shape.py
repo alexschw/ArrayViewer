@@ -121,7 +121,7 @@ class ShapeSelector(QWidget):
             if self._get(n).isHidden():
                 break
             # Get the text and the maximum value within the dimension
-            curr_slice.append(self._get(n).label.text())
+            curr_slice.append(self._get(n).lineedit.text())
         return curr_slice
 
     def get_index(self, widget):
