@@ -44,6 +44,11 @@ def post_install():
         print("No shortcut created!")
 
 if __name__ == "__main__":
+    if sys.platform.startswith('linux'):
+        data_files = [('share/icons', ['aview_logo.svg'])]
+    elif os.name == 'nt':
+        data_files = [('scripts', ['aview_logo.svg'])]
+
     setup(
         name=PACKAGE_NAME,
         version=__version__,
@@ -54,6 +59,7 @@ if __name__ == "__main__":
         url="https://github.com/alexschw/ArrayViewer",
         install_requires=REQUIREMENTS,
         scripts=['aview'],
+        data_files=data_files,
         entry_points={"gui_scripts": ["aview = ArrayViewer.Viewer:main",]},
         python_requires=">=3.0",
         description="ArrayViewer",

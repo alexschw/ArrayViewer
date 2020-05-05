@@ -24,6 +24,7 @@ Contains a plot of the last selected data. Depending on the datatype of the valu
 Slice Selectors
 ===============
 The slice selectors enable the slicing of the selected dataset. The amount of fields next to each other is equal to the number of dimensions of the current datum. You can enter any number within the range given in the label of the text field. Slicing with colons is also supported. Lists of single values are currently not supported. When the mouse is over one of the text fields, use the scrollwheel to increment (or decrement) the values within the field by 1 (10 with [Ctrl] and 100 with the [Shift] modifier). This also works for colon-slicing, where the [Ctrl] modifier increments (or decrements) by the given stepsize. The [Shift] modifier is changing by 100, similar to the non-colon case.
+If the slice selectors can be resorted by dragging.
 
 Fast Access
 ===========
