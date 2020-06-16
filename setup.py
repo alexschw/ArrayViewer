@@ -44,7 +44,7 @@ def post_install():
         print("No shortcut created!")
 
 if __name__ == "__main__":
-    if sys.platform.startswith('linux'):
+    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
         data_files = [('share/icons', ['aview_logo.svg'])]
     elif os.name == 'nt':
         data_files = [('scripts', ['aview_logo.svg'])]

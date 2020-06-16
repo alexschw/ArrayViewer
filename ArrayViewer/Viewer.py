@@ -47,7 +47,8 @@ class ViewerWindow(QMainWindow):
         """ Initialize the window. """
         super(ViewerWindow, self).__init__(parent)
         # set class variables
-        if sys.platform.startswith('linux'): # TODO Windows Icon Location
+        if sys.platform.startswith('linux') or \
+           sys.platform.startswith('darwin'): # TODO Windows Icon Location
             folder = os.path.expanduser("~/.local/share/icons/")
             self.setWindowIcon(QIcon(os.path.join(folder, 'aview_logo.svg')))
         self.app = application
@@ -202,7 +203,7 @@ class ViewerWindow(QMainWindow):
                                 lambda: self._checkboxes(1), act_grp=ag_plt)
         self.Plot2D.triggered.connect(self._draw_data)
         self.PlotScat = _menu_opt(menuPlot, "2D as Scatter",
-                                lambda: self._checkboxes(2), act_grp=ag_plt)
+                                  lambda: self._checkboxes(2), act_grp=ag_plt)
         self.PlotScat.triggered.connect(self._draw_data)
         self.Plot3D = _menu_opt(menuPlot, "3D as RGB", self._draw_data,
                                 act_grp=ag_plt)

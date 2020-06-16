@@ -295,8 +295,12 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (self.cutout.min(), self.cutout.max())
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText('min : ' + "%0.5f"%self._clim[0])
-                ui.txtMax.setText('max : ' + "%0.5f"%self._clim[1])
+                fstr = ["{:.5f}", "{:.5f}"]
+                for i, absv in enumerate(np.abs(self._clim)):
+                    if not 1e-5 < absv < 1e5:
+                        fstr[i] = "{:.5e}"
+                ui.txtMin.setText("min : " + fstr[0].format(self._clim[0]))
+                ui.txtMax.setText("max : " + fstr[1].format(self._clim[1]))
         self._canv.draw()
 
     def set_operation(self, operation="None"):
