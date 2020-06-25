@@ -149,6 +149,16 @@ class ShapeSelector(QWidget):
                 shapeStr += ":,"
             elif ":" in txt:
                 shapeStr += txt + ','
+                # Check if value is scalar
+                sh = txt.split(':')
+                unsh = [0, maxt, 1]  # Default values for unset shape
+                sh = [int(s) if s != '' else unsh[i] for i, s in enumerate(sh)]
+                sh = np.array(sh)
+                sh[:2] += maxt * (sh[:2] < 0)  # make all values positive
+                if len(sh) < 3:  # No stepwidth given
+                    sh = np.append(sh, 1)
+                if -1 <= (sh[0] - sh[1]) / sh[2] <= 1:
+                    scalarDims.append(n)
             else:
                 scalarDims.append(n)
                 try:
@@ -157,12 +167,8 @@ class ShapeSelector(QWidget):
                     self.info_msg("Could not convert value to int.", -1)
                     shapeStr += ':,'
                     continue
-                if int(txt) >= maxt:
-                    txt = str(maxt - 1)
-                    self._get(n).lineedit.setText(txt)
-                elif int(txt) < -maxt:
-                    txt = str(-maxt)
-                    self._get(n).lineedit.setText(txt)
+                txt = str(np.clip(int(txt), -maxt, maxt-1))
+                self._get(n).lineedit.setText(txt)
                 shapeStr += txt + ','
         shapeStr = str(shapeStr[:-1] + "]")
         return shapeStr, scalarDims

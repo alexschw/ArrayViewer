@@ -53,12 +53,12 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
     """ Set the ticks of plots according to the selected slices. """
     # Calculate the ticks for the plot by checking the limits
     limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
-    lim = np.array([l if len(l) == 3 else l+['1'] for l in limits])
-    lim[lim == ''] = '0'
-    lim = lim.astype(float)
-    if lim.shape[0] == 1:
-        lim = np.append([[0, 0, 1]], lim, axis=0)
-    if not transp:
+    lim = np.ones((len(limits), 3), dtype=int) * [0, -1, 1]
+    for i, l in enumerate(limits):
+        for j, dim in enumerate(l):
+            if dim:
+                lim[i, j] = dim
+    if transp:
         lim = lim[(1, 0), :]
     # Set the x-ticks
     loc = ax.xaxis.get_major_locator()()
@@ -268,7 +268,9 @@ class GraphWidget(QWidget):
             # Graph an 1D-cutout
             elif self.cutout.ndim == 1:
                 ax.plot(self.cutout)
-                _set_ticks(ax, s, False, True)
+                non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
+                s_mod = s[1:-1].split(',')[non_scalar_idx]
+                _set_ticks(ax, '[' + s_mod + ']', False, True)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
@@ -280,7 +282,7 @@ class GraphWidget(QWidget):
                         ui.info_msg(msg, -1)
                         return
                     ax.plot(self.cutout)
-                    _set_ticks(ax, s, not ui.Transp.isChecked(), True)
+                    _set_ticks(ax, s, ui.Transp.isChecked(), True)
                 elif ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                     self._n_D_scatter(ax)
                 else:
