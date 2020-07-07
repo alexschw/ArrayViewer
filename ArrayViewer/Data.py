@@ -12,6 +12,7 @@ import re
 import scipy.io
 import h5py
 from h5py._hl import files, group, dataset
+from h5py.h5r import Reference
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PIL import Image
 import numpy as np
@@ -68,16 +69,18 @@ class Loader(QObject):
                     for key in data if key != "#refs#"}
         elif isinstance(data, dataset.Dataset) and data.dtype == "O":
             dat = np.empty_like(data)
-            for x, d in enumerate(data[()]):
-                names = [h5py.h5r.get_name(sd, data.file.id) for sd in d]
-                dat[x, :] = [np.array(data.file[name]).tobytes()
-                             .decode(encoding="utf-16")
-                             if data.file[name].dtype == "uint16"
-                             else data.file[name] for name in names]
             try:
+                for x, d in enumerate(data[()]):
+                    names = [h5py.h5r.get_name(sd, data.file.id) for sd in d]
+                    dat[x, :] = [np.array(data.file[name]).tobytes()
+                                 .decode(encoding="utf-16")
+                                 if data.file[name].dtype == "uint16"
+                                 else data.file[name] for name in names]
                 data = dat.astype(str).squeeze().tolist()
             except ValueError:
                 data = np.array([data.file.get(d[0]) for d in data[()]][0])
+            except TypeError:
+                data = self._validate(data[()])
         elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + type(data) +
