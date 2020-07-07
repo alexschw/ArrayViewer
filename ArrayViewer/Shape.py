@@ -3,7 +3,7 @@ Slice Selectors for the ArrayViewer
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 from PyQt5.QtGui import QDrag, QRegExpValidator
-from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout, 
+from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
                              QVBoxLayout, QWidget)
 from PyQt5.QtCore import QRegExp, Qt, QMimeData, QPoint, QSize
 import numpy as np
@@ -36,7 +36,7 @@ class singleShape(QWidget):
 
         self.dock.setLayout(layout)
 
-    def _perform_operation(self, event):
+    def _perform_operation(self, _):
         """ Perform the chosen Operation on the graph.
         If the field is clicked again the operation will be undone.
         """
@@ -65,14 +65,14 @@ class singleShape(QWidget):
             diff = (event.pos() - self.start).manhattanLength()
             if diff > QApplication.startDragDistance():
                 self.dock.setStyleSheet(self.dragSty)
-                self.drag = QDrag(self)
-                self.drag.setMimeData(QMimeData())
+                drag = QDrag(self)
+                drag.setMimeData(QMimeData())
                 pixmap = self.dock.grab()
                 x, y = (pixmap.width() * 0.8, pixmap.height() * 0.8)
-                self.drag.setPixmap(pixmap.scaled(QSize(x, y)))
-                self.drag.setHotSpot(QPoint(x/2, y/2))
+                drag.setPixmap(pixmap.scaled(QSize(x, y)))
+                drag.setHotSpot(QPoint(x/2, y/2))
                 self.update()
-                self.drag.exec_()
+                drag.exec_()
                 self.dock.setStyleSheet(self.noDragSty)
                 self.dragging = True
         event.accept()
@@ -87,7 +87,7 @@ class singleShape(QWidget):
     def dropEvent(self, event):
         """ Catch dropEvents to permute the dimensions. """
         id_from, id_to = event.source().index, self.index
-        new_order = np.arange(self.parent[0].ndim)
+        new_order = np.arange(self.parent.get(0).ndim)
         new_order[id_from], new_order[id_to] = id_to, id_from
         self.parent.transpose_data(new_order)
 
@@ -185,7 +185,7 @@ class ShapeSelector(QWidget):
         # Initialize the Values of those widgets. Could not be done previously
         if load_slice:
             curr_slice = self.parent._load_slice()
-            self.parent.Prmt.setText(str(list(range(self.parent[0].ndim))))
+            self.parent.Prmt.setText(str(list(range(self.parent.get(0).ndim))))
         else:
             self.parent.Prmt.setText("")
         for n, value in enumerate(shape):

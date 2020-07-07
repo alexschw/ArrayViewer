@@ -144,7 +144,7 @@ class GraphWidget(QWidget):
             dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
         else:
             dat = _flat_with_padding(self.cutout, nPad)
-        if (self.cutout.dtype == np.float16):
+        if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
         locx = TickMultLoc(sh[0] + nPad)
@@ -163,7 +163,7 @@ class GraphWidget(QWidget):
             ax.legend(["Max", "Mean", "Min"])
         else:
             dat = self.cutout.T
-            if (self.cutout.dtype == np.float16):
+            if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = ax.imshow(dat, interpolation='none', aspect='auto')
         _set_ticks(ax, s, ui.Transp.isChecked())
@@ -224,13 +224,14 @@ class GraphWidget(QWidget):
         """ Check if the operation is None. """
         return self.has_operation
 
-    def renewPlot(self, data, s, scalDims, ui):
+    def renewPlot(self, s, scalDims, ui):
         """ Draw given data. """
         ax = self._figure.gca()
         ax.clear()
         # Reset the minimum and maximum text
         ui.txtMin.setText('min : ')
         ui.txtMax.setText('max : ')
+        data = ui.get(0)
         if data is None:
             return
         if isinstance(data, self.noPrintTypes):
@@ -327,8 +328,7 @@ class GraphWidget(QWidget):
                 self._oprdim = np.append(self._oprdim, value)
         if self.has_operation:
             return self._oprdim
-        else:
-            return []
+        return []
 
     def toggle_colorbar(self):
         """ Toggle the state of the colorbar """

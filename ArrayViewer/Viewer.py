@@ -227,7 +227,7 @@ class ViewerWindow(QMainWindow):
                                      self._dlg_combine)
         _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
 
-    def __getitem__(self, item):
+    def get(self, item):
         """ Gets the current data. """
         if item in [0, "data", ""]:
             item = self.cText
@@ -238,7 +238,7 @@ class ViewerWindow(QMainWindow):
         except KeyError:
             return []
 
-    def __setitem__(self, newkey, newData):
+    def set_data(self, newkey, newData, *_):
         """ Sets the current data to the new data. """
         if not self._data:
             return
@@ -260,10 +260,10 @@ class ViewerWindow(QMainWindow):
                 text = self._get_obj_trace(item)
                 if checkedItems == 0:
                     text0 = '[0] ' + '/'.join(text)
-                    item0 = self[text]
+                    item0 = self.get(text)
                 else:
                     text1 = '[1] ' + '/'.join(text)
-                    item1 = self[text]
+                    item1 = self.get(text)
                 checkedItems += 1
         if checkedItems == 2 and item0.shape == item1.shape:
             self._data["Diff " + str(self.diffNo)] = {text0: item0,
@@ -287,11 +287,11 @@ class ViewerWindow(QMainWindow):
             # Get the currently selected FigureCanvasQTAggd data recursively
             self.cText = self._get_obj_trace(current)
             # Update the shape widgets based on the datatype
-            if isinstance(self[0], self.noPrintTypes):
+            if isinstance(self.get(0), self.noPrintTypes):
                 self.Shape.update_shape([0], False)
                 self.PrmtBtn.setEnabled(False)
             else:
-                self.Shape.update_shape(self[0].shape)
+                self.Shape.update_shape(self.get(0).shape)
                 self.PrmtBtn.setEnabled(True)
 
     def _checkboxes(self, fromCheckbox):
@@ -349,7 +349,7 @@ class ViewerWindow(QMainWindow):
     def _dlg_combine(self):
         """ Open a dialog to combine the dataset. """
         trace = self._get_obj_trace(self.datatree.current_item())
-        data = self[trace]
+        data = self.get(trace)
         keys = realsorted(data, key=lambda x: x.lower())
         d0 = data.get(keys[0])
         npt = self.noPrintTypes + (dict,)
@@ -380,15 +380,15 @@ class ViewerWindow(QMainWindow):
             trace.append('combined')
         # Perform the combination
         try:
-            self[trace] = np.array([data.get(k) for k in n_keys])
+            self.set_data(trace, np.array([data.get(k) for k in n_keys]))
         except ValueError:
             # For h5py dictionaries
-            self[trace] = np.array([data.get(k)[()] for k in n_keys])
+            self.set_data(trace, np.array([data.get(k)[()] for k in n_keys]))
         # Remove the combined data
         if len(n_keys) != len(keys) and len(data_shape) > 1:
-            _ = [self[trace[:-1]].pop(key) for key in n_keys]
+            _ = [self.get(trace[:-1]).pop(key) for key in n_keys]
         # Put new dimension at the end and remove singleton dimensions.
-        self[trace] = np.moveaxis(self[trace], 0, -1).squeeze()
+        self.set_data(trace, np.moveaxis(self.get(trace), 0, -1).squeeze())
         self.datatree.update_tree()
 
     def _dlg_load_data(self):
@@ -413,10 +413,10 @@ class ViewerWindow(QMainWindow):
 
     def _dlg_new_data(self):
         """ Open the new data dialog box to construct new data. """
-        key, _data = self.newDataBox.new_data(self[0], self.Graph.cutout)
+        key, _data = self.newDataBox.new_data(self.get(0), self.Graph.cutout)
         if key == 1:
-            self[0] = _data
-            self.Shape.update_shape(self[0].shape)
+            self.set_data(0, _data)
+            self.Shape.update_shape(self.get(0).shape)
         elif key != 0:
             self._data[key] = {"Value": _data}
             self.keys.append(key)
@@ -430,39 +430,40 @@ class ViewerWindow(QMainWindow):
             tr = self._get_obj_trace(cTree.currentItem())
             if self.datatree.is_files_tree():
                 keys = [tr + [k] for k in self.datatree.similar_items
-                        if isinstance(self[tr + [k]],
+                        if isinstance(self.get(tr + [k]),
                                       (np.ndarray, h5py._hl.dataset.Dataset))]
             else:
                 keys = [[k] + tr for k in self.datatree.similar_items
-                        if isinstance(self[[k] + tr],
+                        if isinstance(self.get([k] + tr),
                                       (np.ndarray, h5py._hl.dataset.Dataset))]
             if len(keys) == 0:
                 return
             # All data must have the same number of elements
-            datalen = [np.prod(self[k].shape) for k in keys]
+            datalen = [np.prod(self.get(k).shape) for k in keys]
             if np.any(datalen - datalen[0]):
                 self.info_msg("Shape is not equal in data. Aborting!", -1)
                 return
             # Reshape the first using the dialog
-            self[keys[0]], s = self.reshapeBox.reshape_array(self[keys[0]])
+            newdata, s = self.reshapeBox.reshape_array(self.get(keys[0]))
+            self.set_data(keys[0], newdata)
             # All further data will be reshaped accordingly
             if s is not None:
                 for k in keys[1:]:
-                    self[k] = np.reshape(self[k], s)
-        elif isinstance(self[0], (np.ndarray, h5py._hl.dataset.Dataset)):
+                    self.set_data(k, np.reshape(self.get(k), s))
+        elif isinstance(self.get(0), (np.ndarray, h5py._hl.dataset.Dataset)):
             # If just one is chosen and has a numpy compatible type, reshape it
-            self[0], _ = self.reshapeBox.reshape_array(self[0])
+            self.set_data(0, *self.reshapeBox.reshape_array(self.get(0)))
             if self._slice_key() in self.slices:
                 del self.slices[self._slice_key()]
         else:
             return
-        self.Shape.update_shape(self[0].shape)
+        self.Shape.update_shape(self.get(0).shape)
 
     def _draw_data(self):
         """ Draw the selected data. """
         shapeStr, scalarDims = self.Shape.get_shape()
-        if shapeStr or self[0].shape == (1,):
-            self.Graph.renewPlot(self[0], shapeStr, np.array(scalarDims), self)
+        if shapeStr or self.get(0).shape == (1,):
+            self.Graph.renewPlot(shapeStr, np.array(scalarDims), self)
             self._update_colorbar()
 
     def _get_obj_trace(self, item):
@@ -493,7 +494,7 @@ class ViewerWindow(QMainWindow):
         content = str(self.Prmt.text()).strip("([])").replace(" ", "")
         chkstr = content.split(",")
         chkstr.sort()
-        if chkstr != [str(_a) for _a in range(self[0].ndim)]:
+        if chkstr != [str(_a) for _a in range(self.get(0).ndim)]:
             self.info_msg("Shape is not matching dimensions. Aborting!", -1)
             return
         new_order = tuple(np.array(content.split(","), dtype="i"))
@@ -503,12 +504,12 @@ class ViewerWindow(QMainWindow):
 
     def transpose_data(self, new_order):
         """ Transpose dimensions of the data. """
-        self[0] = np.transpose(self[0], new_order)
+        self.set_data(0, np.transpose(self.get(0), new_order))
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
-        self.Shape.update_shape(self[0].shape)
-        sh = self[0].shape
+        self.Shape.update_shape(self.get(0).shape)
+        sh = self.get(0).shape
         self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
                       " to " + str(sh), 0)
 
@@ -540,12 +541,12 @@ class ViewerWindow(QMainWindow):
 
     def _set_slice(self):
         """ Get the current slice in the window and save it in a dict. """
-        if isinstance(self[0], self.noPrintTypes):
+        if isinstance(self.get(0), self.noPrintTypes):
             return
         curr_slice = self.Shape.current_slice()
         # Check if the dimensions match and return silently otherwise
-        if len(self[0].shape) != len(curr_slice):
-            return None
+        if len(self.get(0).shape) != len(curr_slice):
+            return
         self.slices[self._slice_key()] = curr_slice
         self._draw_data()
 
@@ -646,7 +647,7 @@ def main():
     config = ConfigParser()
     try:
         assert config.read(os.path.expanduser("~/.arrayviewer"))
-    except (AssertionError, MissingSectionHeaderError) as e:
+    except (AssertionError, MissingSectionHeaderError) as _:
         config.add_section('opt')
         config.set('opt', 'first_to_last', 'False')
         config.set('opt', 'darkmode', 'False')
