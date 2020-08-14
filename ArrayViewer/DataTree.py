@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QHeaderView, QTabWidget, QTreeWidget,
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import Qt
 
+
 def _lowercase(key):
     """ Convenience Function. Return lowercase of string. """
     return key.lower()
@@ -31,11 +32,11 @@ class DataTree(QTabWidget):
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
-        self.Tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.Tree.header().setSectionResizeMode(1,
-                                                QHeaderView.ResizeToContents)
-        self.Tree.header().setStretchLastSection(False)
-        self.Tree.header().setVisible(False)
+        header = self.Tree.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setStretchLastSection(False)
+        header.setVisible(False)
         self.Tree.setColumnWidth(1, 10)
         self.Tree.setColumnHidden(1, True)
         self.Tree.currentItemChanged.connect(self.viewer._change_tree)
@@ -47,11 +48,11 @@ class DataTree(QTabWidget):
         self.secTree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.secTree.headerItem().setText(0, "")
         self.secTree.headerItem().setText(1, "")
-        self.secTree.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.secTree.header(
-            ).setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.secTree.header().setStretchLastSection(False)
-        self.secTree.header().setVisible(False)
+        header = self.secTree.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setStretchLastSection(False)
+        header.setVisible(False)
         self.secTree.setColumnWidth(1, 10)
         self.secTree.setColumnHidden(1, True)
         self.secTree.currentItemChanged.connect(self.viewer._change_tree)
@@ -61,7 +62,6 @@ class DataTree(QTabWidget):
         self.root = self.currentWidget().invisibleRootItem()
         self.currentChanged.connect(self._update_treetab)
         self.setAcceptDrops(True)
-
 
     def clear_tree(self):
         """ Clear the Tree. """
@@ -80,7 +80,7 @@ class DataTree(QTabWidget):
         """ Finish the renaming of a data-key. """
         if not self.old_trace:
             return
-        new_trace = self._get_obj_trace(self.changing_item)
+        new_trace = self.viewer._get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
             return
         self.Tree.itemChanged.disconnect(self._finish_renaming)
@@ -100,7 +100,7 @@ class DataTree(QTabWidget):
             self.old_trace = []
             return
         # Replace the key
-        self.viewer[new_trace] = self.viewer.pop(self.old_trace)
+        self.viewer.set_data(new_trace, self.viewer.pop(self.old_trace))
         # If element is top-level-item
         if not self.changing_item.parent() and self.old_trace[0] in self.keys:
             self.keys[self.keys.index(self.old_trace[0])] = new_trace[0]
@@ -119,7 +119,7 @@ class DataTree(QTabWidget):
     def rename_key(self):
         """ Start the renaming of a data-key. """
         self.changing_item = self.Tree.currentItem()
-        self.old_trace = self._get_obj_trace(self.changing_item)
+        self.old_trace = self.viewer._get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
         self.Tree.editItem(self.changing_item, 0)
