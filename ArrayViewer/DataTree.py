@@ -140,7 +140,9 @@ class DataTree(QTabWidget):
         """ Add a new subtree to the current QTreeWidgetItem. """
         if not isinstance(data, dict):
             for s in self.similar_items:
-                item.addChild(QTreeWidgetItem([s]))
+                sitem = QTreeWidgetItem([s])
+                sitem.setToolTip(0, s)
+                item.addChild(sitem)
             if not isinstance(data, self.noPrintTypes):
                 for c in range(item.childCount()):
                     item.child(c).setCheckState(1, Qt.Unchecked)
@@ -153,7 +155,9 @@ class DataTree(QTabWidget):
                     self._update_subtree(child, data[k])
                 else:
                     for s in self.similar_items:
-                        child.addChild(QTreeWidgetItem([s]))
+                        sitem = QTreeWidgetItem([s])
+                        sitem.setToolTip(0, s)
+                        child.addChild(sitem)
                     if not isinstance(data[k], self.noPrintTypes):
                         for c in range(child.childCount()):
                             child.child(c).setCheckState(1, Qt.Unchecked)
@@ -165,6 +169,7 @@ class DataTree(QTabWidget):
         self.checkableItems = []
         for i in self.keys:
             item = QTreeWidgetItem([i])
+            item.setToolTip(0, i)
             self._update_subtree(item, self.viewer._data[i])
             itemList.append(item)
         self.Tree.clear()
