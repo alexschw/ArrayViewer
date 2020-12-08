@@ -1,6 +1,7 @@
 .spyproject
 *.pyc
 *.png
+*.gif
 *.xml
 *.mat
 *.npy
@@ -9,3 +10,8 @@
 build/
 dist/
 *.egg-info/
+
+*.html
+*.js
+*.json
+*.css

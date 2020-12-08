@@ -12,10 +12,10 @@ import re
 import scipy.io
 import h5py
 from h5py._hl import files, group, dataset
-from h5py.h5r import Reference
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PIL import Image
 import numpy as np
+
 
 class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
@@ -41,7 +41,7 @@ class Loader(QObject):
                 # not all elements in the list have the same length
                 if isinstance(data[0], list) and len(set(map(len, data))) != 1:
                     maxlen = len(sorted(data, key=len, reverse=True)[0])
-                    data = [[xi+[np.nan]*(maxlen - len(xi))] for xi in data]
+                    data = [[xi + [np.nan] * (maxlen - len(xi))] for xi in data]
                 try:
                     dat = np.array(data)
                     if dat.dtype == "O":
@@ -83,8 +83,8 @@ class Loader(QObject):
                 data = self._validate(data[()])
         elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
-            self.infoMsg.emit("DataType (" + type(data) +
-                              ") not recognized. Skipping", 0)
+            self.infoMsg.emit("DataType (" + type(data)
+                              + ") not recognized. Skipping", 0)
             data = None
         if isinstance(data, (np.ndarray, dataset.Dataset)) and \
            self.switch_to_last and len(data.shape) > 1:

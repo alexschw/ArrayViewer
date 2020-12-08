@@ -9,11 +9,12 @@ from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
                              QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator as TickMultLoc
 import numpy as np
 from h5py._hl.dataset import Dataset
+
 
 def _flat_with_padding(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
@@ -49,20 +50,21 @@ def _get_shape_from_str(string):
     return np.array([_f for _f in string.strip("()[]").split(",") if _f],
                     dtype=int)
 
+
 def _set_ticks(ax, s, transp, is1DPlot=False):
     """ Set the ticks of plots according to the selected slices. """
     # Calculate the ticks for the plot by checking the limits
-    limits = [l.split(':') for l in s[1:-1].split(',') if ':' in l]
+    limits = [n.split(':') for n in s[1:-1].split(',') if ':' in n]
     lim = np.ones((len(limits), 3), dtype=int) * [0, -1, 1]
-    for i, l in enumerate(limits):
-        for j, dim in enumerate(l):
+    for i, m in enumerate(limits):
+        for j, dim in enumerate(m):
             if dim:
                 lim[i, j] = dim
     if transp:
         lim = lim[(1, 0), :]
     # Set the x-ticks
     loc = ax.xaxis.get_major_locator()()
-    d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[0, 2]+lim[0, 0]
+    d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[0, 2] + lim[0, 0]
     if all(d.astype(int) == d.astype(float)):
         ax.set_xticklabels(d.astype(int))
     else:
@@ -71,11 +73,12 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
         return
     # Set the y-ticks
     loc = ax.yaxis.get_major_locator()()
-    d = (np.arange(len(loc))-1)*(loc[2] - loc[1])*lim[1, 2]+lim[1, 0]
+    d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[1, 2] + lim[1, 0]
     if all(d.astype(int) == d.astype(float)):
         ax.set_yticklabels(d.astype(int))
     else:
         ax.set_yticklabels(d.astype(float))
+
 
 def _suggestion(previous_val, value):
     """ Returns all possible factors """
@@ -100,6 +103,7 @@ def _suggestion(previous_val, value):
     factors = list(set(factors))
     factors.sort(reverse=True)
     return [previous_val + "{0},".format(i) for i in factors]
+
 
 class GraphWidget(QWidget):
     """ Draws the data graph. """
@@ -425,10 +429,10 @@ class NewDataDialog(QDialog):
 
         # Add the current and new shape boxes and their labels
         label = QLabel(self)
-        label.setText(("Use 'this' to reference the current data and 'cutout'"+
-                       " for the current view.\n"+
-                       "Before saving enter the variable you want to save. \n"+
-                       "Otherwise the original data will be overwritten."))
+        label.setText(("Use 'this' to reference the current data and 'cutout' "
+                       + "for the current view.\nBefore saving enter the "
+                       + "variable you want to save.\n"
+                       + "Otherwise the original data will be overwritten."))
         Layout.addWidget(label)
         self.history = QTextEdit(self)
         self.history.setEnabled(False)

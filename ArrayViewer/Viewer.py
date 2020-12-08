@@ -27,6 +27,7 @@ from ArrayViewer.Style import dark_qpalette
 from ArrayViewer.DataTree import DataTree
 from ArrayViewer.Shape import ShapeSelector
 
+
 def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
     btn = QAction(menu)
@@ -139,7 +140,6 @@ class ViewerWindow(QMainWindow):
         self.Shape = ShapeSelector(self)
         grLayout.addWidget(self.Shape, 5, 0, 1, 4)
 
-
     def __initMenu(self):
         """ Setup the menu bar. """
         menu = QMenuBar(self)
@@ -189,7 +189,6 @@ class ViewerWindow(QMainWindow):
                   lambda: self.Shape.set_operation('median'), act_grp=ag_op)
         _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('max'),
                   act_grp=ag_op)
-
 
         # Plot menu
         menuPlot = QMenu("Plot", menu)
@@ -241,7 +240,7 @@ class ViewerWindow(QMainWindow):
     def set_data(self, newkey, newData, *_):
         """ Sets the current data to the new data. """
         if not self._data:
-            return
+            self._data = {}
         if newkey in [0, "data", ""]:
             newkey = self.cText
         reduce(getitem, newkey[:-1], self._data)[newkey[-1]] = newData
@@ -478,7 +477,7 @@ class ViewerWindow(QMainWindow):
             while tli.parent() is not None:
                 tli = tli.parent()
             if tli.text(0)[:4] != "Diff":
-                dText = [dText[i-1] for i in range(len(dText))]
+                dText = [dText[i - 1] for i in range(len(dText))]
         return dText
 
     def _load_slice(self):
@@ -510,9 +509,8 @@ class ViewerWindow(QMainWindow):
                 self.slices[self._slice_key()][i] for i in new_order]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
-        self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order)) +
-                      " to " + str(sh), 0)
-
+        self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order))
+                      + " to " + str(sh), 0)
 
     def pop(self, key):
         """ Returns the current data and removes it from the dict. """
@@ -568,7 +566,6 @@ class ViewerWindow(QMainWindow):
     def _update_colorbar(self):
         """ Update the values of the colorbar according to the slider value."""
         self.Graph.colorbar(self.Sldr.value())
-
 
     ## Public Methods
     def load_files(self, fnames):
@@ -659,6 +656,7 @@ def main():
     with open(os.path.expanduser("~/.arrayviewer"), "w") as conf_file:
         config.write(conf_file)
     sys.exit()
+
 
 if __name__ == '__main__':
     main()
