@@ -33,7 +33,7 @@ class DataTree(QTabWidget):
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
         header = self.Tree.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setStretchLastSection(False)
         header.setVisible(False)
@@ -42,6 +42,7 @@ class DataTree(QTabWidget):
         self.Tree.currentItemChanged.connect(self.viewer._change_tree)
         self.addTab(self.Tree, "Files")
         self.Tree.contextMenuEvent = self.viewer._dropdown
+        self.Tree.resizeColumnToContents(0)
 
         # Add an alternative Tree Widget
         self.secTree = QTreeWidget(parent)
@@ -49,13 +50,14 @@ class DataTree(QTabWidget):
         self.secTree.headerItem().setText(0, "")
         self.secTree.headerItem().setText(1, "")
         header = self.secTree.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setStretchLastSection(False)
         header.setVisible(False)
         self.secTree.setColumnWidth(1, 10)
         self.secTree.setColumnHidden(1, True)
         self.secTree.currentItemChanged.connect(self.viewer._change_tree)
+        self.secTree.resizeColumnToContents(0)
         self.addTab(self.secTree, "Data")
 
         # Connect Signal at the end to avoid errors
