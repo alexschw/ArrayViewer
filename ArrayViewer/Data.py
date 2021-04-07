@@ -67,20 +67,23 @@ class Loader(QObject):
         elif isinstance(data, (files.File, group.Group)):
             data = {key: self._validate(data[key])
                     for key in data if key != "#refs#"}
-        elif isinstance(data, dataset.Dataset) and data.dtype == "O":
-            dat = np.empty_like(data)
-            try:
-                for x, d in enumerate(data[()]):
-                    names = [h5py.h5r.get_name(sd, data.file.id) for sd in d]
-                    dat[x, :] = [np.array(data.file[name]).tobytes()
-                                 .decode(encoding="utf-16")
-                                 if data.file[name].dtype == "uint16"
-                                 else data.file[name] for name in names]
-                data = dat.astype(str).squeeze().tolist()
-            except ValueError:
-                data = np.array([data.file.get(d[0]) for d in data[()]][0])
-            except TypeError:
-                data = self._validate(data[()])
+        elif isinstance(data, dataset.Dataset):
+            if data.dtype == "O":
+                dat = np.empty_like(data)
+                try:
+                    for x, d in enumerate(data[()]):
+                        names = [h5py.h5r.get_name(s, data.file.id) for s in d]
+                        dat[x, :] = [np.array(data.file[name]).tobytes()
+                                     .decode(encoding="utf-16")
+                                     if data.file[name].dtype == "uint16"
+                                     else data.file[name] for name in names]
+                    data = dat.astype(str).squeeze().tolist()
+                except ValueError:
+                    data = np.array([data.file.get(d[0]) for d in data[()]][0])
+                except TypeError:
+                    data = self._validate(data[()])
+            else:
+                data = np.array(data)
         elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + str(type(data))
