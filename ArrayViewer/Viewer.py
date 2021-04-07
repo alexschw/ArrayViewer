@@ -59,7 +59,7 @@ class ViewerWindow(QMainWindow):
         self.cText = []
         self.keys = []
         self.diffNo = 0
-        self.noPrintTypes = (int, float, str, type(u''), list, tuple)
+        self.noPrintTypes = (int, float, str, type(u''), list, tuple, type(None))
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
 

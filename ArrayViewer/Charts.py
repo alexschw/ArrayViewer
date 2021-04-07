@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from matplotlib.ticker import MultipleLocator as TickMultLoc
+from matplotlib.ticker import MultipleLocator, FixedLocator
 import numpy as np
 from h5py._hl.dataset import Dataset
 
@@ -64,6 +64,7 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
         lim = lim[(1, 0), :]
     # Set the x-ticks
     loc = ax.xaxis.get_major_locator()()
+    ax.xaxis.set_major_locator(FixedLocator(loc))
     d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[0, 2] + lim[0, 0]
     if all(d.astype(int) == d.astype(float)):
         ax.set_xticklabels(d.astype(int))
@@ -73,6 +74,7 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
         return
     # Set the y-ticks
     loc = ax.yaxis.get_major_locator()()
+    ax.yaxis.set_major_locator(FixedLocator(loc))
     d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[1, 2] + lim[1, 0]
     if all(d.astype(int) == d.astype(float)):
         ax.set_yticklabels(d.astype(int))
@@ -151,11 +153,11 @@ class GraphWidget(QWidget):
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-        locx = TickMultLoc(sh[0] + nPad)
-        ax.xaxis.set_major_locator(locx)
+        locx = MultipleLocator(sh[0] + nPad)
+        ax.xaxis.set_major_locator(FixedLocator(locx))
         ax.xaxis.set_ticklabels(np.arange(-sh[0], int(locx().max()), sh[0]))
-        locy = TickMultLoc(sh[1] + nPad)
-        ax.yaxis.set_major_locator(locy)
+        locy = MultipleLocator(sh[1] + nPad)
+        ax.yaxis.set_major_locator(FixedLocator(locy))
         ax.yaxis.set_ticklabels(np.arange(-sh[1], int(locy().max()), sh[1]))
 
     def _two_D_plot(self, ui, ax, s):
@@ -236,11 +238,9 @@ class GraphWidget(QWidget):
         ui.txtMin.setText('min : ')
         ui.txtMax.setText('max : ')
         data = ui.get(0)
-        if data is None:
-            return
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
-            ax.text(-0.1, 1.1, data, va='top', wrap=True)
+            ax.text(-0.1, 1.1, str(data), va='top', wrap=True)
             ax.axis('off')
         elif isinstance(data, Dataset) and data.shape == ():
             # Print single values of h5py arrays to the graph directly

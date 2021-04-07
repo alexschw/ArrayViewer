@@ -83,7 +83,7 @@ class Loader(QObject):
                 data = self._validate(data[()])
         elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
                                    float, str, type(u''), tuple)):
-            self.infoMsg.emit("DataType (" + type(data)
+            self.infoMsg.emit("DataType (" + str(type(data))
                               + ") not recognized. Skipping", 0)
             data = None
         if isinstance(data, (np.ndarray, dataset.Dataset)) and \
