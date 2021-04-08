@@ -32,32 +32,34 @@ class DataTree(QTabWidget):
         self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.Tree.headerItem().setText(0, "")
         self.Tree.headerItem().setText(1, "")
+        self.Tree.setTreePosition(1)
         header = self.Tree.header()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setStretchLastSection(False)
         header.setVisible(False)
-        self.Tree.setColumnWidth(1, 10)
-        self.Tree.setColumnHidden(1, True)
+        self.Tree.setColumnWidth(0, 10)
+        self.Tree.setColumnHidden(0, True)
         self.Tree.currentItemChanged.connect(self.viewer._change_tree)
         self.addTab(self.Tree, "Files")
         self.Tree.contextMenuEvent = self.viewer._dropdown
-        self.Tree.resizeColumnToContents(0)
+        self.Tree.resizeColumnToContents(1)
 
         # Add an alternative Tree Widget
         self.secTree = QTreeWidget(parent)
         self.secTree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
         self.secTree.headerItem().setText(0, "")
         self.secTree.headerItem().setText(1, "")
+        self.secTree.setTreePosition(1)
         header = self.secTree.header()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setStretchLastSection(False)
         header.setVisible(False)
-        self.secTree.setColumnWidth(1, 10)
-        self.secTree.setColumnHidden(1, True)
+        self.secTree.setColumnWidth(0, 10)
+        self.secTree.setColumnHidden(0, True)
         self.secTree.currentItemChanged.connect(self.viewer._change_tree)
-        self.secTree.resizeColumnToContents(0)
+        self.secTree.resizeColumnToContents(1)
         self.addTab(self.secTree, "Data")
 
         # Connect Signal at the end to avoid errors
@@ -87,18 +89,18 @@ class DataTree(QTabWidget):
             return
         self.Tree.itemChanged.disconnect(self._finish_renaming)
         # Check if the name exists in siblings
-        itemIndex = self.Tree.indexFromItem(self.changing_item, 0)
+        itemIndex = self.Tree.indexFromItem(self.changing_item, 1)
         siblingTxt = []
         if self.changing_item.parent():
             for n in range(self.changing_item.parent().childCount()):
-                if itemIndex.sibling(n, 0) != itemIndex:
-                    siblingTxt.append(itemIndex.sibling(n, 0).data(0))
+                if itemIndex.sibling(n, 1) != itemIndex:
+                    siblingTxt.append(itemIndex.sibling(n, 1).data(0))
         else:
             for n in range(self.Tree.topLevelItemCount()):
                 if self.Tree.topLevelItem(n) != self.changing_item:
-                    siblingTxt.append(itemIndex.sibling(n, 0).data(0))
+                    siblingTxt.append(itemIndex.sibling(n, 1).data(0))
         if new_trace[-1] in siblingTxt:
-            self.changing_item.setData(0, 0, self.old_trace[-1])
+            self.changing_item.setData(0, 1, self.old_trace[-1])
             self.old_trace = []
             return
         # Replace the key
@@ -124,45 +126,45 @@ class DataTree(QTabWidget):
         self.old_trace = self.viewer._get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
-        self.Tree.editItem(self.changing_item, 0)
+        self.Tree.editItem(self.changing_item, 1)
         self.Tree.itemChanged.connect(self._finish_renaming)
 
     def _update_subtree(self, item, data):
         """ Add a new subtree to the current QTreeWidgetItem. """
         for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
-            item.addChild(QTreeWidgetItem([k]))
+            item.addChild(QTreeWidgetItem([None, k]))
             child = item.child(n)
             if isinstance(data[k], dict):
                 self._update_subtree(child, data[k])
             elif not isinstance(data[k], self.noPrintTypes):
-                child.setCheckState(1, Qt.Unchecked)
+                child.setCheckState(0, Qt.Unchecked)
                 self.checkableItems.append(child)
 
     def _update_subtree_sec(self, item, data):
         """ Add a new subtree to the current QTreeWidgetItem. """
         if not isinstance(data, dict):
             for s in self.similar_items:
-                sitem = QTreeWidgetItem([s])
-                sitem.setToolTip(0, s)
+                sitem = QTreeWidgetItem([None, s])
+                sitem.setToolTip(1, s)
                 item.addChild(sitem)
             if not isinstance(data, self.noPrintTypes):
                 for c in range(item.childCount()):
-                    item.child(c).setCheckState(1, Qt.Unchecked)
+                    item.child(c).setCheckState(0, Qt.Unchecked)
                     self.checkableItems.append(item.child(c))
         else:
             for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
-                item.addChild(QTreeWidgetItem([k]))
+                item.addChild(QTreeWidgetItem([None, k]))
                 child = item.child(n)
                 if isinstance(data[k], dict):
                     self._update_subtree(child, data[k])
                 else:
                     for s in self.similar_items:
-                        sitem = QTreeWidgetItem([s])
+                        sitem = QTreeWidgetItem([None, s])
                         sitem.setToolTip(0, s)
                         child.addChild(sitem)
                     if not isinstance(data[k], self.noPrintTypes):
                         for c in range(child.childCount()):
-                            child.child(c).setCheckState(1, Qt.Unchecked)
+                            child.child(c).setCheckState(0, Qt.Unchecked)
                             self.checkableItems.append(child.child(c))
 
     def update_tree(self):
@@ -170,7 +172,7 @@ class DataTree(QTabWidget):
         itemList = []
         self.checkableItems = []
         for i in self.keys:
-            item = QTreeWidgetItem([i])
+            item = QTreeWidgetItem([None, i])
             item.setToolTip(0, i)
             self._update_subtree(item, self.viewer._data[i])
             itemList.append(item)
@@ -185,14 +187,8 @@ class DataTree(QTabWidget):
             self.viewer._start_diff()
         if index == 1:
             self._update_tree_sec()
-            pTree = self.Tree
         else:
-            pTree = self.secTree
-        cTree = self.currentWidget()
-        for n in range(pTree.topLevelItemCount()):
-            tl_item = pTree.topLevelItem(n)
-            if tl_item is not None and tl_item.text(0)[:4] == "Diff":
-                cTree.addTopLevelItem(pTree.takeTopLevelItem(n))
+            self.update_tree()
 
     def _update_tree_sec(self):
         """ Generate the data tree. """
@@ -206,19 +202,24 @@ class DataTree(QTabWidget):
                 return
         while ref.parent() is not None:
             ref = ref.parent()
-        flipped_var = self.viewer._data[ref.text(0)].keys()
+        flipped_var = self.viewer._data[ref.text(1)].keys()
         # Find all with a similar structure
         self.similar_items = []
         for i in range(self.Tree.topLevelItemCount()):
-            top_level_key = self.Tree.topLevelItem(i).text(0)
+            top_level_key = self.Tree.topLevelItem(i).text(1)
             if self.viewer._data[top_level_key].keys() == flipped_var:
                 self.similar_items.append(top_level_key)
         # Build the tree
         itemList = []
         for k in flipped_var:
-            item = QTreeWidgetItem([k])
-            self._update_subtree_sec(item, self.viewer._data[ref.text(0)][k])
+            item = QTreeWidgetItem([None, k])
+            self._update_subtree_sec(item, self.viewer._data[ref.text(1)][k])
             itemList.append(item)
+        for k in self.keys:
+            if k[:4] == "Diff":
+                item = QTreeWidgetItem([None, k])
+                self._update_subtree(item, self.viewer._data[k])
+                itemList.append(item)
         self.secTree.addTopLevelItems(itemList)
 
     def dragEnterEvent(self, ev):

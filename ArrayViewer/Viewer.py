@@ -235,6 +235,9 @@ class ViewerWindow(QMainWindow):
         try:
             return reduce(getitem, item[:-1], self._data)[item[-1]]
         except KeyError:
+            # Diff views in the DataTree
+            if not self.datatree.is_files_tree() and item[1][:4] == "Diff":
+                return self._data[item[1]][item[0]]
             return []
 
     def set_data(self, newkey, newData, *_):
@@ -255,7 +258,7 @@ class ViewerWindow(QMainWindow):
         """ Calculate the difference and end the diff view. """
         checkedItems = 0
         for item in self.datatree.checkableItems:
-            if item.checkState(1) == Qt.Checked:
+            if item.checkState(0) == Qt.Checked:
                 text = self._get_obj_trace(item)
                 if checkedItems == 0:
                     text0 = '[0] ' + '/'.join(text)
@@ -264,20 +267,22 @@ class ViewerWindow(QMainWindow):
                     text1 = '[1] ' + '/'.join(text)
                     item1 = self.get(text)
                 checkedItems += 1
-        if checkedItems == 2 and item0.shape == item1.shape:
+        if checkedItems != 2:
+            self.info_msg("Checked %i items. Should be 2!"%checkedItems, -1)
+        elif item0.shape == item1.shape:
             self._data["Diff " + str(self.diffNo)] = {text0: item0,
                                                       text1: item1,
                                                       "~> Diff [0]-[1]":
                                                       item0 - item1}
             self.keys.append("Diff " + str(self.diffNo))
             self.diffNo += 1
-            self.datatree.currentWidget().setColumnHidden(1, True)
+            self.datatree.currentWidget().setColumnHidden(0, True)
             self.diffBtn.hide()
             self.datatree.update_tree()
 
     def _change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
-        if (current and current != previous and current.text(0) != self.lMsg):
+        if (current and current != previous and current.text(1) != self.lMsg):
             self.Graph.set_oprdim(-1)
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
@@ -326,7 +331,7 @@ class ViewerWindow(QMainWindow):
     def _dropdown(self, _):
         """ Add a context menu. """
         if self.datatree.current_item():
-            if str(self.datatree.current_item().text(0)) == self.lMsg:
+            if str(self.datatree.current_item().text(1)) == self.lMsg:
                 return
             self.combine_opt.setVisible(
                 self.datatree.current_item().childCount() != 0)
@@ -335,7 +340,7 @@ class ViewerWindow(QMainWindow):
     def _delete_data(self):
         """ Delete the selected data. """
         citem = self.datatree.current_item()
-        if str(citem.text(0)) == self.lMsg:
+        if str(citem.text(1)) == self.lMsg:
             return
         dText = self._get_obj_trace(citem)
         citem = self.datatree.current_item()
@@ -467,10 +472,10 @@ class ViewerWindow(QMainWindow):
 
     def _get_obj_trace(self, item):
         """ Returns the trace to a given item in the TreeView. """
-        dText = [str(item.text(0))]
+        dText = [str(item.text(1))]
         while item.parent() is not None:
             item = item.parent()
-            dText.insert(0, str(item.text(0)))
+            dText.insert(0, str(item.text(1)))
         # If in secondary tree revert the order
         if not self.datatree.is_files_tree():
             tli = self.datatree.current_item()
@@ -479,7 +484,7 @@ class ViewerWindow(QMainWindow):
             else:
                 while tli.parent() is not None:
                     tli = tli.parent()
-            if tli.text(0)[:4] != "Diff":
+            if tli.text(1)[:4] != "Diff":
                 dText = [dText[i - 1] for i in range(len(dText))]
         return dText
 
@@ -559,12 +564,12 @@ class ViewerWindow(QMainWindow):
         """ Start the diff view. """
         if self.diffBtn.isVisible():
             self.diffBtn.hide()
-            self.datatree.currentWidget().setColumnHidden(1, True)
+            self.datatree.currentWidget().setColumnHidden(0, True)
         else:
             self.diffBtn.show()
-            self.datatree.currentWidget().setColumnHidden(1, False)
+            self.datatree.currentWidget().setColumnHidden(0, False)
             for item in self.datatree.checkableItems:
-                item.setCheckState(1, Qt.Unchecked)
+                item.setCheckState(0, Qt.Unchecked)
 
     def _update_colorbar(self):
         """ Update the values of the colorbar according to the slider value."""
