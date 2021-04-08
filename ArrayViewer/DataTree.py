@@ -191,7 +191,7 @@ class DataTree(QTabWidget):
         cTree = self.currentWidget()
         for n in range(pTree.topLevelItemCount()):
             tl_item = pTree.topLevelItem(n)
-            if tl_item.text(0)[:4] == "Diff":
+            if tl_item is not None and tl_item.text(0)[:4] == "Diff":
                 cTree.addTopLevelItem(pTree.takeTopLevelItem(n))
 
     def _update_tree_sec(self):

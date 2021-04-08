@@ -474,8 +474,11 @@ class ViewerWindow(QMainWindow):
         # If in secondary tree revert the order
         if not self.datatree.is_files_tree():
             tli = self.datatree.current_item()
-            while tli.parent() is not None:
-                tli = tli.parent()
+            if tli is None:
+                tli = self.datatree.root
+            else:
+                while tli.parent() is not None:
+                    tli = tli.parent()
             if tli.text(0)[:4] != "Diff":
                 dText = [dText[i - 1] for i in range(len(dText))]
         return dText
