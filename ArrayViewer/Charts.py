@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from matplotlib.ticker import MultipleLocator, FixedLocator
+from matplotlib.ticker import FixedLocator
 import numpy as np
 from h5py._hl.dataset import Dataset
 
@@ -153,12 +153,14 @@ class GraphWidget(QWidget):
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-        locx = MultipleLocator(sh[0] + nPad)
-        ax.xaxis.set_major_locator(FixedLocator(locx))
-        ax.xaxis.set_ticklabels(np.arange(-sh[0], int(locx().max()), sh[0]))
-        locy = MultipleLocator(sh[1] + nPad)
-        ax.yaxis.set_major_locator(FixedLocator(locy))
-        ax.yaxis.set_ticklabels(np.arange(-sh[1], int(locy().max()), sh[1]))
+        lx = np.arange(-sh[0] - nPad, dat.shape[1], sh[0] + nPad)
+        locx = FixedLocator(lx)
+        ax.xaxis.set_major_locator(locx)
+        ax.xaxis.set_ticklabels(lx - (np.arange(0, len(lx)) * nPad - nPad))
+        ly = np.arange(-sh[1] - nPad, dat.shape[0], sh[1] + nPad)
+        locy = FixedLocator(ly)
+        ax.yaxis.set_major_locator(locy)
+        ax.yaxis.set_ticklabels(ly - (np.arange(0, len(ly)) * nPad - nPad))
 
     def _two_D_plot(self, ui, ax, s):
         """ Plot 2-dimensional data. """
