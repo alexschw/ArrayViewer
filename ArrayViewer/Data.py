@@ -32,7 +32,7 @@ class Loader(QObject):
 
     def _validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
-        if isinstance(data, dict):
+        if isinstance(data, dict) or isinstance(data, np.lib.npyio.NpzFile):
             # Run the validation again for each subelement in the dict
             data = {str(key): self._validate(data[key]) for key in data.keys()
                     if str(key)[:2] != "__"}
@@ -58,12 +58,14 @@ class Loader(QObject):
             for key in data._fieldnames:
                 exec("dct[key] = self._validate(data.%s)"%key)
             data = dct
-        elif isinstance(data, np.ndarray) and data.dtype == "O":
+        elif isinstance(data, np.ndarray) and data.dtype == "O" :
             # Create numpy arrays from matlab cell types
             if not data.shape:
                 data = self._validate(data[()])
             else:
                 data = self._validate([self._validate(sd) for sd in data])
+        elif isinstance(data, np.ndarray) and not data.shape:
+            data = data[()]
         elif isinstance(data, (files.File, group.Group)):
             data = {key: self._validate(data[key])
                     for key in data if key != "#refs#"}
@@ -115,7 +117,7 @@ class Loader(QObject):
             except NotImplementedError:
                 # v7.3
                 data = self._validate(h5py.File(str(fname), "r"))
-        elif fname[-4:] == '.npy':
+        elif fname[-4:] == '.npy' or fname[-4:] == '.npz':
             try:
                 data = self._validate(np.load(str(fname), allow_pickle=True))
             except UnicodeDecodeError:
