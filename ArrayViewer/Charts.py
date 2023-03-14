@@ -12,6 +12,7 @@ from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import FixedLocator
+from matplotlib.widgets import Cursor
 import numpy as np
 from h5py._hl.dataset import Dataset
 
@@ -132,6 +133,12 @@ class GraphWidget(QWidget):
         self._oprcorr = 'None'
         self.cutout = np.array([])
 
+        # Add a cursor
+        self.cursor = Cursor(self._canv.ax, useblit=False, color='red', linewidth=1)
+
+        self._canv.mpl_connect('button_press_event', self.onclick)
+        self._canv.draw()
+
         # Add a label Text that may be changed in later Versions to display the
         # position and value below the mouse pointer
         self._layout = QVBoxLayout(self)
@@ -139,6 +146,9 @@ class GraphWidget(QWidget):
         self._txt = QLabel(self)
         self._txt.setText('')
         self._layout.addWidget(self._txt)
+
+    def onclick(self, event):
+        self.cursor.onmove(event)
 
     def _n_D_plot(self, ax, ui):
         """ Plot multi-dimensional data. """
@@ -310,6 +320,7 @@ class GraphWidget(QWidget):
                         fstr[i] = "{:.5e}"
                 ui.txtMin.setText("min : " + fstr[0].format(self._clim[0]))
                 ui.txtMax.setText("max : " + fstr[1].format(self._clim[1]))
+        self._canv.mpl_connect('button_press_event', self.onclick)
         self._canv.draw()
 
     def set_operation(self, operation="None"):

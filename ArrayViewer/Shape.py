@@ -225,9 +225,9 @@ class ShapeSelector(QWidget):
         txt = from_wgt.text()
         modifiers = QApplication.keyboardModifiers()
         mod = np.sign(event.angleDelta().y())
-        if modifiers == Qt.ControlModifier:
+        if modifiers & Qt.ControlModifier:
             mod *= 10
-        elif modifiers == Qt.ShiftModifier:
+        elif modifiers & Qt.ShiftModifier:
             mod *= 100
         try:
             from_wgt.setText(str(int(txt)+mod))
@@ -242,16 +242,20 @@ class ShapeSelector(QWidget):
                 return
             if len(txt) == 1:
                 return
-            if len(txt) == 3 and txt[2] != "":
-                if modifiers == Qt.ControlModifier:
-                    mod //= 10
-                    mod *= int(txt[2])
+            if(len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
+               and modifiers & Qt.ControlModifier):
+                mod //= 10
+                mod *= int(txt[1]) - int(txt[0])
+            if(len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
+               and modifiers & Qt.ControlModifier):
+                mod //= 100
+                mod *= int(txt[2])
             if txt[0] != "":
                 txt[0] = str(int(txt[0])+mod)
             if txt[1] != "":
                 txt[1] = str(int(txt[1])+mod)
-            if "0" in txt:
-                txt = np.array(txt)
-                txt[txt == "0"] = ""
+            # if "0" in txt:
+                # txt = np.array(txt)
+                # txt[txt == "0"] = ""
             from_wgt.setText(':'.join(txt))
         self.parent._set_slice()
