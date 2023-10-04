@@ -81,7 +81,7 @@ class Loader(QObject):
                     data = dat.astype(str).squeeze().tolist()
                 except ValueError:
                     data = np.array([data.file.get(d[0]) for d in data[()]][0])
-                except TypeError:
+                except (OSError, TypeError):
                     data = self._validate(data[()])
             else:
                 data = np.array(data)
@@ -124,11 +124,11 @@ class Loader(QObject):
                                               encoding='latin1'))
         elif fname.endswith(('.data', '.bin')):
             try:
-                with pickle.load(open(str(fname), encoding='utf-8')) as f:
-                    data = self._validate(f)
+                f = pickle.load(open(str(fname), encoding='utf-8'))
+                data = self._validate(f)
             except UnicodeDecodeError:
-                with pickle.load(open(str(fname), 'rb'), encoding='latin1') as f:
-                    data = self._validate(f)
+                f = pickle.load(open(str(fname), 'rb'), encoding='latin1')
+                data = self._validate(f)
         elif fname.endswith(('.txt', '.csv')):
             with open(fname, encoding="utf-8") as f:
                 numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
