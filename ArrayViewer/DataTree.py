@@ -2,16 +2,11 @@
 Data Tree for the ArrayViewer
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
-from natsort import realsorted
+from natsort import realsorted, ns
 from PyQt5.QtWidgets import (QHeaderView, QTabWidget, QTreeWidget,
                              QTreeWidgetItem)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import Qt
-
-
-def _lowercase(key):
-    """ Convenience Function. Return lowercase of string. """
-    return key.lower()
 
 
 class DataTree(QTabWidget):
@@ -131,7 +126,7 @@ class DataTree(QTabWidget):
 
     def _update_subtree(self, item, data):
         """ Add a new subtree to the current QTreeWidgetItem. """
-        for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
+        for n, k in enumerate(realsorted(data.keys(), alg=ns.IC|ns.NA)):
             item.addChild(QTreeWidgetItem([None, k]))
             child = item.child(n)
             if isinstance(data[k], dict):
@@ -152,7 +147,7 @@ class DataTree(QTabWidget):
                     item.child(c).setCheckState(0, Qt.Unchecked)
                     self.checkableItems.append(item.child(c))
         else:
-            for n, k in enumerate(realsorted(data.keys(), key=_lowercase)):
+            for n, k in enumerate(realsorted(data.keys(), alg=ns.IC|ns.NA)):
                 item.addChild(QTreeWidgetItem([None, k]))
                 child = item.child(n)
                 if isinstance(data[k], dict):

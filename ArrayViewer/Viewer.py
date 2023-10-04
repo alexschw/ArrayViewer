@@ -6,12 +6,13 @@ Base Script of the Array Viewer
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 
 import sys
+from itertools import zip_longest
 from functools import reduce
 from operator import getitem
 from configparser import ConfigParser, MissingSectionHeaderError
 
 import os.path
-from natsort import realsorted
+from natsort import realsorted, ns
 from PyQt5.QtGui import QColor, QCursor, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QFileDialog, QGridLayout, QLabel, QLineEdit,
@@ -181,13 +182,13 @@ class ViewerWindow(QMainWindow):
         ag_op = QActionGroup(self)
         _menu_opt(menuOpr, "None", lambda: self.Shape.set_operation('None'),
                   act_grp=ag_op).setChecked(True)
-        _menu_opt(menuOpr, "Min", lambda: self.Shape.set_operation('min'),
+        _menu_opt(menuOpr, "Min", lambda: self.Shape.set_operation('nanmin'),
                   act_grp=ag_op)
-        _menu_opt(menuOpr, "Mean", lambda: self.Shape.set_operation('mean'),
+        _menu_opt(menuOpr, "Mean", lambda: self.Shape.set_operation('nanmean'),
                   act_grp=ag_op)
         _menu_opt(menuOpr, "Median",
-                  lambda: self.Shape.set_operation('median'), act_grp=ag_op)
-        _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('max'),
+                  lambda: self.Shape.set_operation('nanmedian'), act_grp=ag_op)
+        _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('nanmax'),
                   act_grp=ag_op)
 
         # Plot menu
@@ -354,45 +355,52 @@ class ViewerWindow(QMainWindow):
         """ Open a dialog to combine the dataset. """
         trace = self._get_obj_trace(self.datatree.current_item())
         data = self.get(trace)
-        keys = realsorted(data, key=lambda x: x.lower())
-        d0 = data.get(keys[0])
-        npt = self.noPrintTypes + (dict,)
-        # Search for occurences of arrays with the same shape as the first one
-        if isinstance(d0, npt):
-            n_keys = [k for k in keys if isinstance(data.get(k), type(d0))]
-            data_shape = ()
-        else:
-            n_keys = []
-            for k in keys:
-                if not isinstance(data.get(k), npt):
-                    if data.get(k).shape == d0.shape:
-                        n_keys.append(k)
-            data_shape = data.get(n_keys[0]).shape
-        # Show a dialog asking if the conversion should be done.
-        if len(data_shape) > 1:
-            txt = "Combine the first {} datasets of {} element(s) into one?"
-            txt = txt.format(len(n_keys), data_shape)
-        else:
-            txt = "Combine {} elements into 1D vector?".format(len(n_keys))
-        btns = (QMessageBox.Yes|QMessageBox.No)
-        msg = QMessageBox(QMessageBox.Information, "Info", txt, buttons=btns)
+        keys = realsorted(data, alg=ns.IGNORECASE|ns.NUMAFTER)
+        skipkeys = []
+
+        # Find the biggest shape in the dataset and drop unusable keys
+        dshape = set()
+        for k in keys:
+            try:
+                dshape.add(data[k].shape)
+            except ValueError:
+                # For h5py dictionaries
+                dshape.add(data.get(k)[()].shape)
+            except AttributeError:
+                # uncombinable types
+                skipkeys.append(k)
+        keys = [k for k in keys if k not in skipkeys]
+        mshape = tuple(np.max(list(set(dshape)), axis=0)) + (len(keys),)
+
+        # Show a dialog asking if the combination should be done.
+        txt = f"Combine {len(keys)} elements into {mshape} shape?"
+        msg = QMessageBox(QMessageBox.Information, "Info", txt)
+        msg.addButton(QMessageBox.Yes)
+        keepBtn = msg.addButton("Yes but keep Elements", QMessageBox.YesRole)
+        msg.addButton(QMessageBox.No)
         msg.setDefaultButton(QMessageBox.Yes)
-        if msg.exec_() != QMessageBox.Yes:
+        msg.exec_()
+        if msg.clickedButton() == QMessageBox.No:
             return
-        # Add 'combined' if not all values are combined or it is a topLevelItem
-        if len(n_keys) != len(keys) or len(trace) == 1:
-            trace.append('combined')
+
         # Perform the combination
         try:
-            self.set_data(trace, np.array([data.get(k) for k in n_keys]))
+            newd = [data[k].flatten() for k in keys]
         except ValueError:
             # For h5py dictionaries
-            self.set_data(trace, np.array([data.get(k)[()] for k in n_keys]))
-        # Remove the combined data
-        if len(n_keys) != len(keys) and len(data_shape) > 1:
-            _ = [self.get(trace[:-1]).pop(key) for key in n_keys]
-        # Put new dimension at the end and remove singleton dimensions.
-        self.set_data(trace, np.moveaxis(self.get(trace), 0, -1).squeeze())
+            newd = [data.get(k)[()].flatten() for k in keys]
+        combined = np.array(list(zip_longest(*newd)), dtype=float)
+        try:
+            combined = np.reshape(combined, mshape)
+        except ValueError:
+            pass
+        # Add 'combined'-key if it is a topLevelItem
+        if len(trace) == 1 or len(skipkeys) > 0 or msg.clickedButton() == keepBtn:
+            trace.append('combined')
+            # Remove the combined data
+            if msg.clickedButton() != keepBtn:
+                _ = [self.get(trace[:-1]).pop(key) for key in keys]
+        self.set_data(trace, combined)
         self.datatree.update_tree()
 
     def _dlg_load_data(self):

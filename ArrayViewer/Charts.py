@@ -156,7 +156,7 @@ class GraphWidget(QWidget):
         nPad = sh[0] // 100 + 1
         if ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
             nPad = -1
-            mm = [np.min(self.cutout), np.max(self.cutout)]
+            mm = [np.nanmin(self.cutout), np.nanmax(self.cutout)]
             dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
         else:
             dat = _flat_with_padding(self.cutout, nPad)
@@ -175,9 +175,9 @@ class GraphWidget(QWidget):
     def _two_D_plot(self, ui, ax, s):
         """ Plot 2-dimensional data. """
         if ui.MMM.isChecked():
-            ax.plot(self.cutout.max(axis=0), 'r')
-            ax.plot(self.cutout.mean(axis=0), 'k')
-            ax.plot(self.cutout.min(axis=0), 'b')
+            ax.plot(np.nanmax(self.cutout, axis=0), 'r')
+            ax.plot(np.nanmean(self.cutout, axis=0), 'k')
+            ax.plot(np.nanmin(self.cutout, axis=0), 'b')
             ax.legend(["Max", "Mean", "Min"])
         else:
             dat = self.cutout.T
@@ -191,13 +191,13 @@ class GraphWidget(QWidget):
         if self.cutout.shape[1] < 4:
             col = 'b'
         else:
-            col = self.cutout[:, 3] - self.cutout[:, 3].min()
-            col /= col.max()
+            col = self.cutout[:, 3] - np.nanmin(self.cutout[:, 3])
+            col /= np.nanmax(col)
         if self.cutout.shape[1] < 3:
             siz = 25
         else:
-            siz = self.cutout[:, 2] - self.cutout[:, 2].min()
-            siz = 1 + 100 * siz / siz.max()
+            siz = self.cutout[:, 2] - np.nanmin(self.cutout[:, 2])
+            siz = 1 + 100 * siz / np.nanmax(siz)
         self._img = ax.scatter(self.cutout[:, 0], self.cutout[:, 1], c=col,
                                s=siz, cmap=self._colormap)
 
@@ -312,7 +312,7 @@ class GraphWidget(QWidget):
             self.colorbar()
             self.colormap()
             if self.cutout.size > 0:
-                self._clim = (self.cutout.min(), self.cutout.max())
+                self._clim = (np.nanmin(self.cutout), np.nanmax(self.cutout))
                 # Set the minimum and maximum values from the data
                 fstr = ["{:.5f}", "{:.5f}"]
                 for i, absv in enumerate(np.abs(self._clim)):
