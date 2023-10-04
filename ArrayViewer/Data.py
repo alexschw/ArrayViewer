@@ -11,7 +11,6 @@ import os
 import re
 import scipy.io
 import h5py
-from h5py._hl import files, group, dataset
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PIL import Image
 import numpy as np
@@ -66,10 +65,10 @@ class Loader(QObject):
                 data = self._validate([self._validate(sd) for sd in data])
         elif isinstance(data, np.ndarray) and not data.shape:
             data = data[()]
-        elif isinstance(data, (files.File, group.Group)):
+        elif isinstance(data, (h5py.File, h5py.Group)):
             data = {key: self._validate(data[key])
                     for key in data if key != "#refs#"}
-        elif isinstance(data, dataset.Dataset):
+        elif isinstance(data, h5py.Dataset):
             if data.dtype == "O":
                 dat = np.empty_like(data)
                 try:
@@ -86,12 +85,12 @@ class Loader(QObject):
                     data = self._validate(data[()])
             else:
                 data = np.array(data)
-        elif not isinstance(data, (np.ndarray, dataset.Dataset, int,
+        elif not isinstance(data, (np.ndarray, h5py.Dataset, int,
                                    float, str, type(u''), tuple)):
             self.infoMsg.emit("DataType (" + str(type(data))
                               + ") not recognized. Skipping", 0)
             data = None
-        if isinstance(data, (np.ndarray, dataset.Dataset)) and \
+        if isinstance(data, (np.ndarray, h5py.Dataset)) and \
            self.switch_to_last and len(data.shape) > 1:
             data = np.moveaxis(data, 0, -1)
         return data

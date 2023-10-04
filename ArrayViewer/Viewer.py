@@ -435,11 +435,11 @@ class ViewerWindow(QMainWindow):
             if self.datatree.is_files_tree():
                 keys = [tr + [k] for k in self.datatree.similar_items
                         if isinstance(self.get(tr + [k]),
-                                      (np.ndarray, h5py._hl.dataset.Dataset))]
+                                      (np.ndarray, h5py.Dataset))]
             else:
                 keys = [[k] + tr for k in self.datatree.similar_items
                         if isinstance(self.get([k] + tr),
-                                      (np.ndarray, h5py._hl.dataset.Dataset))]
+                                      (np.ndarray, h5py.Dataset))]
             if len(keys) == 0:
                 return
             # All data must have the same number of elements
@@ -454,7 +454,7 @@ class ViewerWindow(QMainWindow):
             if s is not None:
                 for k in keys[1:]:
                     self.set_data(k, np.reshape(self.get(k), s))
-        elif isinstance(self.get(0), (np.ndarray, h5py._hl.dataset.Dataset)):
+        elif isinstance(self.get(0), (np.ndarray, h5py.Dataset)):
             # If just one is chosen and has a numpy compatible type, reshape it
             self.set_data(0, *self.reshapeBox.reshape_array(self.get(0)))
             if self._slice_key() in self.slices:
