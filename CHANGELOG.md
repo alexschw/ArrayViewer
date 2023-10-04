@@ -1,3 +1,20 @@
+# 1.0.8
+- Overhaul combine operation to combine unequal datasets
+- Use nanmin/nanmean/nanmax instead of min/mean/max to account for NaN Values
+- Support new h5py IO
+- Fixed setTickInterval breaking in python3.8
+- Add npz and csv support
+
+# 1.0.7
+- Fix n-D-plotting Fixed Locator
+- Fix Diff in Data Tree
+- Fix printing of None and other types.
+- Scrollbar if the names are too long
+- Add .bin support
+- Add tooltip for (usually too long) filenames
+- Fix slicing labels for 1D/2D
+- Fix min-max-labels and add macOS platform
+
 # 1.0.6
 - Fix Key sorting with "natsort"
 - Support for float16 datatypes

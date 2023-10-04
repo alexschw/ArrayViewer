@@ -280,7 +280,7 @@ class GraphWidget(QWidget):
             # Print the Value(s) directly
             if self.cutout.ndim == 0 or ui.PrintFlat.isChecked():
                 ax.set_ylim([0, 1])
-                ax.text(-0.1, 1.1, self.cutout, va='top', wrap=True)
+                ax.text(-0.1, 1.1, str(self.cutout), va='top', wrap=True)
                 ax.axis('off')
             # Graph an 1D-cutout
             elif self.cutout.ndim == 1:

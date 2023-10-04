@@ -406,7 +406,7 @@ class ViewerWindow(QMainWindow):
     def _dlg_load_data(self):
         """ Open file-dialog to choose one or multiple files. """
         FD = QFileDialog(self, 'Open data file', '.',
-                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt);;
+                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt *.csv);;
                           Images (*.jpg *.bmp *.png *.tiff);;
                           All (*)""")
         FD.setOptions(QFileDialog.DontUseNativeDialog)

@@ -105,9 +105,9 @@ class Loader(QObject):
             self.doneLoading.emit({}, '')
             return False
         # Load the different data types
-        if fname[-5:] == '.hdf5':
+        if fname.endswith('.hdf5'):
             data = self._validate(h5py.File(str(fname), 'r'))
-        elif fname[-4:] == '.mat':
+        elif fname.endswith('.mat'):
             try:
                 # old matlab versions
                 data = self._validate(scipy.io.loadmat(str(fname),
@@ -116,23 +116,24 @@ class Loader(QObject):
             except NotImplementedError:
                 # v7.3
                 data = self._validate(h5py.File(str(fname), "r"))
-        elif fname[-4:] == '.npy' or fname[-4:] == '.npz':
+        elif fname.endswith(('.npy', '.npz')):
             try:
                 data = self._validate(np.load(str(fname), allow_pickle=True))
             except UnicodeDecodeError:
                 data = self._validate(np.load(str(fname), allow_pickle=True,
                                               encoding='latin1'))
-        elif fname[-5:] == '.data' or fname[-4:] == '.bin':
+        elif fname.endswith(('.data', '.bin')):
             try:
-                f = pickle.load(open(str(fname)))
+                with pickle.load(open(str(fname), encoding='utf-8')) as f:
+                    data = self._validate(f)
             except UnicodeDecodeError:
-                f = pickle.load(open(str(fname), 'rb'), encoding='latin1')
-            data = self._validate(f)
-        elif fname[-4:] == '.txt':
-            lines = open(fname).readlines()
-            numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
-            lil = [re.findall(numberRegEx, line) for line in lines]
-            data = {'Value': np.array(lil, dtype=float)}
+                with pickle.load(open(str(fname), 'rb'), encoding='latin1') as f:
+                    data = self._validate(f)
+        elif fname.endswith(('.txt', '.csv')):
+            with open(fname, encoding="utf-8") as f:
+                numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
+                lil = [re.findall(numberRegEx, line) for line in f.readlines()]
+                data = {'Value': np.array(lil, dtype=float)}
         else:
             try:
                 img = Image.open(fname)
