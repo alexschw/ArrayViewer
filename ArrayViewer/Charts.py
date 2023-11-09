@@ -13,6 +13,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import FixedLocator
 from matplotlib.widgets import Cursor
+from matplotlib.lines import Line2D
+from matplotlib.image import AxesImage
+from matplotlib.collections import PathCollection
+from mplcursors import cursor
 import numpy as np
 from h5py._hl.dataset import Dataset
 
@@ -83,6 +87,19 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
         ax.set_yticklabels(d.astype(float))
 
 
+def cursor_style(selection):
+    """ Style of the matplotlib cursor. """
+    selection.annotation.get_bbox_patch().set(fc="orange", alpha=.9)
+    selection.annotation.arrow_patch.set(arrowstyle="simple", fc="white")
+
+
+def reformat(dat):
+    """ Format the numberstrings correctly. """
+    if not 1e-5 < np.abs(dat) < 1e5:
+        return f"{dat:.5e}"
+    return f"{dat:.5f}"
+
+
 def _suggestion(previous_val, value):
     """ Returns all possible factors """
     pfactors = []
@@ -117,9 +134,6 @@ class GraphWidget(QWidget):
         # Setup the canvas, figure and axes
         self._figure = Figure(facecolor='white')
         self._canv = FigureCanvasQTAgg(self._figure)
-        self._canv.ax = self._figure.add_axes([.15, .15, .75, .75])
-        self._canv.canvas = self._canv.ax.figure.canvas
-        self._canv.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.noPrintTypes = parent.noPrintTypes
         self._clim = (0, 1)
         self._img = None
@@ -127,16 +141,18 @@ class GraphWidget(QWidget):
         self.has_cb = False
         self.has_operation = False
         self._colormap = 'viridis'
-        self._operation = 'None'
         self._opr = (lambda x: x)
         self._oprdim = np.array([], dtype=int)
         self._oprcorr = 'None'
         self.cutout = np.array([])
 
         # Add a cursor
-        self.cursor = Cursor(self._canv.ax, useblit=False, color='red', linewidth=1)
+        self._cursor = Cursor(self._figure.gca(), useblit=False, color='red',
+                              linewidth=1)
+        self.last_clicked = (None, None)
+        self.annotation = self._figure.gca().text(0, 0, "0, 0", visible=False)
+        self._canv.mpl_connect('pick_event', self.onclick)
 
-        self._canv.mpl_connect('button_press_event', self.onclick)
         self._canv.draw()
 
         # Add a label Text that may be changed in later Versions to display the
@@ -148,7 +164,31 @@ class GraphWidget(QWidget):
         self._layout.addWidget(self._txt)
 
     def onclick(self, event):
-        self.cursor.onmove(event)
+        # self._cursor.onmove(event)
+        if isinstance(event.artist, Line2D):
+            idx = event.ind[0]
+            dat = event.artist.get_data()
+            x = dat[0][idx]
+            y = dat[1][idx]
+            dat = reformat(y)
+        elif isinstance(event.artist, AxesImage):
+            x = int(np.round(event.mouseevent.xdata))
+            y = int(np.round(event.mouseevent.ydata))
+            dat = reformat(event.artist.get_array()[y, x])
+        elif isinstance(event.artist, PathCollection):
+            x = event.mouseevent.xdata
+            y = event.mouseevent.ydata
+            idx = event.ind[0]
+            dat = [reformat(x) for x in self.cutout[idx]]
+        if (x, y) == self.last_clicked:
+            self.annotation.set_visible(False)
+            self.last_clicked = (None, None)
+        else:
+            self.annotation.set_visible(True)
+            self.last_clicked = (x, y)
+        self.annotation.set_x(x-.25)
+        self.annotation.set_y(y)
+        self.annotation.set_text(dat)
 
     def _n_D_plot(self, ax, ui):
         """ Plot multi-dimensional data. """
@@ -175,9 +215,10 @@ class GraphWidget(QWidget):
     def _two_D_plot(self, ui, ax, s):
         """ Plot 2-dimensional data. """
         if ui.MMM.isChecked():
-            ax.plot(np.nanmax(self.cutout, axis=0), 'r')
-            ax.plot(np.nanmean(self.cutout, axis=0), 'k')
-            ax.plot(np.nanmin(self.cutout, axis=0), 'b')
+            self._img = []
+            self._img += ax.plot(np.nanmax(self.cutout, axis=0), 'r')
+            self._img += ax.plot(np.nanmean(self.cutout, axis=0), 'k')
+            self._img += ax.plot(np.nanmin(self.cutout, axis=0), 'b')
             ax.legend(["Max", "Mean", "Min"])
         else:
             dat = self.cutout.T
@@ -208,7 +249,7 @@ class GraphWidget(QWidget):
 
     def colorbar(self, minmax=None):
         """ Add a colorbar to the graph or remove it, if it is existing. """
-        if self._img is None:
+        if not isinstance(self._img, AxesImage):
             return
         if minmax is not None and not isinstance(self._clim[0], bool):
             self._img.set_clim(
@@ -227,7 +268,7 @@ class GraphWidget(QWidget):
         """ Replace colormap with the given one. """
         if mapname:
             self._colormap = mapname
-        if self._img is None:
+        if not isinstance(self._img, AxesImage):
             return
         if self._cb:
             self._cb.mappable.set_cmap(mapname)
@@ -260,8 +301,7 @@ class GraphWidget(QWidget):
             ax.axis('off')
         elif isinstance(data[0], list):
             # If there is an array of lists plot each element as a graph
-            for lst in data:
-                ax.plot(lst)
+            self._img = [ax.plot(lst) for lst in data]
         else:
             # Cut out the chosen piece of the array and plot it
             self.cutout = np.array([])
@@ -284,7 +324,7 @@ class GraphWidget(QWidget):
                 ax.axis('off')
             # Graph an 1D-cutout
             elif self.cutout.ndim == 1:
-                ax.plot(self.cutout)
+                self._img = ax.plot(self.cutout)
                 non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
                 s_mod = s[1:-1].split(',')[non_scalar_idx]
                 _set_ticks(ax, '[' + s_mod + ']', False, True)
@@ -298,7 +338,7 @@ class GraphWidget(QWidget):
                         msg = "You are trying to plot more than 500 lines!"
                         ui.info_msg(msg, -1)
                         return
-                    ax.plot(self.cutout)
+                    self._img = ax.plot(self.cutout)
                     _set_ticks(ax, s, ui.Transp.isChecked(), True)
                 elif ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                     self._n_D_scatter(ax)
@@ -314,13 +354,21 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (np.nanmin(self.cutout), np.nanmax(self.cutout))
                 # Set the minimum and maximum values from the data
-                fstr = ["{:.5f}", "{:.5f}"]
-                for i, absv in enumerate(np.abs(self._clim)):
-                    if not 1e-5 < absv < 1e5:
-                        fstr[i] = "{:.5e}"
-                ui.txtMin.setText("min : " + fstr[0].format(self._clim[0]))
-                ui.txtMax.setText("max : " + fstr[1].format(self._clim[1]))
-        self._canv.mpl_connect('button_press_event', self.onclick)
+                ui.txtMin.setText("min : " + reformat(self._clim[0]))
+                ui.txtMax.setText("max : " + reformat(self._clim[1]))
+            # self._canv.mpl_connect('button_press_event', self.onclick)
+            if isinstance(self._img, list):
+                for i in self._img:
+                    i.set_picker(5.)
+            else:
+                self._img.set_picker(True)
+            self._cursor = Cursor(self._figure.gca(), useblit=False, color='red', linewidth=1)
+            self.annotation = self._figure.gca().text(0, 0, "0", visible=False,
+                                                      backgroundcolor="silver")
+            self._canv.mpl_connect('pick_event', self.onclick)
+            # self._cursor.remove()
+            # self._cursor = cursor(self._img)
+            # self._cursor.connect("add", cursor_style)
         self._canv.draw()
 
     def set_operation(self, operation="None"):
