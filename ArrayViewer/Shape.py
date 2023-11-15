@@ -11,7 +11,7 @@ import numpy as np
 class singleShape(QWidget):
     """ A single Shape widget with one label and one lineedit. """
     def __init__(self, validator, parent, index):
-        super(singleShape, self).__init__()
+        super().__init__()
         self.index = index
         self.parent = parent
         self.dock = QWidget()
@@ -94,7 +94,7 @@ class singleShape(QWidget):
 class ShapeSelector(QWidget):
     """ Array Shape selectors"""
     def __init__(self, parent=None):
-        super(ShapeSelector, self).__init__()
+        super().__init__()
         self.parent = parent
         layout = QHBoxLayout()
         layout.setSpacing(0)

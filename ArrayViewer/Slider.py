@@ -12,7 +12,7 @@ class rangeSlider(QtWidgets.QWidget):
 
     def __init__(self, parent=None, minmax=(0, 1)):
         """ Initialize the Slider """
-        super(rangeSlider, self).__init__(parent)
+        super().__init__(parent)
         # Set internal variables
         self._nSteps = 100
         self._minVal = minmax[0]

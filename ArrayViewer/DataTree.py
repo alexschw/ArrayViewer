@@ -13,7 +13,7 @@ class DataTree(QTabWidget):
     """ Class Definition for the Data Tree. """
     def __init__(self, viewer, parent=None):
         """ Initialize the Datatree """
-        super(DataTree, self).__init__(parent)
+        super().__init__(parent)
         self.old_trace = []
         self.similar_items = []
         self.checkableItems = []

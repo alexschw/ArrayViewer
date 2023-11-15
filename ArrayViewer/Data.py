@@ -24,7 +24,7 @@ class Loader(QObject):
 
     def __init__(self, parent=None):
         """ Initialize the Loader. """
-        super(Loader, self).__init__(parent)
+        super().__init__(parent)
         self.fname = ''
         self.switch_to_last = False
         self.load.connect(self._add_data)
@@ -55,7 +55,7 @@ class Loader(QObject):
             # Create a dictionary from matlab structs
             dct = {}
             for key in data._fieldnames:
-                exec("dct[key] = self._validate(data.%s)"%key)
+                exec(f"dct[key] = self._validate(data.{key})")
             data = dct
         elif isinstance(data, np.ndarray) and data.dtype == "O" :
             # Create numpy arrays from matlab cell types
@@ -85,10 +85,8 @@ class Loader(QObject):
                     data = self._validate(data[()])
             else:
                 data = np.array(data)
-        elif not isinstance(data, (np.ndarray, h5py.Dataset, int,
-                                   float, str, type(u''), tuple)):
-            self.infoMsg.emit("DataType (" + str(type(data))
-                              + ") not recognized. Skipping", 0)
+        elif not isinstance(data, (np.ndarray, h5py.Dataset, int, float, str, tuple)):
+            self.infoMsg.emit(f"DataType ({type(data)}) not recognized. Skipping", 0)
             data = None
         if isinstance(data, (np.ndarray, h5py.Dataset)) and \
            self.switch_to_last and len(data.shape) > 1:

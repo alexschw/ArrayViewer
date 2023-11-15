@@ -122,14 +122,14 @@ def _suggestion(previous_val, value):
             factors.append(int(y))
     factors = list(set(factors))
     factors.sort(reverse=True)
-    return [previous_val + "{0},".format(i) for i in factors]
+    return [previous_val + f"{i}," for i in factors]
 
 
 class GraphWidget(QWidget):
     """ Draws the data graph. """
     def __init__(self, parent=None):
         """ Initialize the figure. """
-        super(GraphWidget, self).__init__(parent)
+        super().__init__(parent)
 
         # Setup the canvas, figure and axes
         self._figure = Figure(facecolor='white')
@@ -305,7 +305,7 @@ class GraphWidget(QWidget):
         else:
             # Cut out the chosen piece of the array and plot it
             self.cutout = np.array([])
-            self.cutout = eval("data%s.squeeze()"%s)
+            self.cutout = eval(f"data{s}.squeeze()")
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
                 self._oprcorr = str(tuple(
@@ -327,7 +327,7 @@ class GraphWidget(QWidget):
                 self._img = ax.plot(self.cutout)
                 non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
                 s_mod = s[1:-1].split(',')[non_scalar_idx]
-                _set_ticks(ax, '[' + s_mod + ']', False, True)
+                _set_ticks(ax, f"[{s_mod}]", False, True)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
@@ -354,8 +354,8 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (np.nanmin(self.cutout), np.nanmax(self.cutout))
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText("min : " + reformat(self._clim[0]))
-                ui.txtMax.setText("max : " + reformat(self._clim[1]))
+                ui.txtMin.setText(f"min : {reformat(self._clim[0])}")
+                ui.txtMax.setText(f"max : {reformat(self._clim[1])}")
             # self._canv.mpl_connect('button_press_event', self.onclick)
             if isinstance(self._img, list):
                 for i in self._img:
@@ -378,8 +378,7 @@ class GraphWidget(QWidget):
             self._oprdim = np.array([], dtype=int)
             self._opr = (lambda x: x)
         else:
-            self._opr = (lambda x: eval("np." + operation + "(x, axis="
-                                        + self._oprcorr + ")"))
+            self._opr = (lambda x: eval(f"np.{operation}(x, axis={self._oprcorr})"))
         return self._oprdim
 
     def set_oprdim(self, value):
@@ -405,7 +404,7 @@ class ReshapeDialog(QDialog):
     """ A Dialog for Reshaping the Array. """
     def __init__(self, parent=None):
         """ Initialize. """
-        super(ReshapeDialog, self).__init__(parent)
+        super().__init__(parent)
 
         # Setup the basic window
         self.resize(400, 150)
@@ -478,7 +477,7 @@ class NewDataDialog(QDialog):
     """ A Dialog for Creating new Data. """
     def __init__(self, parent=None):
         """ Initialize. """
-        super(NewDataDialog, self).__init__(parent)
+        super().__init__(parent)
 
         # Setup the basic window
         self.resize(400, 150)
@@ -546,11 +545,10 @@ class NewDataDialog(QDialog):
             raise ValueError("No '=' in expression")
         for op in ['(', ')', '[', ']', '{', '}', ',',
                    '+', '-', '*', '/', '%', '^']:
-            expr = expr.replace(op, " " + op + " ")
+            expr = expr.replace(op, f" {op} ")
         expr = " " + expr + " "
         for datum in self.data:
-            expr = expr.replace(" " + datum + " ",
-                                "self.data['" + datum + "']")
+            expr = expr.replace(f" {datum} ", f"self.data['{datum}']")
         return var.strip(), expr.replace(" ", "")
 
     def new_data(self, data, cutout):

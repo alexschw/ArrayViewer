@@ -47,10 +47,10 @@ class ViewerWindow(QMainWindow):
     """ The main window of the array viewer. """
     def __init__(self, application=None, config=None, parent=None):
         """ Initialize the window. """
-        super(ViewerWindow, self).__init__(parent)
+        super().__init__(parent)
         # set class variables
         if sys.platform.startswith('linux') or \
-           sys.platform.startswith('darwin'): # TODO Windows Icon Location
+           sys.platform.startswith('darwin'):  # TODO Windows Icon Location
             folder = os.path.expanduser("~/.local/share/icons/")
             self.setWindowIcon(QIcon(os.path.join(folder, 'aview_logo.svg')))
         self.app = application
@@ -60,7 +60,7 @@ class ViewerWindow(QMainWindow):
         self.cText = []
         self.keys = []
         self.diffNo = 0
-        self.noPrintTypes = (int, float, str, type(u''), list, tuple, type(None))
+        self.noPrintTypes = (int, float, str, list, tuple, type(None))
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
 
@@ -269,13 +269,11 @@ class ViewerWindow(QMainWindow):
                     item1 = self.get(text)
                 checkedItems += 1
         if checkedItems != 2:
-            self.info_msg("Checked %i items. Should be 2!"%checkedItems, -1)
+            self.info_msg(f"Checked {checkedItems} items. Should be 2!", -1)
         elif item0.shape == item1.shape:
-            self._data["Diff " + str(self.diffNo)] = {text0: item0,
-                                                      text1: item1,
-                                                      "~> Diff [0]-[1]":
-                                                      item0 - item1}
-            self.keys.append("Diff " + str(self.diffNo))
+            self._data[f"Diff {self.diffNo}"] = {text0: item0, text1: item1,
+                                                 "~> Diff [0]-[1]": item0 - item1}
+            self.keys.append(f"Diff {self.diffNo}")
             self.diffNo += 1
             self.datatree.currentWidget().setColumnHidden(0, True)
             self.diffBtn.hide()
@@ -525,8 +523,7 @@ class ViewerWindow(QMainWindow):
                 self.slices[self._slice_key()][i] for i in new_order]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
-        self.info_msg("Permuted from " + str(tuple(sh[o] for o in new_order))
-                      + " to " + str(sh), 0)
+        self.info_msg(f"Permuted from {tuple(sh[o] for o in new_order)} to {sh}", 0)
 
     def pop(self, key):
         """ Returns the current data and removes it from the dict. """
@@ -592,10 +589,10 @@ class ViewerWindow(QMainWindow):
         for fname in fnames:
             # Check if the data already exists
             splitted = os.path.split(fname)
-            key = str(os.path.split(splitted[0])[1] + " - " + splitted[1])
+            key = f"{os.path.split(splitted[0])[1]} - {splitted[1]}"
             # Show warning if data exists
             if key in self.keys or key in new_keys:
-                txt = "Data(%s) exists.\nDo you want to overwrite it?"%key
+                txt = f"Data({key}) exists.\nDo you want to overwrite it?"
                 replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
                                          "Add new Dataset")
                 msg = QMessageBox(QMessageBox.Warning, "Warning", txt)
@@ -606,9 +603,9 @@ class ViewerWindow(QMainWindow):
                 msg.exec_()
                 if msg.clickedButton() == replaceBtn:
                     n = 1
-                    while key + "_" + str(n) in self.keys:
+                    while f"{key}_{n}" in self.keys:
                         n += 1
-                    key = key + "_" + str(n)
+                    key = f"{key}_{n}"
                 elif msg.clickedButton() != yesBtn:
                     continue
                 else:
