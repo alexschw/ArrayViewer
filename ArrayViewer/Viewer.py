@@ -103,8 +103,10 @@ class ViewerWindow(QMainWindow):
 
         # Add the min and max labels
         self.txtMin = QLabel("min : ", CWgt)
+        self.txtMin.mousePressEvent = self._fixMin
         grLayout.addWidget(self.txtMin, 2, 0)
         self.txtMax = QLabel("max : ", CWgt)
+        self.txtMax.mousePressEvent = self._fixMax
         grLayout.addWidget(self.txtMax, 2, 1)
 
         # Add the "Transpose"-Checkbox
@@ -475,6 +477,24 @@ class ViewerWindow(QMainWindow):
         if shapeStr or self.get(0).shape == (1,):
             self.Graph.renewPlot(shapeStr, np.array(scalarDims), self)
             self._update_colorbar()
+
+    def _fixMin(self, _):
+        is_fixed = self.Graph.fix_limit(0)
+        if is_fixed:
+            self.txtMin.setText(self.txtMin.text() + "\U0001F512")
+            self.txtMin.setStyleSheet("color:lightgrey;")
+        else:
+            self.txtMin.setText(self.txtMin.text()[:-1])
+            self.txtMin.setStyleSheet("")
+
+    def _fixMax(self, _):
+        is_fixed = self.Graph.fix_limit(1)
+        if is_fixed:
+            self.txtMax.setText(self.txtMax.text() + "\U0001F512")
+            self.txtMax.setStyleSheet("color:lightgrey;")
+        else:
+            self.txtMax.setText(self.txtMax.text()[:-1])
+            self.txtMax.setStyleSheet("")
 
     def _get_obj_trace(self, item):
         """ Returns the trace to a given item in the TreeView. """

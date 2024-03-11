@@ -136,6 +136,7 @@ class GraphWidget(QWidget):
         self._canv = FigureCanvasQTAgg(self._figure)
         self.noPrintTypes = parent.noPrintTypes
         self._clim = (0, 1)
+        self._fix_limits = [None, None]
         self._img = None
         self._cb = None
         self.has_cb = False
@@ -189,6 +190,14 @@ class GraphWidget(QWidget):
         self.annotation.set_x(x-.25)
         self.annotation.set_y(y)
         self.annotation.set_text(dat)
+
+    def fix_limit(self, idx):
+        """ Fix the current value of the minimum(idx 0) or maximum(idx 1). """
+        if self._fix_limits[idx] is None:
+            self._fix_limits[idx] = self._clim[idx]
+            return 1
+        self._fix_limits[idx] = None
+        return 0
 
     def _n_D_plot(self, ax, ui):
         """ Plot multi-dimensional data. """
@@ -252,9 +261,11 @@ class GraphWidget(QWidget):
         if not isinstance(self._img, AxesImage):
             return
         if minmax is not None and not isinstance(self._clim[0], bool):
+            _vmin = minmax[0] * (self._clim[1] - self._clim[0]) + self._clim[0]
+            _vmax = minmax[1] * self._clim[1]
             self._img.set_clim(
-                vmin=minmax[0] * (self._clim[1] - self._clim[0])
-                + self._clim[0], vmax=minmax[1] * self._clim[1]
+                vmin=_vmin if self._fix_limits[0] is None else self._fix_limits[0],
+                vmax=_vmax if self._fix_limits[1] is None else self._fix_limits[1]
             )
         if not self.has_cb:
             if self._cb:
@@ -287,9 +298,6 @@ class GraphWidget(QWidget):
         """ Draw given data. """
         ax = self._figure.gca()
         ax.clear()
-        # Reset the minimum and maximum text
-        ui.txtMin.setText('min : ')
-        ui.txtMax.setText('max : ')
         data = ui.get(0)
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
@@ -354,8 +362,15 @@ class GraphWidget(QWidget):
             if self.cutout.size > 0:
                 self._clim = (np.nanmin(self.cutout), np.nanmax(self.cutout))
                 # Set the minimum and maximum values from the data
-                ui.txtMin.setText(f"min : {reformat(self._clim[0])}")
-                ui.txtMax.setText(f"max : {reformat(self._clim[1])}")
+                if ui.txtMin.text()[-1] != "\U0001F512":
+                    ui.txtMin.setText(f"min : {reformat(self._clim[0])}")
+                if ui.txtMax.text()[-1] != "\U0001F512":
+                    ui.txtMax.setText(f"max : {reformat(self._clim[1])}")
+            else:
+                # Reset the minimum and maximum text
+                ui.txtMin.setText('min : ')
+                ui.txtMax.setText('max : ')
+
             # self._canv.mpl_connect('button_press_event', self.onclick)
             if isinstance(self._img, list):
                 for i in self._img:
