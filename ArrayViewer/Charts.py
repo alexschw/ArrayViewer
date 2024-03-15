@@ -76,7 +76,7 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
     else:
         ax.set_xticklabels(d.astype(float))
     if is1DPlot:
-        return
+        return lim
     # Set the y-ticks
     loc = ax.yaxis.get_major_locator()()
     ax.yaxis.set_major_locator(FixedLocator(loc))
@@ -85,6 +85,7 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
         ax.set_yticklabels(d.astype(int))
     else:
         ax.set_yticklabels(d.astype(float))
+    return lim
 
 
 def cursor_style(selection):
@@ -146,12 +147,13 @@ class GraphWidget(QWidget):
         self._oprdim = np.array([], dtype=int)
         self._oprcorr = 'None'
         self.cutout = np.array([])
+        self.ticks = [[0, -1, 1]]
 
         # Add a cursor
         self._cursor = Cursor(self._figure.gca(), useblit=False, color='red',
                               linewidth=1)
         self.last_clicked = (None, None)
-        self.annotation = self._figure.gca().text(0, 0, "0, 0", visible=False)
+        self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False)
         self._canv.mpl_connect('pick_event', self.onclick)
 
         self._canv.draw()
@@ -165,31 +167,40 @@ class GraphWidget(QWidget):
         self._layout.addWidget(self._txt)
 
     def onclick(self, event):
-        # self._cursor.onmove(event)
+        """ Override the existing onclick function to display value under cursor. """
+        # Get the x and y indices of the data based on the plot type
         if isinstance(event.artist, Line2D):
             idx = event.ind[0]
             dat = event.artist.get_data()
             x = dat[0][idx]
             y = dat[1][idx]
             dat = reformat(y)
+            fstr = "x: {x}, y: {dat}"
         elif isinstance(event.artist, AxesImage):
             x = int(np.round(event.mouseevent.xdata))
             y = int(np.round(event.mouseevent.ydata))
             dat = reformat(event.artist.get_array()[y, x])
+            fstr = "x: {x}, y: {y}, z: {dat}"
         elif isinstance(event.artist, PathCollection):
             x = event.mouseevent.xdata
             y = event.mouseevent.ydata
             idx = event.ind[0]
-            dat = [reformat(x) for x in self.cutout[idx]]
+            dat = [reformat(v) for v in self.cutout[idx]]
+            fstr = str([float(d) for d in dat])[1:-2]
+        # Adjust x and y value for reshaped data
+        x = self.ticks[0][2] * x + self.ticks[0][0]
+        if len(self.ticks) > 1:
+            y = self.ticks[1][2] * y + self.ticks[1][0]
+        # Hide or show information about the clicked location
         if (x, y) == self.last_clicked:
             self.annotation.set_visible(False)
             self.last_clicked = (None, None)
         else:
             self.annotation.set_visible(True)
+            self.annotation.set_text(fstr.format(x=x, y=y, dat=dat))
             self.last_clicked = (x, y)
-        self.annotation.set_x(x-.25)
-        self.annotation.set_y(y)
-        self.annotation.set_text(dat)
+        # Refresh the canvas to show the changes
+        self._canv.draw()
 
     def fix_limit(self, idx):
         """ Fix the current value of the minimum(idx 0) or maximum(idx 1). """
@@ -234,7 +245,7 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = ax.imshow(dat, interpolation='none', aspect='auto')
-        _set_ticks(ax, s, ui.Transp.isChecked())
+        self.ticks = _set_ticks(ax, s, ui.Transp.isChecked())
 
     def _n_D_scatter(self, ax):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -335,7 +346,7 @@ class GraphWidget(QWidget):
                 self._img = ax.plot(self.cutout)
                 non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
                 s_mod = s[1:-1].split(',')[non_scalar_idx]
-                _set_ticks(ax, f"[{s_mod}]", False, True)
+                self.ticks = _set_ticks(ax, f"[{s_mod}]", False, True)
                 alim = ax.get_ylim()
                 if alim[0] > alim[1]:
                     ax.invert_yaxis()
@@ -347,7 +358,7 @@ class GraphWidget(QWidget):
                         ui.info_msg(msg, -1)
                         return
                     self._img = ax.plot(self.cutout)
-                    _set_ticks(ax, s, ui.Transp.isChecked(), True)
+                    self.ticks = _set_ticks(ax, s, ui.Transp.isChecked(), True)
                 elif ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                     self._n_D_scatter(ax)
                 else:
@@ -378,8 +389,9 @@ class GraphWidget(QWidget):
             else:
                 self._img.set_picker(True)
             self._cursor = Cursor(self._figure.gca(), useblit=False, color='red', linewidth=1)
-            self.annotation = self._figure.gca().text(0, 0, "0", visible=False,
-                                                      backgroundcolor="silver")
+            self.annotation.remove()
+            self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False,
+                                                backgroundcolor="silver")
             self._canv.mpl_connect('pick_event', self.onclick)
             # self._cursor.remove()
             # self._cursor = cursor(self._img)
