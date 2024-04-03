@@ -152,6 +152,7 @@ class GraphWidget(QWidget):
         self._oprcorr = 'None'
         self.cutout = np.array([])
         self.ticks = [[0, -1, 1]]
+        self._tick_str = [0, 0]
 
         # Add a cursor
         self._cursor = Cursor(self._axes, color='red', linewidth=1)
@@ -235,7 +236,7 @@ class GraphWidget(QWidget):
         self._axes.yaxis.set_major_locator(locy)
         self._axes.yaxis.set_ticklabels(ly - (np.arange(0, len(ly)) * nPad - nPad))
 
-    def _two_D_plot(self, s):
+    def _two_D_plot(self):
         """ Plot 2-dimensional data. """
         if self._ui.MMM.isChecked():
             self._img = []
@@ -248,7 +249,7 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        self.ticks = _set_ticks(self._axes, s, self._ui.Transp.isChecked())
+        self.ticks = _set_ticks(self._axes, self._tick_str[0], self._ui.Transp.isChecked())
 
     def _n_D_scatter(self):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -325,6 +326,9 @@ class GraphWidget(QWidget):
             # If there is an array of lists plot each element as a graph
             self._img = [self._axes.plot(lst) for lst in data]
         else:
+            non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
+            s_mod = s[1:-1].split(',')[non_scalar_idx]
+            self._tick_str = [s, s_mod]
             # Cut out the chosen piece of the array and plot it
             self.cutout = np.array([])
             self.cutout = eval(f"data{s}.squeeze()")
@@ -339,38 +343,40 @@ class GraphWidget(QWidget):
             # Transpose the first two dimensions if it is chosen
             if self._ui.Transp.isChecked() and self.cutout.ndim > 1:
                 self.cutout = np.swapaxes(self.cutout, 0, 1)
-            # Print the Value(s) directly
-            if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
-                self._axes.set_ylim([0, 1])
-                self._axes.text(-0.1, 1.1, str(self.cutout), va='top', wrap=True)
-                self._axes.axis('off')
-            # Graph an 1D-cutout
-            elif self.cutout.ndim == 1:
-                self._img = self._axes.plot(self.cutout)
-                non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
-                s_mod = s[1:-1].split(',')[non_scalar_idx]
-                self.ticks = _set_ticks(self._axes, f"[{s_mod}]", False, True)
-                alim = self._axes.get_ylim()
-                if alim[0] > alim[1]:
-                    self._axes.invert_yaxis()
-            # 2D-cutout will be shown using imshow, scatter or plot
-            elif self.cutout.ndim == 2:
-                if self._ui.Plot2D.isChecked():
-                    if self.cutout.shape[1] > 500:
-                        msg = "You are trying to plot more than 500 lines!"
-                        self._ui.info_msg(msg, -1)
-                        return
-                    self._img = self._axes.plot(self.cutout)
-                    self.ticks = _set_ticks(self._axes, s,
-                                            self._ui.Transp.isChecked(), True)
-                elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
-                    self._n_D_scatter()
-                else:
-                    self._two_D_plot(s)
-            # higher-dimensional cutouts will first be flattened
-            elif self.cutout.ndim >= 3:
-                self._n_D_plot()
+            self.plot()
             self.reapply_setup()
+
+    def plot(self):
+        """ Draw one plot step """
+        # Print the Value(s) directly
+        if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
+            self._axes.set_ylim([0, 1])
+            self._axes.text(-0.1, 1.1, str(self.cutout), va='top', wrap=True)
+            self._axes.axis('off')
+        # Graph an 1D-cutout
+        elif self.cutout.ndim == 1:
+            self._img = self._axes.plot(self.cutout)
+            self.ticks = _set_ticks(self._axes, f"[{self._tick_str[1]}]", False, True)
+            alim = self._axes.get_ylim()
+            if alim[0] > alim[1]:
+                self._axes.invert_yaxis()
+        # 2D-cutout will be shown using imshow, scatter or plot
+        elif self.cutout.ndim == 2:
+            if self._ui.Plot2D.isChecked():
+                if self.cutout.shape[1] > 500:
+                    msg = "You are trying to plot more than 500 lines!"
+                    self._ui.info_msg(msg, -1)
+                    return
+                self._img = self._axes.plot(self.cutout)
+                self.ticks = _set_ticks(self._axes, self._tick_str[0],
+                                        self._ui.Transp.isChecked(), True)
+            elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
+                self._n_D_scatter()
+            else:
+                self._two_D_plot()
+        # higher-dimensional cutouts will first be flattened
+        elif self.cutout.ndim >= 3:
+            self._n_D_plot()
         self._canv.draw()
 
     def reapply_setup(self):
