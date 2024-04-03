@@ -5,22 +5,26 @@ Slice Selectors for the ArrayViewer
 from PyQt5.QtGui import QDrag, QRegExpValidator
 from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
                              QVBoxLayout, QWidget)
-from PyQt5.QtCore import QRegExp, Qt, QMimeData, QPoint, QSize
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QMimeData, QPoint, QRegExp,
+                          QSize, Qt)
 import numpy as np
 
 
 class singleShape(QWidget):
     """ A single Shape widget with one label and one lineedit. """
+    change_animation = pyqtSignal(int)
+    change_operation = pyqtSignal(int)
+
     def __init__(self, validator, parent, index):
         super().__init__()
         self.index = index
-        self.parent = parent
+        self.parent = parent.parent
         self.dock = QWidget()
         self.start = QPoint(0, 0)
         self.setAcceptDrops(True)
 
         layout = QVBoxLayout()
-        self.label = self.singleLabel(self.dock)
+        self.label = QLabel()
         layout.addWidget(self.label)
         clayout = QVBoxLayout()
         clayout.addWidget(self.dock)
@@ -32,36 +36,20 @@ class singleShape(QWidget):
 
         self.lineedit = QLineEdit(self)
         self.lineedit.setValidator(validator)
-        self.lineedit.editingFinished.connect(parent._set_slice)  # TODO
+        self.lineedit.editingFinished.connect(self.parent._set_slice)
         layout.addWidget(self.lineedit)
 
         self.dock.setLayout(layout)
 
-    class singleLabel(QLabel):
-        """ Define a custom Label with and operarion and animation state. """
-        def __init__(self, widget):
-            super().__init__("0", widget)
-            self.op_state = False
-            self.animation_state = False
-
-        def set_op(self, style):
-            """ Set the operation state of the label on left click. """
-            self.op_state = style
-            self.animation_state = False
-            self._style()
-
-        def set_anim(self):
-            """  Toggle the the animation state on right click. """
-            self.animation_state ^= True
-            self._style()
-
-        def _style(self):
-            if not self.op_state and not self.animation_state:
-                self.setStyleSheet("")
-            elif self.animation_state:
-                self.setStyleSheet("background-color:orange;")
-            else:
-                self.setStyleSheet("background-color:lightgreen;")
+    @pyqtSlot(list, int)
+    def style(self, operations, animation):
+        """ Set the style of the label based on the operation or animation. """
+        if self.index == animation:
+            self.label.setStyleSheet("background-color:orange;")
+        elif self.index in operations:
+            self.label.setStyleSheet("background-color:lightgreen;")
+        else:
+            self.label.setStyleSheet("")
 
     def get_value(self):
         """ Return the values of this single Shape. """
@@ -77,13 +65,11 @@ class singleShape(QWidget):
             return slice(*(int(x) if x else None for x in txt.split(':'))), False
 
     def _perform_operation(self, _):
-        """ Perform the chosen Operation on the graph.
-        If the field is clicked again the operation will be undone.
         """
-        if self.index in self.parent.Graph.set_oprdim(self.index):
-            self.label.setStyleSheet("background-color:lightgreen;")
-        else:
-            self.label.setStyleSheet("")
+        Perform the chosen Operation on the graph. If the field is clicked
+        again the operation will be undone.
+        """
+        self.change_operation.emit(self.index)
         self.parent._draw_data()
 
     def mousePressEvent(self, event):
@@ -95,7 +81,9 @@ class singleShape(QWidget):
 
     def mouseReleaseEvent(self, event):
         """ Chatch mouseReleaseEvent and perform operation if not dragged. """
-        if not self.dragging:
+        if event.button() == Qt.RightButton:
+            self.change_animation.emit(self.index)
+        elif not self.dragging:
             self._perform_operation(event)
         event.accept()
 
@@ -131,8 +119,11 @@ class singleShape(QWidget):
         new_order[id_from], new_order[id_to] = id_to, id_from
         self.parent.transpose_data(new_order)
 
+
 class ShapeSelector(QWidget):
     """ Array Shape selectors"""
+    state_changed = pyqtSignal(list, int)
+
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
@@ -140,15 +131,21 @@ class ShapeSelector(QWidget):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.maxDims = 6
+        self.max_dims = 6
+        self.active_dims = 0
         self.fixate_view = False
+        self.operation_state = []
+        self.animation_state = -1
 
         validator = QRegExpValidator(self)
         rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
         validator.setRegExp(QRegExp(rex))
-        for i in range(self.maxDims):
-            shape = singleShape(validator, self.parent, i)
+        for i in range(self.max_dims):
+            shape = singleShape(validator, self, i)
             layout.addWidget(shape)
+            self.state_changed.connect(shape.style)
+            shape.change_animation.connect(self.change_animation_state)
+            shape.change_operation.connect(self.change_operation_state)
             shape.hide()
 
         self.setLayout(layout)
@@ -156,11 +153,32 @@ class ShapeSelector(QWidget):
     def _get(self, index):
         return self.layout().itemAt(index).widget()
 
+    @pyqtSlot(int)
+    def change_animation_state(self, index):
+        """ Change the animation_state of indexed Shape. """
+        if self.animation_state != -1:  # Was already animated. Turn off.
+            self.parent.Graph.stop_animation()
+        if self.animation_state == index:  # same dimension clicked twice
+            self.animation_state = -1
+            self.parent._draw_data()
+        else:  # new dimension to be animated
+            self.animation_state = index
+            self.parent.Graph.start_animation(index)
+        self.state_changed.emit(self.operation_state, self.animation_state)
+
+    @pyqtSlot(int)
+    def change_operation_state(self, index):
+        """ Change the operation_state of the indexed Shape. """
+        self.operation_state = list(self.parent.Graph.set_oprdim(index))
+        self.animation_state = -1
+        self.state_changed.emit(self.operation_state, self.animation_state)
+        self.parent._draw_data()
+
     def current_slice(self):
         """ Return the current slice, """
         curr_slice = []
         # For all (non-hidden) widgets
-        for n in range(self.maxDims):
+        for n in range(self.active_dims):
             if self._get(n).isHidden():
                 break
             # Get the text and the maximum value within the dimension
@@ -169,7 +187,7 @@ class ShapeSelector(QWidget):
 
     def get_index(self, widget):
         """ Get the index of one of the subwidgets. """
-        for n in range(self.maxDims):
+        for n in range(self.max_dims):
             if self._get(n).layout().indexOf(widget) != -1:
                 return n
         return -1
@@ -179,9 +197,7 @@ class ShapeSelector(QWidget):
         shapeStr = []
         scalarDims = []  # scalar Dimensions
         # For all (non-hidden) widgets
-        for n in range(self.maxDims):
-            if self._get(n).isHidden():
-                break
+        for n in range(self.active_dims):
             val, isScalar = self._get(n).get_value()
             if isScalar:
                 scalarDims.append(n)
@@ -191,8 +207,9 @@ class ShapeSelector(QWidget):
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """
         # Show a number of widgets equal to the dimension, hide the others
-        for n in range(self.maxDims):
-            if n < len(shape):
+        self.active_dims = len(shape)
+        for n in range(self.max_dims):
+            if n < self.active_dims:
                 self._get(n).show()
             else:
                 self._get(n).hide()
@@ -218,10 +235,9 @@ class ShapeSelector(QWidget):
         # Redraw the graph
         self.parent._draw_data()
 
-
     def set_operation(self, operation="None"):
         """ Make Dimension-titles (not) clickable and pass the operation. """
-        for n in range(self.maxDims):
+        for n in range(self.max_dims):
             self._get(n).label.setStyleSheet("")
         for i in self.parent.Graph.set_operation(operation):
             self._get(i).label.setStyleSheet("background-color:lightgreen;")
@@ -230,7 +246,7 @@ class ShapeSelector(QWidget):
     def wheelEvent(self, event):
         """ Catch wheelEvents on the Shape widgets making them scrollable. """
         onField = -1
-        for n in range(self.maxDims):
+        for n in range(self.active_dims):
             if self._get(n).lineedit.underMouse():
                 onField = n
                 break
@@ -257,11 +273,11 @@ class ShapeSelector(QWidget):
                 return
             if len(txt) == 1:
                 return
-            if(len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
+            if (len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
                and modifiers & Qt.ControlModifier):
                 mod //= 10
                 mod *= int(txt[1]) - int(txt[0])
-            if(len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
+            if (len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
                and modifiers & Qt.ControlModifier):
                 mod //= 100
                 mod *= int(txt[2])

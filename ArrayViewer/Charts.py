@@ -154,6 +154,14 @@ class GraphWidget(QWidget):
         self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False)
         self._canv.mpl_connect('pick_event', self.onclick)
 
+        # Animation
+        self._anim_timer = QtCore.QTimer()
+        self._anim_timer.setInterval(200)
+        self._anim_timer.timeout.connect(self._animate)
+        self._anim_step = 0
+        self._anim_dim = None
+        self._anim_cutout = np.array([])
+
         self._canv.draw()
 
         # Add a label Text that may be changed in later Versions to display the
@@ -208,6 +216,38 @@ class GraphWidget(QWidget):
         self._fix_limits[idx] = None
         return 0
 
+    def start_animation(self, dim=None):
+        """ Start the animation over the given dimension. """
+        if dim in self._tick_str[0] or dim in self._oprdim:
+            return False
+
+        self._anim_dim = dim - (self._tick_str[0] < dim).sum()
+        self._anim_step = 0
+        self._anim_cutout = self.cutout
+        self._anim_timer.start()
+        self._axes.clear()
+        self.plot()
+        return True
+
+    def stop_animation(self):
+        """ Stop the animation and set the cutout back to its original form. """
+        self._anim_dim = None
+        if self._anim_timer.isActive():
+            self._anim_timer.stop()
+            self.cutout = self._anim_cutout
+
+    def _animate(self):
+        """ Perform one animation step. """
+        if self._anim_dim >= self._anim_cutout.ndim:
+            self.stop_animation()
+            return
+        self._anim_step = (self._anim_step + 1) % self._anim_cutout.shape[self._anim_dim]
+        self.cutout = self._anim_cutout.take(self._anim_step, self._anim_dim)
+        self._axes.clear()
+        self._axes.set_title(f"Animation on timestep: {self._anim_step}")
+        self.plot()
+        self._canv.draw()
+
     def _n_D_plot(self):
         """ Plot multi-dimensional data. """
         sh = self.cutout.shape
@@ -243,7 +283,7 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        self.ticks = _set_ticks(self._axes, self._tick_str[0], self._ui.Transp.isChecked())
+        self.ticks = _set_ticks(self._axes, self._tick_str[1], self._ui.Transp.isChecked())
 
     def _n_D_scatter(self):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -308,6 +348,7 @@ class GraphWidget(QWidget):
         """ Draw given data. """
         self._axes.clear()
         data = self._ui.get(0)
+        self._anim_timer.stop()
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             self._axes.text(-0.1, 1.1, str(data), va='top', wrap=True)
@@ -322,7 +363,7 @@ class GraphWidget(QWidget):
         else:
             non_scalar_idx = list(set(range(data.ndim)) - set(scalDims))
             s_mod = tuple(s[i] for i in non_scalar_idx)
-            self._tick_str = [s, s_mod]
+            self._tick_str = [scalDims, s_mod]
             # Cut out the chosen piece of the array and plot it
             self.cutout = data[s].squeeze()
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
@@ -351,7 +392,7 @@ class GraphWidget(QWidget):
         # Graph an 1D-cutout
         elif self.cutout.ndim == 1:
             self._img = self._axes.plot(self.cutout)
-            self.ticks = _set_ticks(self._axes, f"[{self._tick_str[1]}]", False, True)
+            self.ticks = _set_ticks(self._axes, self._tick_str[1], False, True)
             alim = self._axes.get_ylim()
             if alim[0] > alim[1]:
                 self._axes.invert_yaxis()
@@ -363,7 +404,7 @@ class GraphWidget(QWidget):
                     self._ui.info_msg(msg, -1)
                     return
                 self._img = self._axes.plot(self.cutout)
-                self.ticks = _set_ticks(self._axes, self._tick_str[0],
+                self.ticks = _set_ticks(self._axes, self._tick_str[1],
                                         self._ui.Transp.isChecked(), True)
             elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                 self._n_D_scatter()
@@ -423,10 +464,7 @@ class GraphWidget(QWidget):
         if value == -1:
             self._oprdim = np.array([], dtype=int)
         else:
-            if value in self._oprdim:
-                self._oprdim = self._oprdim[self._oprdim != value]
-            else:
-                self._oprdim = np.append(self._oprdim, value)
+            self._oprdim = np.setxor1d(self._oprdim, value)
         if self.has_operation:
             return self._oprdim
         return []
