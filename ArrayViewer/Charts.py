@@ -5,8 +5,7 @@ GraphWidget and ReshapeDialog for the ArrayViewer
 import re
 from itertools import combinations
 from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
-                             QLineEdit, QSizePolicy, QTextEdit, QVBoxLayout,
-                             QWidget)
+                             QLineEdit, QTextEdit, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -16,7 +15,6 @@ from matplotlib.widgets import Cursor
 from matplotlib.lines import Line2D
 from matplotlib.image import AxesImage
 from matplotlib.collections import PathCollection
-from mplcursors import cursor
 import numpy as np
 from h5py._hl.dataset import Dataset
 
@@ -149,7 +147,7 @@ class GraphWidget(QWidget):
         self._colormap = 'viridis'
         self._opr = (lambda x: x)
         self._oprdim = np.array([], dtype=int)
-        self._oprcorr = 'None'
+        self._oprcorr = None
         self.cutout = np.array([])
         self.ticks = [[0, -1, 1]]
         self._tick_str = [0, 0]
@@ -331,15 +329,21 @@ class GraphWidget(QWidget):
             self._tick_str = [s, s_mod]
             # Cut out the chosen piece of the array and plot it
             self.cutout = np.array([])
-            self.cutout = eval(f"data{s}.squeeze()")
+            slices = []
+            for part in s[1:-1].split(','):  # Remove "[" and "]"
+                try:
+                    # Try converting the full part to int for singleton slices
+                    slices.append(slice(int(part), int(part) + 1))
+                except ValueError:
+                    # Create a tuple of slice objects
+                    slices.append(slice(*[int(x) if x.strip() else None for x in part.split(':')]))
+            self.cutout = data[tuple(slices)].squeeze()
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
-                self._oprcorr = str(tuple(
-                    b - (scalDims <= b).sum() for b in a
-                ))
+                self._oprcorr = tuple(b - (scalDims <= b).sum() for b in a)
                 self.cutout = self._opr(self.cutout)
             else:
-                self._oprcorr = "None"
+                self._oprcorr = None
             # Transpose the first two dimensions if it is chosen
             if self._ui.Transp.isChecked() and self.cutout.ndim > 1:
                 self.cutout = np.swapaxes(self.cutout, 0, 1)
@@ -348,6 +352,10 @@ class GraphWidget(QWidget):
 
     def plot(self):
         """ Draw one plot step """
+        # Check for empty dimensions
+        if 0 in self.cutout.shape:
+            self._axes.clear()
+            return
         # Print the Value(s) directly
         if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
             self._axes.set_ylim([0, 1])
@@ -418,7 +426,9 @@ class GraphWidget(QWidget):
             self._oprdim = np.array([], dtype=int)
             self._opr = (lambda x: x)
         else:
-            self._opr = (lambda x: eval(f"np.{operation}(x, axis={self._oprcorr})"))
+            operations = {'nanmin': np.nanmin, 'nanmax': np.nanmax,
+                          'nanmean': np.nanmean, 'nanmedian': np.nanmedian}
+            self._opr = lambda x: operations[operation](x, axis=self._oprcorr)
         return self._oprdim
 
     def set_oprdim(self, value):
@@ -555,7 +565,8 @@ class NewDataDialog(QDialog):
         """ Try to run the command and append the history on pressing 'OK'. """
         try:
             var, value = self._parsecmd(str(self.cmd.text()))
-            self.data[var] = eval(value)
+            methods = {'np': np, 'self': self}
+            self.data[var] = eval(value, {'__buildins__': None}, methods)
         except Exception as err:
             self.err.setText(str(err))
             return
@@ -581,8 +592,8 @@ class NewDataDialog(QDialog):
         """ Parse the command given by the user. """
         try:
             var, expr = cmd.split("=", 1)
-        except ValueError:
-            raise ValueError("No '=' in expression")
+        except ValueError as e:
+            raise ValueError("No '=' in expression") from e
         for op in ['(', ')', '[', ']', '{', '}', ',',
                    '+', '-', '*', '/', '%', '^']:
             expr = expr.replace(op, f" {op} ")
