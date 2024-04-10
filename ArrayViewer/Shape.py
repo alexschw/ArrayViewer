@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
 from PyQt5.QtCore import QRegExp, Qt, QMimeData, QPoint, QSize
 import numpy as np
 
+
 class singleShape(QWidget):
     """ A single Shape widget with one label and one lineedit. """
     def __init__(self, validator, parent, index):
@@ -19,7 +20,7 @@ class singleShape(QWidget):
         self.setAcceptDrops(True)
 
         layout = QVBoxLayout()
-        self.label = QLabel("0", self.dock)
+        self.label = self.singleLabel(self.dock)
         layout.addWidget(self.label)
         clayout = QVBoxLayout()
         clayout.addWidget(self.dock)
@@ -35,6 +36,45 @@ class singleShape(QWidget):
         layout.addWidget(self.lineedit)
 
         self.dock.setLayout(layout)
+
+    class singleLabel(QLabel):
+        """ Define a custom Label with and operarion and animation state. """
+        def __init__(self, widget):
+            super().__init__("0", widget)
+            self.op_state = False
+            self.animation_state = False
+
+        def set_op(self, style):
+            """ Set the operation state of the label on left click. """
+            self.op_state = style
+            self.animation_state = False
+            self._style()
+
+        def set_anim(self):
+            """  Toggle the the animation state on right click. """
+            self.animation_state ^= True
+            self._style()
+
+        def _style(self):
+            if not self.op_state and not self.animation_state:
+                self.setStyleSheet("")
+            elif self.animation_state:
+                self.setStyleSheet("background-color:orange;")
+            else:
+                self.setStyleSheet("background-color:lightgreen;")
+
+    def get_value(self):
+        """ Return the values of this single Shape. """
+        # Get the text and the maximum value within the dimension
+        txt = self.lineedit.text()
+        maxt = int(self.label.text())
+        try:
+            # Clip the value of the given text if it is an integer
+            txt = str(np.clip(int(txt), -maxt, maxt-1))
+            self.lineedit.setText(txt)
+            return int(txt), True
+        except ValueError:
+            return slice(*(int(x) if x else None for x in txt.split(':'))), False
 
     def _perform_operation(self, _):
         """ Perform the chosen Operation on the graph.
@@ -136,42 +176,17 @@ class ShapeSelector(QWidget):
 
     def get_shape(self):
         """ Get the values of all non-hidden widgets."""
-        shapeStr = "["
+        shapeStr = []
         scalarDims = []  # scalar Dimensions
         # For all (non-hidden) widgets
         for n in range(self.maxDims):
             if self._get(n).isHidden():
                 break
-            # Get the text and the maximum value within the dimension
-            txt = self._get(n).lineedit.text()
-            maxt = int(self._get(n).label.text())
-            if txt == "":
-                shapeStr += ":,"
-            elif ":" in txt:
-                shapeStr += txt + ','
-                # Check if value is scalar
-                sh = txt.split(':')
-                unsh = [0, maxt, 1]  # Default values for unset shape
-                sh = [int(s) if s != '' else unsh[i] for i, s in enumerate(sh)]
-                sh = np.array(sh)
-                sh[:2] += maxt * (sh[:2] < 0)  # make all values positive
-                if len(sh) < 3:  # No stepwidth given
-                    sh = np.append(sh, 1)
-                if -1 <= (sh[0] - sh[1]) / sh[2] <= 1:
-                    scalarDims.append(n)
-            else:
+            val, isScalar = self._get(n).get_value()
+            if isScalar:
                 scalarDims.append(n)
-                try:
-                    int(txt)
-                except ValueError:
-                    self.info_msg("Could not convert value to int.", -1)
-                    shapeStr += ':,'
-                    continue
-                txt = str(np.clip(int(txt), -maxt, maxt-1))
-                self._get(n).lineedit.setText(txt)
-                shapeStr += txt + ','
-        shapeStr = str(shapeStr[:-1] + "]")
-        return shapeStr, scalarDims
+            shapeStr.append(val)
+        return tuple(shapeStr), np.array(scalarDims)
 
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """

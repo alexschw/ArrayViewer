@@ -475,7 +475,7 @@ class ViewerWindow(QMainWindow):
         """ Draw the selected data. """
         shapeStr, scalarDims = self.Shape.get_shape()
         if shapeStr or self.get(0).shape == (1,):
-            self.Graph.renewPlot(shapeStr, np.array(scalarDims))
+            self.Graph.renewPlot(shapeStr, scalarDims)
             self._update_colorbar()
 
     def _fixMin(self, _):

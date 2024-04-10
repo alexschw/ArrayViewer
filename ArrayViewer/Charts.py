@@ -57,12 +57,8 @@ def _get_shape_from_str(string):
 def _set_ticks(ax, s, transp, is1DPlot=False):
     """ Set the ticks of plots according to the selected slices. """
     # Calculate the ticks for the plot by checking the limits
-    limits = [n.split(':') for n in s[1:-1].split(',') if ':' in n]
-    lim = np.ones((len(limits), 3), dtype=int) * [0, -1, 1]
-    for i, m in enumerate(limits):
-        for j, dim in enumerate(m):
-            if dim:
-                lim[i, j] = dim
+    slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
+    lim = np.array([[n.start or 0, n.stop or -1, n.step or 1] for n in slices])
     if transp:
         lim = lim[(1, 0), :]
     # Set the x-ticks
@@ -324,20 +320,11 @@ class GraphWidget(QWidget):
             # If there is an array of lists plot each element as a graph
             self._img = [self._axes.plot(lst) for lst in data]
         else:
-            non_scalar_idx = (set(range(data.ndim)) - set(scalDims)).pop()
-            s_mod = s[1:-1].split(',')[non_scalar_idx]
+            non_scalar_idx = list(set(range(data.ndim)) - set(scalDims))
+            s_mod = tuple(s[i] for i in non_scalar_idx)
             self._tick_str = [s, s_mod]
             # Cut out the chosen piece of the array and plot it
-            self.cutout = np.array([])
-            slices = []
-            for part in s[1:-1].split(','):  # Remove "[" and "]"
-                try:
-                    # Try converting the full part to int for singleton slices
-                    slices.append(slice(int(part), int(part) + 1))
-                except ValueError:
-                    # Create a tuple of slice objects
-                    slices.append(slice(*[int(x) if x.strip() else None for x in part.split(':')]))
-            self.cutout = data[tuple(slices)].squeeze()
+            self.cutout = data[s].squeeze()
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
                 self._oprcorr = tuple(b - (scalDims <= b).sum() for b in a)
