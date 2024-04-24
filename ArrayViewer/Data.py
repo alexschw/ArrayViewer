@@ -12,8 +12,17 @@ import re
 import scipy.io
 import h5py
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-from PIL import Image
+from PIL import Image, ImageSequence
 import numpy as np
+
+
+def _open_image_file(fname):
+    """ Open a file as an image. """
+    img = Image.open(fname)
+    if img.format == 'GIF':
+        image_seq = np.array([f.copy().convert('RGB') for f in ImageSequence.Iterator(img)])
+        return {'Value': np.moveaxis(image_seq, [2, 3, 0], [0, 2, 3])}
+    return {'Value': np.swapaxes(np.array(img), 0, 1)}
 
 
 class Loader(QObject):
@@ -29,9 +38,9 @@ class Loader(QObject):
         self.switch_to_last = False
         self.load.connect(self._add_data)
 
-    def _validate(self, data):
+    def _validate(self, data, origin=None):
         """ Data validation. Replace lists of numbers with np.ndarray."""
-        if isinstance(data, dict) or isinstance(data, np.lib.npyio.NpzFile):
+        if isinstance(data, (dict, np.lib.npyio.NpzFile)):
             # Run the validation again for each subelement in the dict
             data = {str(key): self._validate(data[key]) for key in data.keys()
                     if str(key)[:2] != "__"}
@@ -44,20 +53,16 @@ class Loader(QObject):
                 try:
                     dat = np.array(data)
                     if dat.dtype == "O":
-                        data = self._validate(
-                            {str(k): v for k, v in enumerate(data)})
+                        data = self._validate({str(k): v for k, v in enumerate(data)})
                     else:
                         data = dat
                 except ValueError:
-                    data = self._validate(
-                        {str(k): v for k, v in enumerate(data)})
+                    data = self._validate({str(k): v for k, v in enumerate(data)})
         elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # Create a dictionary from matlab structs
-            dct = {}
-            for key in data._fieldnames:
-                exec(f"dct[key] = self._validate(data.{key})")
-            data = dct
-        elif isinstance(data, np.ndarray) and data.dtype == "O" :
+            data = data.__dict__
+            data.pop('_fieldnames', None)
+        elif isinstance(data, np.ndarray) and data.dtype == "O":
             # Create numpy arrays from matlab cell types
             if not data.shape:
                 data = self._validate(data[()])
@@ -65,10 +70,32 @@ class Loader(QObject):
                 data = self._validate([self._validate(sd) for sd in data])
         elif isinstance(data, np.ndarray) and not data.shape:
             data = data[()]
-        elif isinstance(data, (h5py.File, h5py.Group)):
-            data = {key: self._validate(data[key])
-                    for key in data if key != "#refs#"}
-        elif isinstance(data, h5py.Dataset):
+        elif isinstance(data, h5py.File):
+            data = self._get_h5py_dict_data(data)
+        elif not isinstance(data, (np.ndarray, h5py.Dataset, int, float, str, tuple, type(None))):
+            self.infoMsg.emit(f"DataType ({type(data)}) not recognized. Skipping", 0)
+            data = None
+        if isinstance(data, (np.ndarray, h5py.Dataset)) and \
+           self.switch_to_last and len(data.shape) > 1:
+            data = np.moveaxis(data, 0, -1)
+        return data
+
+    def _get_h5py_dict_data(self, file):
+        """ Validate all values of a h5py file and dereference references. """
+        data = {}
+        for key in file:
+            if key == "#refs#":
+                continue
+            datum = self._h5py_val(file[key])
+            if isinstance(datum, (h5py.Reference, h5py.RegionReference)):
+                data[key] = file[datum]
+            else:
+                data[key] = datum
+        return data
+
+    def _h5py_val(self, data):
+        """ Validate one datum from the h5py file. """
+        if isinstance(data, h5py.Dataset):
             if data.dtype == "O":
                 dat = np.empty_like(data)
                 try:
@@ -82,15 +109,15 @@ class Loader(QObject):
                 except ValueError:
                     data = np.array([data.file.get(d[0]) for d in data[()]][0])
                 except (OSError, TypeError):
-                    data = self._validate(data[()])
+                    data = self._h5py_val(data[()])
             else:
                 data = np.array(data)
-        elif not isinstance(data, (np.ndarray, h5py.Dataset, int, float, str, tuple)):
-            self.infoMsg.emit(f"DataType ({type(data)}) not recognized. Skipping", 0)
-            data = None
-        if isinstance(data, (np.ndarray, h5py.Dataset)) and \
-           self.switch_to_last and len(data.shape) > 1:
-            data = np.moveaxis(data, 0, -1)
+        elif isinstance(data, h5py.Group):
+            data = self._get_h5py_dict_data(data)
+        elif isinstance(data, np.ndarray):
+            # References are stored in np.ndarray -> return their value
+            if isinstance(data.flatten()[0], (h5py.Reference, h5py.RegionReference)):
+                return data.flatten()[0]
         return data
 
     @pyqtSlot(str, str, bool)
@@ -122,11 +149,11 @@ class Loader(QObject):
                                               encoding='latin1'))
         elif fname.endswith(('.data', '.bin')):
             try:
-                f = pickle.load(open(str(fname), encoding='utf-8'))
-                data = self._validate(f)
+                with open(str(fname), encoding='utf-8') as file:
+                    data = self._validate(pickle.load(file))
             except UnicodeDecodeError:
-                f = pickle.load(open(str(fname), 'rb'), encoding='latin1')
-                data = self._validate(f)
+                with open(str(fname), 'rb') as file:
+                    data = self._validate(pickle.load(file, encoding='latin1'))
         elif fname.endswith(('.txt', '.csv')):
             with open(fname, encoding="utf-8") as f:
                 numberRegEx = r'([-+]?\d+\.?\d*(?:[eE][-+]\d+)?)'
@@ -134,10 +161,9 @@ class Loader(QObject):
                 data = {'Value': np.array(lil, dtype=float)}
         else:
             try:
-                img = Image.open(fname)
-                data = {'Value': np.swapaxes(np.array(img), 0, 1)}
+                _open_image_file(fname)
             except (OSError, FileNotFoundError):
-                print('File type not recognized!')
+                self.infoMsg('File type not recognized!', 1)
                 return False
         if not isinstance(data, dict):
             data = {'Value': data}

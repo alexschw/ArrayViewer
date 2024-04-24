@@ -285,8 +285,5 @@ class ShapeSelector(QWidget):
                 txt[0] = str(int(txt[0])+mod)
             if txt[1] != "":
                 txt[1] = str(int(txt[1])+mod)
-            # if "0" in txt:
-                # txt = np.array(txt)
-                # txt[txt == "0"] = ""
             from_wgt.setText(':'.join(txt))
         self.parent._set_slice()
