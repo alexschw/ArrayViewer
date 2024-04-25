@@ -1,3 +1,11 @@
+# 1.1
+- Data animation for all data types
+- Fixable minimum and maximum values
+- Data-Picker on every graph
+- Minium python-version: 3.6
+- Use slices for data aquisition
+- Bugfix matlab files with references
+
 # 1.0.8
 - Overhaul combine operation to combine unequal datasets
 - Use nanmin/nanmean/nanmax instead of min/mean/max to account for NaN Values

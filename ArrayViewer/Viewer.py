@@ -379,8 +379,8 @@ class ViewerWindow(QMainWindow):
         keepBtn = msg.addButton("Yes but keep Elements", QMessageBox.YesRole)
         msg.addButton(QMessageBox.No)
         msg.setDefaultButton(QMessageBox.Yes)
-        msg.exec_()
-        if msg.clickedButton() == QMessageBox.No:
+        result = msg.exec_()
+        if result == QMessageBox.No:
             return
 
         # Perform the combination
@@ -395,10 +395,10 @@ class ViewerWindow(QMainWindow):
         except ValueError:
             pass
         # Add 'combined'-key if it is a topLevelItem
-        if len(trace) == 1 or len(skipkeys) > 0 or msg.clickedButton() == keepBtn:
+        if len(trace) == 1 or len(skipkeys) > 0 or result == keepBtn:
             trace.append('combined')
             # Remove the combined data
-            if msg.clickedButton() != keepBtn:
+            if result != keepBtn:
                 _ = [self.get(trace[:-1]).pop(key) for key in keys]
         self.set_data(trace, combined)
         self.datatree.update_tree()
@@ -406,8 +406,8 @@ class ViewerWindow(QMainWindow):
     def _dlg_load_data(self):
         """ Open file-dialog to choose one or multiple files. """
         FD = QFileDialog(self, 'Open data file', '.',
-                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt *.csv);;
-                          Images (*.jpg *.bmp *.png *.tiff);;
+                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt *.csv *.bin);;
+                          Images (*.jpg *.bmp *.png *.tiff *.gif);;
                           All (*)""")
         FD.setOptions(QFileDialog.DontUseNativeDialog)
         FD.setFileMode(QFileDialog.ExistingFiles)
@@ -620,13 +620,13 @@ class ViewerWindow(QMainWindow):
                 msg.addButton(QMessageBox.No)
                 msg.addButton(replaceBtn, QMessageBox.AcceptRole)
                 msg.setDefaultButton(QMessageBox.Yes)
-                msg.exec_()
-                if msg.clickedButton() == replaceBtn:
+                result = msg.exec_()
+                if result == replaceBtn:
                     n = 1
                     while f"{key}_{n}" in self.keys:
                         n += 1
                     key = f"{key}_{n}"
-                elif msg.clickedButton() != yesBtn:
+                elif result != yesBtn:
                     continue
                 else:
                     self.keys.remove(key)

@@ -5,7 +5,7 @@ GraphWidget and ReshapeDialog for the ArrayViewer
 import re
 from itertools import combinations
 from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
-                             QLineEdit, QTextEdit, QVBoxLayout, QWidget)
+                             QLineEdit, QSizePolicy, QTextEdit, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -132,6 +132,7 @@ class GraphWidget(QWidget):
         self._figure = Figure(facecolor='white')
         self._axes = self._figure.add_subplot(111)
         self._canv = FigureCanvasQTAgg(self._figure)
+        self._canv.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._ui = parent
         self.noPrintTypes = parent.noPrintTypes
         self._clim = (0, 1)
@@ -218,8 +219,14 @@ class GraphWidget(QWidget):
 
     def start_animation(self, dim=None):
         """ Start the animation over the given dimension. """
-        if dim in self._tick_str[0] or dim in self._oprdim:
+        if dim in self._tick_str[0]:
             return False
+        if dim in self._oprdim:
+            # remove from operation dimensions
+            self._oprdim = np.setxor1d(self._oprdim, dim)
+            data = self._ui.get(0)
+            if isinstance(data, np.ndarray):
+                self.cutout = data
 
         self._anim_dim = dim - (self._tick_str[0] < dim).sum()
         self._anim_step = 0
