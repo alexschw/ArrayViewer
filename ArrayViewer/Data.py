@@ -161,7 +161,7 @@ class Loader(QObject):
                 data = {'Value': np.array(lil, dtype=float)}
         else:
             try:
-                _open_image_file(fname)
+                data = _open_image_file(fname)
             except (OSError, FileNotFoundError):
                 self.infoMsg('File type not recognized!', 1)
                 return False

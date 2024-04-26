@@ -151,13 +151,16 @@ class GraphWidget(QWidget):
 
         # Add a cursor
         self._cursor = Cursor(self._axes, color='red', linewidth=1)
+        if self._ui.config.getboolean('opt', 'cursor', fallback=False):
+            self._cursor.visible = False
         self.last_clicked = (None, None)
         self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False)
         self._canv.mpl_connect('pick_event', self.onclick)
 
         # Animation
         self._anim_timer = QtCore.QTimer()
-        self._anim_timer.setInterval(200)
+        self._anim_timer.setInterval(parent.config.getint('opt', 'anim_speed',
+                                                          fallback=300))
         self._anim_timer.timeout.connect(self._animate)
         self._anim_step = 0
         self._anim_dim = None
@@ -234,6 +237,7 @@ class GraphWidget(QWidget):
         self._anim_timer.start()
         self._axes.clear()
         self.plot()
+        self._animate()
         return True
 
     def stop_animation(self):
@@ -242,6 +246,11 @@ class GraphWidget(QWidget):
         if self._anim_timer.isActive():
             self._anim_timer.stop()
             self.cutout = self._anim_cutout
+
+    def set_anim_speed(self):
+        """ Set the timeout time of the animation timer. """
+        anim_speed = self._ui.config.getint('opt', 'anim_speed', fallback=300)
+        self._anim_timer.setInterval(anim_speed)
 
     def _animate(self):
         """ Perform one animation step. """
@@ -406,8 +415,10 @@ class GraphWidget(QWidget):
         # 2D-cutout will be shown using imshow, scatter or plot
         elif self.cutout.ndim == 2:
             if self._ui.Plot2D.isChecked():
-                if self.cutout.shape[1] > 500:
+                unsave = self._ui.config.getboolean('opt', 'unsave', fallback=False)
+                if self.cutout.shape[1] > 500 and not unsave:
                     msg = "You are trying to plot more than 500 lines!"
+                    msg += " (change to 'unsave' mode in options to plot them anyway)"
                     self._ui.info_msg(msg, -1)
                     return
                 self._img = self._axes.plot(self.cutout)
@@ -449,6 +460,8 @@ class GraphWidget(QWidget):
         else:
             self._img.set_picker(True)
         self._cursor = Cursor(self._axes, useblit=False, color='red', linewidth=1)
+        if self._ui.config.getboolean('opt', 'cursor', fallback=False):
+            self._cursor.visible = False
         self.annotation.remove()
         self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False,
                                             backgroundcolor="silver")

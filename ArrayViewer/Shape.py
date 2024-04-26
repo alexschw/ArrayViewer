@@ -131,7 +131,7 @@ class ShapeSelector(QWidget):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.max_dims = 6
+        self.max_dims = 8
         self.active_dims = 0
         self.fixate_view = False
         self.operation_state = []

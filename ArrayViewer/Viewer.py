@@ -27,6 +27,7 @@ from ArrayViewer.Data import Loader, h5py
 from ArrayViewer.Style import dark_qpalette
 from ArrayViewer.DataTree import DataTree
 from ArrayViewer.Shape import ShapeSelector
+from ArrayViewer.Options import OptionsDialog
 
 
 def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
@@ -63,6 +64,7 @@ class ViewerWindow(QMainWindow):
         self.noPrintTypes = (int, float, str, list, tuple, type(None))
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
+        self.optionsBox = OptionsDialog(self)
 
         # set the loader from a separate class
         self.loader = Loader()
@@ -83,6 +85,9 @@ class ViewerWindow(QMainWindow):
 
         # Initialize the menu
         self.__initMenu()
+
+        if self.config.getboolean('opt', 'darkmode'):
+            self._set_dark_mode(True)
 
     def __addWidgets(self):
         """ Add the widgets in the main Window. """
@@ -214,11 +219,7 @@ class ViewerWindow(QMainWindow):
         menuPlot.addSeparator()
         _menu_opt(menuPlot, "Keep Slice on data change", self._set_fixate_view,
                   act_grp=ag_plt)
-        dm = _menu_opt(menuPlot, "Dark Window mode", self._set_dark_mode,
-                       act_grp=ag_plt)
-        if self.config.getboolean('opt', 'darkmode'):
-            dm.setChecked(True)
-            self._set_dark_mode(True)
+        _menu_opt(menu, "?", self.optionsBox.adapt_options)
         self.setMenuBar(menu)
 
         # Add a context menu
@@ -552,10 +553,10 @@ class ViewerWindow(QMainWindow):
     def _save_chart(self):
         """ Saves the currently shown chart as a file. """
         figure = self.Graph.figure()
-        ftyp = 'Image file (*.png *.jpg);;PDF file (*.pdf)'
+        ftype = 'Image file (*.png *.jpg);;Vector graphic (*.svg);;PDF file (*.pdf)'
         if figure:
             fname = QFileDialog.getSaveFileName(self, 'Save Image',
-                                                './figure.png', ftyp)
+                                                './figure.png', ftype)
             if fname:
                 figure.savefig(fname[0])
 
@@ -681,6 +682,9 @@ def main():
         config.add_section('opt')
         config.set('opt', 'first_to_last', 'False')
         config.set('opt', 'darkmode', 'False')
+        config.set('opt', 'anim_speed', 300)
+        config.set('opt', 'cursor', 'False')
+        config.set('opt', 'unsave', 'False')
     window = ViewerWindow(app, config)
     fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
     window.load_files(fnames)
