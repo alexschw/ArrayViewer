@@ -118,6 +118,9 @@ class Loader(QObject):
             # References are stored in np.ndarray -> return their value
             if isinstance(data.flatten()[0], (h5py.Reference, h5py.RegionReference)):
                 return data.flatten()[0]
+        if isinstance(data, (np.ndarray, h5py.Dataset)) and \
+           self.switch_to_last and len(data.shape) > 1:
+            data = np.moveaxis(data, 0, -1)
         return data
 
     @pyqtSlot(str, str, bool)
