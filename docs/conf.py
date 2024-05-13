@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'ArrayViewer'
-copyright = '2019-2020, Alex Schwarz'
+copyright = '2019-2024, Alex Schwarz'
 author = 'Alex Schwarz'
 
 # The short X.Y version

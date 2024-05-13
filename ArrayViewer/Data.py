@@ -38,7 +38,7 @@ class Loader(QObject):
         self.switch_to_last = False
         self.load.connect(self._add_data)
 
-    def _validate(self, data, origin=None):
+    def _validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
         if isinstance(data, (dict, np.lib.npyio.NpzFile)):
             # Run the validation again for each subelement in the dict

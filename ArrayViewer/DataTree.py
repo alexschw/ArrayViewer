@@ -65,6 +65,7 @@ class DataTree(QTabWidget):
     def clear_tree(self):
         """ Clear the Tree. """
         self.checkableItems = []
+        self.keys = self.viewer.keys
         self.update_tree()
 
     def current_item(self):

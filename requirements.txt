@@ -1,7 +1,8 @@
-PyQt5
-numpy
-scipy
+PyQt5>=5.12
+numpy>=1.22
+scipy>=1.11.2
 h5py
 matplotlib
-Pillow
+Pillow>=10.2
 natsort
+fonttools>=4.43.0

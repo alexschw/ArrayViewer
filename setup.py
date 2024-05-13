@@ -14,10 +14,11 @@ if os.name == 'nt':
 
 PACKAGE_NAME = "ArrayViewer"
 
-with open('requirements.txt') as req_file:
+with open('requirements.txt', encoding='utf-8') as req_file:
     REQUIREMENTS = req_file.readlines()
-with open("README.md", "r") as readme_file:
+with open("README.md", "r", encoding='utf-8') as readme_file:
     LONG_DESC = readme_file.read()
+
 
 def post_install():
     """ Windows post install function. """
@@ -43,6 +44,7 @@ def post_install():
     except:
         print("No shortcut created!")
 
+
 if __name__ == "__main__":
     if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
         data_files = [('share/icons', ['aview_logo.svg'])]
@@ -63,7 +65,7 @@ if __name__ == "__main__":
         entry_points={"gui_scripts": ["aview = ArrayViewer.Viewer:main",]},
         python_requires=">=3.6",
         description="ArrayViewer",
-        package_data={'ArrayViewer':['*.py']},
+        package_data={'ArrayViewer': ['*.py']},
         long_description=LONG_DESC,
         long_description_content_type="text/markdown",
     )
