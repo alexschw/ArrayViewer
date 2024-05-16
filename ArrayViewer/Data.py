@@ -28,7 +28,7 @@ def _open_image_file(fname):
 class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
     doneLoading = pyqtSignal(dict, str)
-    load = pyqtSignal(str, str, bool)
+    load = pyqtSignal(str, str, bool, int)
     infoMsg = pyqtSignal(str, int)
 
     def __init__(self, parent=None):
@@ -123,13 +123,13 @@ class Loader(QObject):
             data = np.moveaxis(data, 0, -1)
         return data
 
-    @pyqtSlot(str, str, bool)
-    def _add_data(self, fname, key, switch_to_last=False):
+    @pyqtSlot(str, str, bool, int)
+    def _add_data(self, fname, key, switch_to_last=False, max_file_size=15):
         """ Add a new data to the dataset. Ask if the data already exists. """
         self.switch_to_last = switch_to_last
-        # Check if the File is bigger than 15 GB, than it will not be loaded
-        if os.path.getsize(fname) > 15e9:
-            self.infoMsg.emit("File bigger than 15GB. Not loading!", -1)
+        # Check if the File is bigger than max_file_size in GB, than it will not be loaded
+        if os.path.getsize(fname) > max_file_size * 1e9:
+            self.infoMsg.emit(f"File bigger than {max_file_size}GB. Not loading!", -1)
             self.doneLoading.emit({}, '')
             return False
         # Load the different data types

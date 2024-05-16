@@ -3,7 +3,7 @@ Options Window for the ArrayViewer.
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 
-from PyQt5.QtWidgets import QCheckBox, QDialog, QFormLayout, QFrame, QLineEdit
+from PyQt5.QtWidgets import QCheckBox, QDialog, QFormLayout, QFrame, QLabel, QLineEdit
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import Qt
@@ -33,16 +33,26 @@ class OptionsDialog(QDialog):
         anim_speed.setValidator(QIntValidator())
         self.options['anim_speed'] = anim_speed
         formLayout.addRow(self.tr("Animation Speed [ms]"), anim_speed)
+        cursor = QCheckBox("", self)
+        self.options['cursor'] = cursor
+        formLayout.addRow(self.tr("Disable red cursor"), cursor)
 
         hline = QFrame()
         hline.setFrameStyle(QFrame.HLine)
         formLayout.addRow(hline)
-        cursor = QCheckBox("", self)
-        self.options['cursor'] = cursor
-        formLayout.addRow(self.tr("Disable red cursor"), cursor)
+        label = QLabel("The following options may slow down the ArrayViewer. Proceed with caution.")
+        label.setStyleSheet("background-color:orange;")
+        label.setFrameStyle(QFrame.Panel|QFrame.Raised)
+        label.setLineWidth(2)
+        formLayout.addRow(label)
         unsave = QCheckBox("I know what I'm doing. Let me plot more.", self)
         self.options['unsave'] = unsave
         formLayout.addRow(self.tr("Unsave Plotting Mode"), unsave)
+
+        max_file_size = QLineEdit(self)
+        max_file_size.setValidator(QIntValidator())
+        self.options['max_file_size'] = max_file_size
+        formLayout.addRow(self.tr("Maximum File Size [GB]"), max_file_size)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
         self.buttonBox = DBB(DBB.Cancel|DBB.Ok, Qt.Horizontal)
@@ -59,6 +69,7 @@ class OptionsDialog(QDialog):
                 value = self.parent.config.getboolean('opt', key, fallback=False)
                 option.setChecked(value)
         self.options['anim_speed'].setText(str(self.parent.config.getint('opt', 'anim_speed', fallback=300)))
+        self.options['max_file_size'].setText(str(self.parent.config.getint('opt', 'max_file_size', fallback=15)))
         self.exec_()
 
     def change_options(self):

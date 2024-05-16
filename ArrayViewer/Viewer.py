@@ -161,6 +161,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuStart, "Difference", self._start_diff, "Ctrl+D")
         _menu_opt(menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
+        _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
 
         # Graph menu
         menuGraph = QMenu("Graph", menu)
@@ -219,7 +220,6 @@ class ViewerWindow(QMainWindow):
         menuPlot.addSeparator()
         _menu_opt(menuPlot, "Keep Slice on data change", self._set_fixate_view,
                   act_grp=ag_plt)
-        _menu_opt(menu, "?", self.optionsBox.adapt_options)
         self.setMenuBar(menu)
 
         # Add a context menu
@@ -635,8 +635,9 @@ class ViewerWindow(QMainWindow):
             loadItem = QTreeWidgetItem([self.lMsg])
             loadItem.setForeground(0, QColor("grey"))
             self.datatree.Tree.addTopLevelItem(loadItem)
-            self.loader.load.emit(fname, key, self.config.getboolean(
-                'opt', 'first_to_last'))
+            self.loader.load.emit(fname, key,
+                                  self.config.getboolean('opt', 'first_to_last'),
+                                  self.config.getint('opt', 'max_file_size'))
 
     ## PyQt Slots
     @pyqtSlot(str, int)
@@ -685,6 +686,7 @@ def main():
         config.set('opt', 'anim_speed', 300)
         config.set('opt', 'cursor', 'False')
         config.set('opt', 'unsave', 'False')
+        config.set('opt', 'max_file_size', 15)
     window = ViewerWindow(app, config)
     fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
     window.load_files(fnames)
