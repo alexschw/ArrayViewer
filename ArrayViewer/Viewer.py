@@ -677,22 +677,23 @@ def main():
     """ Main Function. """
     app = QApplication(sys.argv)
     config = ConfigParser()
+    conf_file_name = os.path.expanduser("~/.arrayviewer")
     try:
-        assert config.read(os.path.expanduser("~/.arrayviewer"))
+        assert config.read(conf_file_name)
     except (AssertionError, MissingSectionHeaderError) as _:
         config.add_section('opt')
         config.set('opt', 'first_to_last', 'False')
         config.set('opt', 'darkmode', 'False')
-        config.set('opt', 'anim_speed', 300)
+        config.set('opt', 'anim_speed', '300')
         config.set('opt', 'cursor', 'False')
         config.set('opt', 'unsave', 'False')
-        config.set('opt', 'max_file_size', 15)
+        config.set('opt', 'max_file_size', '15')
     window = ViewerWindow(app, config)
     fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
     window.load_files(fnames)
     window.show()
     app.exec_()
-    with open(os.path.expanduser("~/.arrayviewer"), "w") as conf_file:
+    with open(conf_file_name, "w", encoding="utf-8") as conf_file:
         config.write(conf_file)
     sys.exit()
 
