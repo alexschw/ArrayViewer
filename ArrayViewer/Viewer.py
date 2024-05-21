@@ -86,7 +86,7 @@ class ViewerWindow(QMainWindow):
         # Initialize the menu
         self.__initMenu()
 
-        if self.config.getboolean('opt', 'darkmode'):
+        if self.config.getboolean('opt', 'darkmode', fallback=False):
             self._set_dark_mode(True)
 
     def __addWidgets(self):
@@ -636,8 +636,8 @@ class ViewerWindow(QMainWindow):
             loadItem.setForeground(0, QColor("grey"))
             self.datatree.Tree.addTopLevelItem(loadItem)
             self.loader.load.emit(fname, key,
-                                  self.config.getboolean('opt', 'first_to_last'),
-                                  self.config.getint('opt', 'max_file_size'))
+                                  self.config.getboolean('opt', 'first_to_last', fallback=False),
+                                  self.config.getint('opt', 'max_file_size', fallback=15))
 
     ## PyQt Slots
     @pyqtSlot(str, int)
