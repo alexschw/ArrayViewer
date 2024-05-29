@@ -45,19 +45,7 @@ class Loader(QObject):
             data = {str(key): self._validate(data[key]) for key in data.keys()
                     if str(key)[:2] != "__"}
         elif isinstance(data, list):
-            if data != [] and not isinstance(data[0], str):
-                # not all elements in the list have the same length
-                if isinstance(data[0], list) and len(set(map(len, data))) != 1:
-                    maxlen = len(sorted(data, key=len, reverse=True)[0])
-                    data = [[xi + [np.nan] * (maxlen - len(xi))] for xi in data]
-                try:
-                    dat = np.array(data)
-                    if dat.dtype == "O":
-                        data = self._validate({str(k): v for k, v in enumerate(data)})
-                    else:
-                        data = dat
-                except ValueError:
-                    data = self._validate({str(k): v for k, v in enumerate(data)})
+            data = self._validate_list(data)
         elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # Create a dictionary from matlab structs
             data = data.__dict__
@@ -78,6 +66,23 @@ class Loader(QObject):
         if isinstance(data, (np.ndarray, h5py.Dataset)) and \
            self.switch_to_last and len(data.shape) > 1:
             data = np.moveaxis(data, 0, -1)
+        return data
+
+    def _validate_list(self, data):
+        """ Validate the elements of a list. Reformating uneven lists. """
+        if data != [] and not isinstance(data[0], str):
+            # not all elements in the list have the same length
+            if isinstance(data[0], list) and len(set(map(len, data))) != 1:
+                maxlen = len(sorted(data, key=len, reverse=True)[0])
+                data = [[xi + [np.nan] * (maxlen - len(xi))] for xi in data]
+            try:
+                dat = np.array(data)
+                if dat.dtype == "O":
+                    data = self._validate({str(k): v for k, v in enumerate(data)})
+                else:
+                    data = dat
+            except ValueError:
+                data = self._validate({str(k): v for k, v in enumerate(data)})
         return data
 
     def _get_h5py_dict_data(self, file):

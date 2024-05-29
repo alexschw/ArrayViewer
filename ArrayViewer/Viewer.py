@@ -617,17 +617,17 @@ class ViewerWindow(QMainWindow):
                 replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
                                          "Add new Dataset")
                 msg = QMessageBox(QMessageBox.Warning, "Warning", txt)
-                yesBtn = msg.addButton(QMessageBox.Yes)
+                msg.addButton(QMessageBox.Yes)
                 msg.addButton(QMessageBox.No)
                 msg.addButton(replaceBtn, QMessageBox.AcceptRole)
                 msg.setDefaultButton(QMessageBox.Yes)
                 result = msg.exec_()
-                if result == replaceBtn:
+                if result == QMessageBox.AcceptRole:
                     n = 1
                     while f"{key}_{n}" in self.keys:
                         n += 1
                     key = f"{key}_{n}"
-                elif result != yesBtn:
+                elif result != QMessageBox.Yes:
                     continue
                 else:
                     self.keys.remove(key)
