@@ -70,6 +70,7 @@ class singleShape(QWidget):
         again the operation will be undone.
         """
         self.change_operation.emit(self.index)
+        self.parent._set_slice()
         self.parent._draw_data()
 
     def mousePressEvent(self, event):
@@ -176,14 +177,7 @@ class ShapeSelector(QWidget):
 
     def current_slice(self):
         """ Return the current slice, """
-        curr_slice = []
-        # For all (non-hidden) widgets
-        for n in range(self.active_dims):
-            if self._get(n).isHidden():
-                break
-            # Get the text and the maximum value within the dimension
-            curr_slice.append(self._get(n).lineedit.text())
-        return curr_slice
+        return [self._get(n).lineedit.text() for n in range(self.active_dims)]
 
     def get_index(self, widget):
         """ Get the index of one of the subwidgets. """
@@ -216,7 +210,11 @@ class ShapeSelector(QWidget):
             self._get(n).label.setStyleSheet("")
         # Initialize the Values of those widgets. Could not be done previously
         if load_slice:
-            curr_slice = self.parent._load_slice()
+            curr_slice, curr_operations = self.parent._load_slice()
+            if curr_operations:
+                self.operation_state = curr_operations
+                self.parent.Graph.set_oprdim(curr_operations)
+                self.state_changed.emit(self.operation_state, -1)
             self.parent.Prmt.setText(str(list(range(self.parent.get(0).ndim))))
         else:
             self.parent.Prmt.setText("")

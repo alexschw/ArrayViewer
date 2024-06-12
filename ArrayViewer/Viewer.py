@@ -58,6 +58,7 @@ class ViewerWindow(QMainWindow):
         self.config = config
         self._data = {}
         self.slices = {}
+        self.operations = {}
         self.cText = []
         self.keys = []
         self.diffNo = 0
@@ -468,6 +469,8 @@ class ViewerWindow(QMainWindow):
             self.set_data(0, *self.reshapeBox.reshape_array(self.get(0)))
             if self._slice_key() in self.slices:
                 del self.slices[self._slice_key()]
+            if self._slice_key() in self.operations:
+                del self.operations[self._slice_key()]
         else:
             return
         self.Shape.update_shape(self.get(0).shape)
@@ -519,9 +522,9 @@ class ViewerWindow(QMainWindow):
         """ Returns the perviously seleced slice for the current array. """
         if not self._data:
             return None
-        if self._slice_key() in self.slices:
-            return self.slices[self._slice_key()]
-        return None
+        k = self._slice_key()
+        return (self.slices[k] if k in self.slices else None,
+                self.operations[k] if k in self.operations else None)
 
     def _permute_data(self):
         """ Check the input in the permute box and reshape the array. """
@@ -542,6 +545,8 @@ class ViewerWindow(QMainWindow):
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
+        if self._slice_key() in self.operations:
+            self.operations = new_order[self.operations]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
         self.info_msg(f"Permuted from {tuple(sh[o] for o in new_order)} to {sh}", 0)
@@ -580,6 +585,7 @@ class ViewerWindow(QMainWindow):
         if len(self.get(0).shape) != len(curr_slice):
             return
         self.slices[self._slice_key()] = curr_slice
+        self.operations[self._slice_key()] = self.Shape.operation_state
         self._draw_data()
 
     def _slice_key(self):
