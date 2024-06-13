@@ -52,8 +52,9 @@ class dataModel(QAbstractTableModel):
         self.beginResetModel()
         self._data = np.array(data, ndmin=2)
         for key, value in changes.items():
-            print(f"Changed data{key} from {self._data[*key]} to {value}")
-            self._data[*key] = value
+            if len(key) == 1:
+                key = (0,) + key
+            self._data[key] = value
         self.endResetModel()
 
     def data(self, index, role=Qt.DisplayRole):
@@ -133,7 +134,7 @@ class EditorDialog(QDialog):
             self.slice = [slice(None)]
         else:
             self.slice = [slice(None)]*2 + [0]*(data.ndim-2)
-        self.model.set_full_data(data[*self.slice], self.local_changes())
+        self.model.set_full_data(data[(*self.slice,)], self.local_changes())
         self.table.resizeColumnsToContents()
 
         self.exec_()
@@ -176,7 +177,7 @@ class EditorDialog(QDialog):
                 return
             val = slice(None)
         self.slice[box.index] = val
-        curr_data = self.original_data[*self.slice]
+        curr_data = self.original_data[(*self.slice,)]
         self.model.set_full_data(curr_data, self.local_changes())
 
     def data_changed(self, index, index2):
@@ -196,7 +197,7 @@ class EditorDialog(QDialog):
                 full_idx[i] = idx_values[n]
                 n += 1
         data = float(self.model.itemData(index)[2])
-        if self.original_data[*full_idx] != data:
+        if self.original_data[(*full_idx,)] != data:
             self.changed_data[tuple(full_idx)] = data
 
 
