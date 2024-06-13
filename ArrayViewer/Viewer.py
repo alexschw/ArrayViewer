@@ -28,6 +28,7 @@ from ArrayViewer.Style import dark_qpalette
 from ArrayViewer.DataTree import DataTree
 from ArrayViewer.Shape import ShapeSelector
 from ArrayViewer.Options import OptionsDialog
+from ArrayViewer.Editor import EditorDialog
 
 
 def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
@@ -66,6 +67,7 @@ class ViewerWindow(QMainWindow):
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
         self.optionsBox = OptionsDialog(self)
+        self.editorBox = EditorDialog(self)
 
         # set the loader from a separate class
         self.loader = Loader()
@@ -227,6 +229,7 @@ class ViewerWindow(QMainWindow):
         self.contextMenu = QMenu(self)
         _menu_opt(self.contextMenu, "Rename", self.datatree.rename_key)
         _menu_opt(self.contextMenu, "Reshape", self._dlg_reshape)
+        self.edit_opt = _menu_opt(self.contextMenu, "Edit", self._dlg_edit)
         self.combine_opt = _menu_opt(self.contextMenu, "Combine Dataset",
                                      self._dlg_combine)
         _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
@@ -297,9 +300,11 @@ class ViewerWindow(QMainWindow):
             if isinstance(self.get(0), self.noPrintTypes):
                 self.Shape.update_shape([0], False)
                 self.PrmtBtn.setEnabled(False)
+                self.edit_opt.setEnabled(False)
             else:
                 self.Shape.update_shape(self.get(0).shape)
                 self.PrmtBtn.setEnabled(True)
+                self.edit_opt.setEnabled(True)
 
     def _checkboxes(self, fromCheckbox):
         """ Validate the value of the checkboxes and toggle their values. """
@@ -474,6 +479,10 @@ class ViewerWindow(QMainWindow):
         else:
             return
         self.Shape.update_shape(self.get(0).shape)
+
+    def _dlg_edit(self):
+        """ Open the editor window. """
+        self.editorBox.open_editor(self.get(0))
 
     def _draw_data(self):
         """ Draw the selected data. """
