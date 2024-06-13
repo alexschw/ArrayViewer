@@ -46,7 +46,7 @@ class Loader(QObject):
                     if str(key)[:2] != "__"}
         elif isinstance(data, list):
             data = self._validate_list(data)
-        elif isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
+        elif isinstance(data, scipy.io.matlab.mat_struct):
             # Create a dictionary from matlab structs
             data = data.__dict__
             data.pop('_fieldnames', None)

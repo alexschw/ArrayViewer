@@ -51,9 +51,11 @@ class ViewerWindow(QMainWindow):
         """ Initialize the window. """
         super().__init__(parent)
         # set class variables
-        if sys.platform.startswith('linux') or \
-           sys.platform.startswith('darwin'):  # TODO Windows Icon Location
-            folder = os.path.expanduser("~/.local/share/icons/")
+        if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+            folder = os.path.join(sys.prefix, 'share/icons')
+        else:
+            folder = os.path.join(sys.prefix, 'scripts')
+        if os.path.isfile(folder + os.path.sep + 'aview_logo.svg'):
             self.setWindowIcon(QIcon(os.path.join(folder, 'aview_logo.svg')))
         self.app = application
         self.config = config
