@@ -54,58 +54,51 @@ def _get_shape_from_str(string):
     return np.array([_f for _f in string.strip("()[]").split(",") if _f],
                     dtype=int)
 
+def _setlocator(axis, lim, nPad=None):
+    """ Set the locator of an axis with the given limits and set the ticks """
+    if isinstance(lim, list):
+        loc = axis.get_major_locator()()
+        axis.set_major_locator(FixedLocator(loc))
+        d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[2] + lim[0]
+    elif isinstance(lim, tuple):
+        loc = np.arange(-lim[0] - nPad, lim[-1], lim[0] + nPad)
+        axis.set_major_locator(FixedLocator(loc))
+        d = loc - (np.arange(0, len(loc)) * nPad - nPad)
+    else:
+        axis.set_major_locator(FixedLocator(np.arange(len(lim[0]))))
+        d = lim[0]
 
-def _set_ticks(ax, s, transp, is1DPlot=False):
+    if all(d.astype(int) == d.astype(float)):
+        axis.set_ticklabels(d.astype(int))
+    else:
+        d = np.vectorize(reformat)(d)
+        axis.set_ticklabels(d.astype(float))
+
+
+def _set_ticks(s, transp, plotDimensions=2):
     """ Set the ticks of plots according to the selected slices. """
     # Calculate the ticks for the plot by checking the limits
     slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
-    lim = []
+    self.ticks = []
     for n in slices:
         if isinstance(n, slice):
-            lim.append([n.start or 0, n.stop or -1, n.step or 1])
+            self.ticks.append([n.start or 0, n.stop or -1, n.step or 1])
         else:
-            lim.append(np.array(n))
+            self.ticks.append(np.array(n))
     if transp:
-        lim[0], lim[1] = lim[1], lim[0]
-    # Set the x-ticks
-    if isinstance(lim[0], list):
-        loc = ax.xaxis.get_major_locator()()
-        ax.xaxis.set_major_locator(FixedLocator(loc))
-        d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[0][2] + lim[0][0]
-    else:
-        ax.xaxis.set_major_locator(FixedLocator(np.arange(len(lim[0]))))
-        d = lim[0]
-    if all(d.astype(int) == d.astype(float)):
-        ax.set_xticklabels(d.astype(int))
-    else:
-        d = np.vectorize(reformat)(d)
-        ax.set_xticklabels(d.astype(float))
-    if is1DPlot or len(lim) == 1:
-        return lim
-    # Set the y-ticks
-    if isinstance(lim[1], list):
-        loc = ax.yaxis.get_major_locator()()
-        ax.yaxis.set_major_locator(FixedLocator(loc))
-        d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[1][2] + lim[1][0]
-    else:
-        ax.yaxis.set_major_locator(FixedLocator(np.arange(len(lim[1]))))
-        d = lim[1]
-    if all(d.astype(int) == d.astype(float)):
-        ax.set_yticklabels(d.astype(int))
-    else:
-        d = np.vectorize(reformat)(d)
-        ax.set_yticklabels(d.astype(float))
-    return lim
-
-
-def cursor_style(selection):
-    """ Style of the matplotlib cursor. """
-    selection.annotation.get_bbox_patch().set(fc="orange", alpha=.9)
-    selection.annotation.arrow_patch.set(arrowstyle="simple", fc="white")
+        self.ticks[0], self.ticks[1] = self.ticks[1], self.ticks[0]
+    if plotDimensions < 3:
+        # Set the x-ticks
+        _setlocator(self._axes.xaxis, self.ticks[0])
+    if plotDimensions == 2:
+        # Set the y-ticks
+        _setlocator(self._axes.yaxis, self.ticks[1])
 
 
 def reformat(dat):
     """ Format the numberstrings correctly. """
+    if dat is None or isinstance(dat, np.ma.core.MaskedConstant):
+        return ""
     if not 1e-5 < np.abs(dat) < 1e5:
         return f"{dat:.5e}"
     return f"{dat:.5f}"
@@ -299,14 +292,10 @@ class GraphWidget(QWidget):
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        lx = np.arange(-sh[0] - nPad, dat.shape[1], sh[0] + nPad)
-        locx = FixedLocator(lx)
-        self._axes.xaxis.set_major_locator(locx)
-        self._axes.xaxis.set_ticklabels(lx - (np.arange(0, len(lx)) * nPad - nPad))
-        ly = np.arange(-sh[1] - nPad, dat.shape[0], sh[1] + nPad)
-        locy = FixedLocator(ly)
-        self._axes.yaxis.set_major_locator(locy)
-        self._axes.yaxis.set_ticklabels(ly - (np.arange(0, len(ly)) * nPad - nPad))
+        _set_ticks(self._tick_str[1], self._ui.Transp.isChecked(), len(sh))
+        _setlocator(self._axes.xaxis, sh + (dat.shape[1],), nPad)
+        sh = (sh[1], sh[0]) + sh[2:]
+        _setlocator(self._axes.yaxis, sh + (dat.shape[0],), nPad)
 
     def _two_D_plot(self):
         """ Plot 2-dimensional data. """
@@ -321,7 +310,7 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        self.ticks = _set_ticks(self._axes, self._tick_str[1], self._ui.Transp.isChecked())
+        _set_ticks(self._tick_str[1], self._ui.Transp.isChecked())
 
     def _n_D_scatter(self):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -441,7 +430,7 @@ class GraphWidget(QWidget):
         # Graph an 1D-cutout
         elif self.cutout.ndim == 1:
             self._img = self._axes.plot(self.cutout)
-            self.ticks = _set_ticks(self._axes, self._tick_str[1], False, True)
+            _set_ticks(self._tick_str[1], False, 1)
             alim = self._axes.get_ylim()
             if alim[0] > alim[1]:
                 self._axes.invert_yaxis()
@@ -455,8 +444,7 @@ class GraphWidget(QWidget):
                     self._ui.info_msg(msg, -1)
                     return
                 self._img = self._axes.plot(self.cutout)
-                self.ticks = _set_ticks(self._axes, self._tick_str[1],
-                                        self._ui.Transp.isChecked(), True)
+                _set_ticks(self._tick_str[1], self._ui.Transp.isChecked(), 1)
             elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                 self._n_D_scatter()
             else:
