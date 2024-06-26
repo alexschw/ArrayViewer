@@ -4,6 +4,7 @@ GraphWidget and ReshapeDialog for the ArrayViewer
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 import re
 from itertools import combinations
+from contextlib import suppress
 from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
                              QLineEdit, QSizePolicy, QTextEdit, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
@@ -58,24 +59,37 @@ def _set_ticks(ax, s, transp, is1DPlot=False):
     """ Set the ticks of plots according to the selected slices. """
     # Calculate the ticks for the plot by checking the limits
     slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
-    lim = np.array([[n.start or 0, n.stop or -1, n.step or 1] for n in slices])
+    lim = []
+    for n in slices:
+        if isinstance(n, slice):
+            lim.append([n.start or 0, n.stop or -1, n.step or 1])
+        else:
+            lim.append(np.array(n))
     if transp:
-        lim = lim[(1, 0), :]
+        lim[0], lim[1] = lim[1], lim[0]
     # Set the x-ticks
-    loc = ax.xaxis.get_major_locator()()
-    ax.xaxis.set_major_locator(FixedLocator(loc))
-    d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[0, 2] + lim[0, 0]
+    if isinstance(lim[0], list):
+        loc = ax.xaxis.get_major_locator()()
+        ax.xaxis.set_major_locator(FixedLocator(loc))
+        d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[0][2] + lim[0][0]
+    else:
+        ax.xaxis.set_major_locator(FixedLocator(np.arange(len(lim[0]))))
+        d = lim[0]
     if all(d.astype(int) == d.astype(float)):
         ax.set_xticklabels(d.astype(int))
     else:
         d = np.vectorize(reformat)(d)
         ax.set_xticklabels(d.astype(float))
-    if is1DPlot:
+    if is1DPlot or len(lim) == 1:
         return lim
     # Set the y-ticks
-    loc = ax.yaxis.get_major_locator()()
-    ax.yaxis.set_major_locator(FixedLocator(loc))
-    d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[1, 2] + lim[1, 0]
+    if isinstance(lim[1], list):
+        loc = ax.yaxis.get_major_locator()()
+        ax.yaxis.set_major_locator(FixedLocator(loc))
+        d = (np.arange(len(loc)) - 1) * (loc[2] - loc[1]) * lim[1][2] + lim[1][0]
+    else:
+        ax.yaxis.set_major_locator(FixedLocator(np.arange(len(lim[1]))))
+        d = lim[1]
     if all(d.astype(int) == d.astype(float)):
         ax.set_yticklabels(d.astype(int))
     else:
@@ -198,9 +212,17 @@ class GraphWidget(QWidget):
             dat = [reformat(v) for v in self.cutout[idx]]
             fstr = str([float(d) for d in dat])[1:-2]
         # Adjust x and y value for reshaped data
-        x = self.ticks[0][2] * x + self.ticks[0][0]
+        if isinstance(self.ticks[0], list):
+            x = self.ticks[0][2] * x + self.ticks[0][0]
+        else:
+            with suppress(IndexError):
+                x = self.ticks[0][x]
         if len(self.ticks) > 1:
-            y = self.ticks[1][2] * y + self.ticks[1][0]
+            if isinstance(self.ticks[1], list):
+                y = self.ticks[1][2] * y + self.ticks[1][0]
+            else:
+                with suppress(IndexError):
+                    y = self.ticks[1][y]
         # Hide or show information about the clicked location
         if (x, y) == self.last_clicked:
             self.annotation.set_visible(False)
@@ -360,6 +382,17 @@ class GraphWidget(QWidget):
         """ Check if the operation is None. """
         return self.has_operation
 
+    def renew_cutout(self, data, slices):
+        """ Renew the value of self.cutout with the given data and slices """
+        newslice = []
+        for i, sli in enumerate(slices):
+            if isinstance(sli, tuple):
+                data = data.take(sli, axis=i)
+                newslice.append(slice(None))
+            else:
+                newslice.append(sli)
+        self.cutout = data[tuple(newslice)].squeeze()
+
     def renewPlot(self, s, scalDims):
         """ Draw given data. """
         self._axes.clear()
@@ -381,7 +414,7 @@ class GraphWidget(QWidget):
             s_mod = tuple(s[i] for i in non_scalar_idx)
             self._tick_str = [scalDims, s_mod]
             # Cut out the chosen piece of the array and plot it
-            self.cutout = data[s].squeeze()
+            self.renew_cutout(data, s)
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
                 self._oprcorr = tuple(b - (scalDims <= b).sum() for b in a)

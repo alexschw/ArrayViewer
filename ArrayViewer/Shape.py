@@ -53,15 +53,23 @@ class singleShape(QWidget):
 
     def get_value(self):
         """ Return the values of this single Shape. """
+        def clipint(x):
+            """ The integer value of a string clipped to the dimensions """
+            return np.clip(int(x), -maxt, maxt-1)
         # Get the text and the maximum value within the dimension
         txt = self.lineedit.text()
         maxt = int(self.label.text())
+
         try:
             # Clip the value of the given text if it is an integer
-            txt = str(np.clip(int(txt), -maxt, maxt-1))
+            txt = str(clipint(txt))
             self.lineedit.setText(txt)
             return int(txt), True
         except ValueError:
+            if "," in txt:
+                tpl = tuple(dict.fromkeys(clipint(x) for x in txt.split(',') if x))
+                self.lineedit.setText(str(tpl)[1:-1].replace(" ", ""))
+                return tpl, False
             return slice(*(int(x) if x else None for x in txt.split(':'))), False
 
     def _perform_operation(self, _):
@@ -139,7 +147,7 @@ class ShapeSelector(QWidget):
         self.animation_state = -1
 
         validator = QRegExpValidator(self)
-        rex = r"[+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*"
+        rex = r"(?:[+-]?\d+,)+\d*|([+-]?\d*(?::|:\+|:-|)\d*(?::|:\+|:-|)\d*)"
         validator.setRegExp(QRegExp(rex))
         for i in range(self.max_dims):
             shape = singleShape(validator, self, i)
@@ -252,6 +260,8 @@ class ShapeSelector(QWidget):
             return
         from_wgt = self._get(onField).lineedit
         txt = from_wgt.text()
+        if "," in txt:
+            return
         modifiers = QApplication.keyboardModifiers()
         mod = np.sign(event.angleDelta().y())
         if modifiers & Qt.ControlModifier:
