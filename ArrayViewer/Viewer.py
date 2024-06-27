@@ -164,6 +164,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuStart, "New Data", self._dlg_new_data, "Ctrl+N")
         _menu_opt(menuStart, "Reshape", self._dlg_reshape, "Ctrl+R")
         _menu_opt(menuStart, "Difference", self._start_diff, "Ctrl+D")
+        _menu_opt(menuStart, "Find Data Max", self._data_max, "Ctrl+M")
         _menu_opt(menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
         _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
@@ -319,6 +320,11 @@ class ViewerWindow(QMainWindow):
         elif fromCheckbox == 2:
             self.MMM.setChecked(False)
             self.Plot2D.setChecked(False)
+
+    def _data_max(self, arg1):
+        """ Get the maximum of the selected data and set the shape accordingly """
+        max_idx = np.unravel_index(np.argmax(self.get(0)), self.get(0).shape)
+        self.Shape.set_all_values(max_idx)
 
     def _delete_all_data(self):
         """ Delete all data from the Treeview. """

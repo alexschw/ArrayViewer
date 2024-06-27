@@ -241,7 +241,14 @@ class ShapeSelector(QWidget):
         # Redraw the graph
         self.parent._draw_data()
 
+    def set_all_values(self, new_values):
+        """ Set all selected values """
+        for n, value in enumerate(new_values):
+            self._get(n).lineedit.setText(f"{value}")
+        self.parent._draw_data()
+
     def set_non_scalar_values(self, new_values):
+        """ Set the values of the non-scalar dimensions. """
         sh, scalar_dims = self.get_shape()
         if len(sh) - len(scalar_dims) != len(new_values):
             return
@@ -250,7 +257,6 @@ class ShapeSelector(QWidget):
             if n not in scalar_dims:
                 self._get(n).lineedit.setText(f"{new_values[i]}")
                 i += 1
-        # Redraw the graph
         self.parent._draw_data()
 
     def set_operation(self, operation="None"):
