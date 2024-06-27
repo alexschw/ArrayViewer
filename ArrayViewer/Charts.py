@@ -5,7 +5,7 @@ GraphWidget and ReshapeDialog for the ArrayViewer
 import re
 from itertools import combinations
 from contextlib import suppress
-from PyQt5.QtWidgets import (QCompleter, QDialog, QGridLayout, QLabel,
+from PyQt5.QtWidgets import (QApplication, QCompleter, QDialog, QGridLayout, QLabel,
                              QLineEdit, QSizePolicy, QTextEdit, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 from PyQt5 import QtCore
@@ -215,14 +215,21 @@ class GraphWidget(QWidget):
                 with suppress(IndexError):
                     xyz[i] = tick[xyz[i]]
 
-        # Hide or show information about the clicked location
-        if xyz == self.last_clicked:
-            self.annotation.set_visible(False)
-            self.last_clicked = (None, None)
+        if QApplication.keyboardModifiers() & QtCore.Qt.ShiftModifier:
+            # Set Values in shape if clicked with shift
+            self._ui.Shape.set_non_scalar_values(xyz)
+        elif QApplication.keyboardModifiers() & QtCore.Qt.ControlModifier:
+            # Set Values in shape to 2d if clicked with control
+            self._ui.Shape.set_non_scalar_values(['', ''] + xyz[2:])
         else:
-            self.annotation.set_visible(True)
-            self.annotation.set_text(fstr.format(xyz=xyz, dat=dat))
-            self.last_clicked = xyz
+            # Hide or show information about the clicked location
+            if xyz == self.last_clicked:
+                self.annotation.set_visible(False)
+                self.last_clicked = (None, None)
+            else:
+                self.annotation.set_visible(True)
+                self.annotation.set_text(fstr.format(xyz=xyz, dat=dat))
+                self.last_clicked = xyz
         # Refresh the canvas to show the changes
         self._canv.draw()
 

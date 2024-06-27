@@ -241,6 +241,18 @@ class ShapeSelector(QWidget):
         # Redraw the graph
         self.parent._draw_data()
 
+    def set_non_scalar_values(self, new_values):
+        sh, scalar_dims = self.get_shape()
+        if len(sh) - len(scalar_dims) != len(new_values):
+            return
+        i = 0
+        for n, value in enumerate(sh):
+            if n not in scalar_dims:
+                self._get(n).lineedit.setText(f"{new_values[i]}")
+                i += 1
+        # Redraw the graph
+        self.parent._draw_data()
+
     def set_operation(self, operation="None"):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.max_dims):
