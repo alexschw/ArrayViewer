@@ -557,7 +557,8 @@ class ViewerWindow(QMainWindow):
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
         if self._slice_key() in self.operations:
-            self.operations = new_order[self.operations]
+            self.operations[self._slice_key()] = [
+                new_order[i] for i in self.operations[self._slice_key()]]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
         self.info_msg(f"Permuted from {tuple(sh[o] for o in new_order)} to {sh}", 0)
