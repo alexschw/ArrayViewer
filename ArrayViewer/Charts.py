@@ -24,15 +24,7 @@ def _flat_with_padding(Array, padding=1, fill=np.nan):
     """ Flatten ND array into a 2D array and add a padding with given fill """
     # Reshape the array to 3D
     Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
-    if (Array.ndim == 4 and .18 < 1.0 * Array.shape[2] / Array.shape[3] < 5.5):
-        # If the Array is 4D and has reasonable ratio, keep that ratio.
-        rows = Array.shape[2]
-    else:
-        # Get the most equal division of the last dimension
-        for n in range(int(np.sqrt(Arr.shape[2])), Arr.shape[2] + 1):
-            if Arr.shape[2]%n == 0:
-                rows = Arr.shape[2] / n
-                break
+    rows = _rows_from_dim(Array.shape)
     # Add the padding to the right and bottom of the arrays
     A0 = np.ones([padding, Arr.shape[1], Arr.shape[2]]) * fill
     A1 = np.ones([Arr.shape[0] + padding, padding, Arr.shape[2]]) * fill
@@ -46,6 +38,32 @@ def _flat_with_padding(Array, padding=1, fill=np.nan):
     return pA2D
 
 
+def _rows_from_dim(dim):
+    """ Returns a reasonable row count for the given dimensionality """
+    if (len(dim) == 4 and .18 < 1.0 * dim[2] / dim[3] < 5.5):
+        # If the Array is 4D and has reasonable ratio, keep that ratio.
+        rows = dim[2]
+    else:
+        # Get the most equal division of the last dimension
+        last_dim = np.prod(dim[2:])
+        for n in range(int(np.sqrt(last_dim)), last_dim + 1):
+            if last_dim%n == 0:
+                rows = last_dim // n
+                break
+    return rows
+
+
+def _unravel_flat_with_padding(ind, sh, pad=1):
+    """ Unravel a clicked index onto its corresponding n-D-index """
+    ind = [i - pad for i in ind]
+    cols = np.prod(sh[2:]) // _rows_from_dim(sh)
+    box_index = [ind[0] // (sh[0] + pad), ind[1] // (sh[1] + pad)]
+    ind.extend(np.unravel_index(box_index[1] * cols + box_index[0], sh[2:]))
+    ind[0] = ind[0] % (sh[0] + pad)
+    ind[1] = ind[1] % (sh[1] + pad)
+    return ind
+
+
 def _get_shape_from_str(string):
     """
     Returns an array with the elements of the string. All brackets are
@@ -53,6 +71,7 @@ def _get_shape_from_str(string):
     """
     return np.array([_f for _f in string.strip("()[]").split(",") if _f],
                     dtype=int)
+
 
 def _setlocator(axis, lim, nPad=None):
     """ Set the locator of an axis with the given limits and set the ticks """
@@ -65,34 +84,14 @@ def _setlocator(axis, lim, nPad=None):
         axis.set_major_locator(FixedLocator(loc))
         d = loc - (np.arange(0, len(loc)) * nPad - nPad)
     else:
-        axis.set_major_locator(FixedLocator(np.arange(len(lim[0]))))
-        d = lim[0]
+        axis.set_major_locator(FixedLocator(np.arange(len(lim))))
+        d = lim
 
     if all(d.astype(int) == d.astype(float)):
         axis.set_ticklabels(d.astype(int))
     else:
         d = np.vectorize(reformat)(d)
         axis.set_ticklabels(d.astype(float))
-
-
-def _set_ticks(s, transp, plotDimensions=2):
-    """ Set the ticks of plots according to the selected slices. """
-    # Calculate the ticks for the plot by checking the limits
-    slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
-    self.ticks = []
-    for n in slices:
-        if isinstance(n, slice):
-            self.ticks.append([n.start or 0, n.stop or -1, n.step or 1])
-        else:
-            self.ticks.append(np.array(n))
-    if transp:
-        self.ticks[0], self.ticks[1] = self.ticks[1], self.ticks[0]
-    if plotDimensions < 3:
-        # Set the x-ticks
-        _setlocator(self._axes.xaxis, self.ticks[0])
-    if plotDimensions == 2:
-        # Set the y-ticks
-        _setlocator(self._axes.yaxis, self.ticks[1])
 
 
 def reformat(dat):
@@ -186,44 +185,44 @@ class GraphWidget(QWidget):
     def onclick(self, event):
         """ Override the existing onclick function to display value under cursor. """
         # Get the x and y indices of the data based on the plot type
+        xyz = []
         if isinstance(event.artist, Line2D):
             idx = event.ind[0]
             dat = event.artist.get_data()
-            x = dat[0][idx]
-            y = dat[1][idx]
-            dat = reformat(y)
-            fstr = "x: {x}, y: {dat}"
+            xyz = [dat[0][idx], dat[1][idx]]
+            dat = reformat(xyz[1])
+            fstr = "x: {xyz[0]}, y: {dat}"
         elif isinstance(event.artist, AxesImage):
-            x = int(np.round(event.mouseevent.xdata))
-            y = int(np.round(event.mouseevent.ydata))
-            dat = reformat(event.artist.get_array()[y, x])
-            fstr = "x: {x}, y: {y}, z: {dat}"
+            xyz.append(int(np.round(event.mouseevent.xdata)))
+            xyz.append(int(np.round(event.mouseevent.ydata)))
+            dat = reformat(event.artist.get_array()[xyz[1], xyz[0]])
+            fstr = "x: {xyz[0]}, y: {xyz[1]}, z: {dat}"
         elif isinstance(event.artist, PathCollection):
-            x = event.mouseevent.xdata
-            y = event.mouseevent.ydata
+            xyz.append(event.mouseevent.xdata)
+            xyz.append(event.mouseevent.ydata)
             idx = event.ind[0]
             dat = [reformat(v) for v in self.cutout[idx]]
             fstr = str([float(d) for d in dat])[1:-2]
         # Adjust x and y value for reshaped data
-        if isinstance(self.ticks[0], list):
-            x = self.ticks[0][2] * x + self.ticks[0][0]
-        else:
-            with suppress(IndexError):
-                x = self.ticks[0][x]
-        if len(self.ticks) > 1:
-            if isinstance(self.ticks[1], list):
-                y = self.ticks[1][2] * y + self.ticks[1][0]
+        if len(self.ticks) > 2:
+            xyz = _unravel_flat_with_padding(xyz, self.cutout.shape)
+            fstr = "index: {xyz}, value: {dat}"
+        # Replace index for picked values
+        for i, tick in enumerate(self.ticks):
+            if isinstance(tick, list):
+                xyz[i] = tick[2] * xyz[i] + tick[0]
             else:
                 with suppress(IndexError):
-                    y = self.ticks[1][y]
+                    xyz[i] = tick[xyz[i]]
+
         # Hide or show information about the clicked location
-        if (x, y) == self.last_clicked:
+        if xyz == self.last_clicked:
             self.annotation.set_visible(False)
             self.last_clicked = (None, None)
         else:
             self.annotation.set_visible(True)
-            self.annotation.set_text(fstr.format(x=x, y=y, dat=dat))
-            self.last_clicked = (x, y)
+            self.annotation.set_text(fstr.format(xyz=xyz, dat=dat))
+            self.last_clicked = xyz
         # Refresh the canvas to show the changes
         self._canv.draw()
 
@@ -292,7 +291,7 @@ class GraphWidget(QWidget):
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        _set_ticks(self._tick_str[1], self._ui.Transp.isChecked(), len(sh))
+        self._set_ticks(self._tick_str[1], len(sh))
         _setlocator(self._axes.xaxis, sh + (dat.shape[1],), nPad)
         sh = (sh[1], sh[0]) + sh[2:]
         _setlocator(self._axes.yaxis, sh + (dat.shape[0],), nPad)
@@ -310,7 +309,7 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        _set_ticks(self._tick_str[1], self._ui.Transp.isChecked())
+        self._set_ticks(self._tick_str[1])
 
     def _n_D_scatter(self):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -326,6 +325,26 @@ class GraphWidget(QWidget):
             siz = 1 + 100 * siz / np.nanmax(siz)
         self._img = self._axes.scatter(self.cutout[:, 0], self.cutout[:, 1],
                                        c=col, s=siz, cmap=self._colormap)
+
+    def _set_ticks(self, s, transp=True, plotDimensions=2):
+        """ Set the ticks of plots according to the selected slices. """
+        # Calculate the ticks for the plot by checking the limits
+        slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
+        self.ticks = []
+        for n in slices:
+            if isinstance(n, slice):
+                self.ticks.append([n.start or 0, n.stop or -1, n.step or 1])
+            else:
+                self.ticks.append(np.array(n))
+        if transp and self._ui.Transp.isChecked():
+            self.ticks[0], self.ticks[1] = self.ticks[1], self.ticks[0]
+        if plotDimensions < 3:
+            # Set the x-ticks
+            _setlocator(self._axes.xaxis, self.ticks[0])
+        if plotDimensions == 2:
+            # Set the y-ticks
+            _setlocator(self._axes.yaxis, self.ticks[1])
+
 
     def clear(self):
         """ Clear the figure. """
@@ -430,7 +449,7 @@ class GraphWidget(QWidget):
         # Graph an 1D-cutout
         elif self.cutout.ndim == 1:
             self._img = self._axes.plot(self.cutout)
-            _set_ticks(self._tick_str[1], False, 1)
+            self._set_ticks(self._tick_str[1], False, 1)
             alim = self._axes.get_ylim()
             if alim[0] > alim[1]:
                 self._axes.invert_yaxis()
@@ -444,7 +463,7 @@ class GraphWidget(QWidget):
                     self._ui.info_msg(msg, -1)
                     return
                 self._img = self._axes.plot(self.cutout)
-                _set_ticks(self._tick_str[1], self._ui.Transp.isChecked(), 1)
+                self._set_ticks(self._tick_str[1], 1)
             elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                 self._n_D_scatter()
             else:
