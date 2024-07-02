@@ -1,3 +1,21 @@
+# 1.1.2
+- Get maximum or minimum of the selected or full data
+- Set values in shape on shift and ctrl click
+- Enable tuple indexing in shape
+- Add a data editor for changing values
+- Remember operations on data change
+- Bugfix transpose Data with operations
+- Bugfix tuple unpacking for earlier python versions
+- Bugfix loading and separate list validation
+- Fix icon location in environment and on windows
+- Add release shell script and set fallback values
+- Cleanup set ticks
+
+# 1.1.1
+- Documentation and default config file bugfix
+- Bugfix clear all and switch to last on h5py-Arrays
+- Added an options menu
+
 # 1.1
 - Data animation for all data types
 - Fixable minimum and maximum values
