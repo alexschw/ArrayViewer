@@ -346,7 +346,10 @@ class ViewerWindow(QMainWindow):
             idx = np.argmax(data)
         # Get the unraveled index of the maximum/minum and set it in the shape
         unraveled_idx = np.unravel_index(idx, data.shape)
-        self.Shape.set_all_values(unraveled_idx)
+        if modifiers & Qt.ShiftModifier:
+            self.Shape.set_all_values(unraveled_idx)
+        else:
+            self.Shape.set_non_scalar_values(unraveled_idx)
 
     def _delete_all_data(self):
         """ Delete all data from the Treeview. """
