@@ -169,23 +169,23 @@ class ViewerWindow(QMainWindow):
                   "Ctrl+X")
         _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
 
-        # Graph menu
-        menuGraph = QMenu("Graph", menu)
-        menu.addAction(menuGraph.menuAction())
+        # Color menu
+        menuColor = QMenu("Color", menu)
+        menu.addAction(menuColor.menuAction())
 
-        _menu_opt(menuGraph, "Colorbar", self._add_colorbar).setCheckable(True)
-        menuGraph.addSeparator()
+        _menu_opt(menuColor, "Colorbar", self._add_colorbar).setCheckable(True)
+        menuColor.addSeparator()
 
         ag_cm = QActionGroup(self)
-        _menu_opt(menuGraph, "Colormap 'jet'",
+        _menu_opt(menuColor, "Colormap 'jet'",
                   lambda: self.Graph.colormap('jet'), act_grp=ag_cm)
-        _menu_opt(menuGraph, "Colormap 'gray'",
+        _menu_opt(menuColor, "Colormap 'gray'",
                   lambda: self.Graph.colormap('gray'), act_grp=ag_cm)
-        _menu_opt(menuGraph, "Colormap 'hot'",
+        _menu_opt(menuColor, "Colormap 'hot'",
                   lambda: self.Graph.colormap('hot'), act_grp=ag_cm)
-        _menu_opt(menuGraph, "Colormap 'bwr'",
+        _menu_opt(menuColor, "Colormap 'bwr'",
                   lambda: self.Graph.colormap('bwr'), act_grp=ag_cm)
-        _menu_opt(menuGraph, "Colormap 'viridis'",
+        _menu_opt(menuColor, "Colormap 'viridis'",
                   lambda: self.Graph.colormap('viridis'),
                   act_grp=ag_cm).setChecked(True)
 
