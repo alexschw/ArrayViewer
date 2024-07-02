@@ -37,7 +37,10 @@ def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     btn.setText(text)
     btn.triggered.connect(function)
     if shortcut:
-        btn.setShortcut(shortcut)
+        if isinstance(shortcut, list):
+            btn.setShortcuts(shortcut)
+        else:
+            btn.setShortcut(shortcut)
     if act_grp:
         btn.setActionGroup(act_grp)
         btn.setCheckable(True)
@@ -164,7 +167,6 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuStart, "New Data", self._dlg_new_data, "Ctrl+N")
         _menu_opt(menuStart, "Reshape", self._dlg_reshape, "Ctrl+R")
         _menu_opt(menuStart, "Difference", self._start_diff, "Ctrl+D")
-        _menu_opt(menuStart, "Find Data Max", self._data_max, "Ctrl+M")
         _menu_opt(menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
         _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
@@ -204,6 +206,9 @@ class ViewerWindow(QMainWindow):
                   lambda: self.Shape.set_operation('nanmedian'), act_grp=ag_op)
         _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('nanmax'),
                   act_grp=ag_op)
+        menuOpr.addSeparator()
+        _menu_opt(menuOpr, "Find Max", self._data_max_min, ["Ctrl+M", "Ctrl+Shift+M"])
+        _menu_opt(menuOpr, "Find Min", self._data_max_min, ["Alt+M", "Alt+Shift+M"])
 
         # Plot menu
         menuPlot = QMenu("Plot", menu)
@@ -321,10 +326,27 @@ class ViewerWindow(QMainWindow):
             self.MMM.setChecked(False)
             self.Plot2D.setChecked(False)
 
-    def _data_max(self, arg1):
-        """ Get the maximum of the selected data and set the shape accordingly """
-        max_idx = np.unravel_index(np.argmax(self.get(0)), self.get(0).shape)
-        self.Shape.set_all_values(max_idx)
+    def _data_max_min(self, _):
+        """
+            Get the maximum or minimum of the selected data and set the
+            shape accordingly
+        """
+        if not isinstance(self.get(0), (np.ndarray, h5py.Dataset)):
+            return
+        modifiers = QApplication.keyboardModifiers()
+        # Shift uses the full array instead of the current cutout
+        if modifiers & Qt.ShiftModifier:
+            data = self.get(0)
+        else:
+            data = self.Graph.cutout
+        # Alt uses minimum Ctrl uses maximum
+        if modifiers & Qt.AltModifier:
+            idx = np.argmin(data)
+        else:
+            idx = np.argmax(data)
+        # Get the unraveled index of the maximum/minum and set it in the shape
+        unraveled_idx = np.unravel_index(idx, data.shape)
+        self.Shape.set_all_values(unraveled_idx)
 
     def _delete_all_data(self):
         """ Delete all data from the Treeview. """
