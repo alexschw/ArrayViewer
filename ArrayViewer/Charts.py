@@ -55,7 +55,7 @@ def _rows_from_dim(dim):
 
 def _unravel_flat_with_padding(ind, sh, pad=1):
     """ Unravel a clicked index onto its corresponding n-D-index """
-    ind = [i - pad for i in ind]
+    ind = [i - pad if i > pad else 0 for i in ind]
     cols = np.prod(sh[2:]) // _rows_from_dim(sh)
     box_index = [ind[0] // (sh[0] + pad), ind[1] // (sh[1] + pad)]
     ind.extend(np.unravel_index(box_index[1] * cols + box_index[0], sh[2:]))
