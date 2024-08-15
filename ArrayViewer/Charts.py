@@ -184,6 +184,9 @@ class GraphWidget(QWidget):
 
     def onclick(self, event):
         """ Override the existing onclick function to display value under cursor. """
+        # Only react to clicks if not in Animation mode
+        if self._anim_dim is not None:
+            return
         # Get the x and y indices of the data based on the plot type
         xyz = []
         if isinstance(event.artist, Line2D):
@@ -221,6 +224,8 @@ class GraphWidget(QWidget):
         elif QApplication.keyboardModifiers() & QtCore.Qt.ControlModifier:
             # Set Values in shape to 2d if clicked with control
             self._ui.Shape.set_non_scalar_values(['', ''] + xyz[2:])
+        elif QApplication.keyboardModifiers() & QtCore.Qt.AltModifier:
+            self.spawn_micro_plot(xyz)
         else:
             # Hide or show information about the clicked location
             if xyz == self.last_clicked:
@@ -272,6 +277,25 @@ class GraphWidget(QWidget):
         """ Set the timeout time of the animation timer. """
         anim_speed = self._ui.config.getint('opt', 'anim_speed', fallback=300)
         self._anim_timer.setInterval(anim_speed)
+
+    def spawn_micro_plot(self, location):
+        """ Show a small window with the timecourse of selected location. """
+        key = self._ui._slice_key()
+        data = self._ui.get(0)
+        if key in self._ui.slices:
+            sl = list(int(s) if s.isdigit() else None for s in self._ui.slices[key])
+        else:
+            sl = [None for _ in data.shape]
+
+        i = 0
+        for j, s in enumerate(sl):
+            if s is None:
+                sl[j] = location[i]
+                i += 1
+        plot_data = data[*sl[:-1]]
+
+        micro_plot = MicroPlot(self, plot_data, sl[:-1], key)
+        micro_plot.show()
 
     def _animate(self):
         """ Perform one animation step. """
@@ -711,3 +735,15 @@ class NewDataDialog(QDialog):
                     return 1, self.data[self.returnVal]
                 return str(self.cmd.text()), self.data[self.returnVal]
             return 0, []
+
+class MicroPlot(QDialog):
+    def __init__(self, parent, data, local_slice, key):
+        super().__init__(parent)
+        layout = QVBoxLayout()
+        self.setWindowTitle(f"Timecourse of {key} {local_slice}")
+        fig = Figure()
+        canv = FigureCanvasQTAgg(fig)
+        canv.axes = fig.add_subplot(111)
+        canv.axes.plot(data)
+        layout.addWidget(canv)
+        self.setLayout(layout)
