@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QMainWindow, QMenu, QMenuBar, QMessageBox,
                              QPushButton, QTreeWidgetItem, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
-from PyQt5.QtCore import pyqtSlot, Qt, QThread, QTimer
+from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 import numpy as np
 from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
 from ArrayViewer.Slider import rangeSlider
@@ -63,12 +63,14 @@ class ViewerWindow(QMainWindow):
         self.app = application
         self.config = config
         self._data = {}
+        self._metadata = {}
         self.slices = {}
         self.operations = {}
         self.cText = []
         self.keys = []
         self.diffNo = 0
         self.noPrintTypes = (int, float, str, list, tuple, type(None))
+        self.reload_unchanged_file = ("", "")
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
         self.optionsBox = OptionsDialog(self)
@@ -76,11 +78,8 @@ class ViewerWindow(QMainWindow):
 
         # set the loader from a separate class
         self.loader = Loader()
-        self.loadThread = QThread()
         self.loader.doneLoading.connect(self.on_done_loading)
         self.loader.infoMsg.connect(self.info_msg)
-        self.loader.moveToThread(self.loadThread)
-        self.loadThread.start()
         self.lMsg = 'loading...'
         self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
@@ -360,8 +359,10 @@ class ViewerWindow(QMainWindow):
         if msg.exec_() != QMessageBox.Yes:
             return
         del self._data
+        del self._metadata
         del self.keys
         self._data = {}
+        self._metadata = {}
         self.diffNo = 0
         self.keys = []
         self.cText = []
@@ -388,6 +389,7 @@ class ViewerWindow(QMainWindow):
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
             self.keys.remove(dText[0])
+            self._metadata.pop(dText[0], None)
         self.datatree.remove_from_checkables(citem.takeChildren())
         (citem.parent() or self.datatree.root).removeChild(citem)
 
@@ -702,14 +704,16 @@ class ViewerWindow(QMainWindow):
             print(text)
         self.errMsgTimer.singleShot(2000, lambda: self.errMsg.setText(""))
 
-    @pyqtSlot(dict, str)
-    def on_done_loading(self, data, key):
+    @pyqtSlot(dict, str, str)
+    def on_done_loading(self, data, key, fname):
         """ Set the data into the global _data list once loaded. """
         key = str(key)
         if key != "":
             self._data[key] = data
             self.keys.append(key)
-        self.datatree.update_tree()
+            self._metadata[key] = fname, os.path.getmtime(fname)
+        self.datatree.update_tree(self.cText)
+        self.info_msg(f"Done loading {fname}", 0)
 
     ## Overloaded PyQt Methods
     def keyPressEvent(self, ev):
@@ -720,6 +724,23 @@ class ViewerWindow(QMainWindow):
             modifiers = QApplication.keyboardModifiers()
             if modifiers == Qt.ControlModifier:
                 sys.exit()
+        elif ev.key() == Qt.Key_F5:
+            key = self._get_obj_trace(self.datatree.current_item())[0]
+            fname, timestamp = self._metadata.get(key)
+            if os.path.getmtime(fname) == timestamp and self.reload_unchanged_file != (fname, timestamp):
+                self.info_msg("File has not changed since last load. Press F5 again to load anyway.", 0)
+                self.reload_unchanged_file = (fname, timestamp)
+                return
+            self.reload_unchanged_file = ("", "")
+            msg = QMessageBox(QMessageBox.Question, "Reload",
+                              f"Do you want to reload the file {key}?",
+                              QMessageBox.Yes | QMessageBox.No)
+            if msg.exec_() == QMessageBox.Yes:
+                self.keys.remove(key)
+                self.loader.load.emit(
+                    fname, key,
+                    self.config.getboolean("opt", "first_to_last", fallback=False),
+                    self.config.getint("opt", "max_file_size", fallback=15))
 
 
 def main():

@@ -125,6 +125,18 @@ class DataTree(QTabWidget):
         self.Tree.editItem(self.changing_item, 1)
         self.Tree.itemChanged.connect(self._finish_renaming)
 
+    def select_key(self, keypath):
+        """ Select the key with the given path. """
+        item = self.currentWidget().invisibleRootItem()
+        for key in keypath:
+            for c_no in range(item.childCount()):
+                if item.child(c_no).data(1, 0) == key:
+                    item = item.child(c_no)
+                    break
+        if item.data(1, 0) == keypath[-1]:
+            self.currentWidget().setCurrentItem(item)
+
+
     def _update_subtree(self, item, data):
         """ Add a new subtree to the current QTreeWidgetItem. """
         for n, k in enumerate(realsorted(data.keys(), alg=ns.IC|ns.NA)):
@@ -163,7 +175,7 @@ class DataTree(QTabWidget):
                             child.child(c).setCheckState(0, Qt.Unchecked)
                             self.checkableItems.append(child.child(c))
 
-    def update_tree(self):
+    def update_tree(self, select_key=None):
         """ Add new data to TreeWidget. """
         itemList = []
         self.checkableItems = []
@@ -176,6 +188,8 @@ class DataTree(QTabWidget):
         self.Tree.addTopLevelItems(itemList)
         if self.currentWidget() == self.secTree:
             self._update_treetab(1)
+        if select_key:
+            self.select_key(select_key)
 
     def _update_treetab(self, index):
         """ Update the currently selected treetab, on switching. """

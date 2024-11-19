@@ -11,7 +11,7 @@ import os
 import re
 import scipy.io
 import h5py
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 from PIL import Image, ImageSequence
 import numpy as np
 
@@ -27,7 +27,7 @@ def _open_image_file(fname):
 
 class Loader(QObject):
     """ Seperate Loader to simultaneously load data. """
-    doneLoading = pyqtSignal(dict, str)
+    doneLoading = pyqtSignal(dict, str, str)
     load = pyqtSignal(str, str, bool, int)
     infoMsg = pyqtSignal(str, int)
 
@@ -37,6 +37,9 @@ class Loader(QObject):
         self.fname = ''
         self.switch_to_last = False
         self.load.connect(self._add_data)
+        self.loadThread = QThread()
+        self.moveToThread(self.loadThread)
+        self.loadThread.start()
 
     def _validate(self, data):
         """ Data validation. Replace lists of numbers with np.ndarray."""
@@ -135,7 +138,7 @@ class Loader(QObject):
         # Check if the File is bigger than max_file_size in GB, than it will not be loaded
         if os.path.getsize(fname) > max_file_size * 1e9:
             self.infoMsg.emit(f"File bigger than {max_file_size}GB. Not loading!", -1)
-            self.doneLoading.emit({}, '')
+            self.doneLoading.emit({}, '', '')
             return False
         # Load the different data types
         if fname.endswith('.hdf5'):
@@ -175,5 +178,5 @@ class Loader(QObject):
                 return False
         if not isinstance(data, dict):
             data = {'Value': data}
-        self.doneLoading.emit(data, key)
+        self.doneLoading.emit(data, key, fname)
         return True
