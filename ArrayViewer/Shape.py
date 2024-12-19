@@ -55,7 +55,7 @@ class singleShape(QWidget):
         """ Return the values of this single Shape. """
         def clipint(x):
             """ The integer value of a string clipped to the dimensions """
-            return np.clip(int(x), -maxt, maxt-1)
+            return min(max(-maxt, int(x)), maxt-1)
         # Get the text and the maximum value within the dimension
         txt = self.lineedit.text()
         maxt = int(self.label.text())
