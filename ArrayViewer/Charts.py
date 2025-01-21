@@ -372,10 +372,9 @@ class GraphWidget(QWidget):
         if plotDimensions < 3:
             # Set the x-ticks
             _setlocator(self._axes.xaxis, self.ticks[0])
-        if plotDimensions == 2:
+        if plotDimensions == 2 and not isinstance(s[1], tuple):
             # Set the y-ticks
             _setlocator(self._axes.yaxis, self.ticks[1])
-
 
     def clear(self):
         """ Clear the figure. """
