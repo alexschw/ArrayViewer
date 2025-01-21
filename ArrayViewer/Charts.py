@@ -313,7 +313,7 @@ class GraphWidget(QWidget):
         """ Plot multi-dimensional data. """
         sh = self.cutout.shape
         nPad = sh[0] // 100 + 1
-        if self._ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] == 3:
+        if self._ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] in (3, 4):
             nPad = -1
             mm = [np.nanmin(self.cutout), np.nanmax(self.cutout)]
             dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)

@@ -223,7 +223,7 @@ class ViewerWindow(QMainWindow):
         self.PlotScat = _menu_opt(menuPlot, "2D as Scatter",
                                   lambda: self._checkboxes(2), act_grp=ag_plt)
         self.PlotScat.triggered.connect(self._draw_data)
-        self.Plot3D = _menu_opt(menuPlot, "3D as RGB", self._draw_data,
+        self.Plot3D = _menu_opt(menuPlot, "3D as RGB(A)", self._draw_data,
                                 act_grp=ag_plt)
         self.PrintFlat = _menu_opt(menuPlot, "Print Values as text",
                                    self._draw_data, act_grp=ag_plt)
