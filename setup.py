@@ -63,7 +63,7 @@ if __name__ == "__main__":
         scripts=['aview'],
         data_files=data_files,
         entry_points={"gui_scripts": ["aview = ArrayViewer.Viewer:main",]},
-        python_requires=">=3.6",
+        python_requires=">=3.7",
         description="ArrayViewer",
         package_data={'ArrayViewer': ['*.py']},
         long_description=LONG_DESC,

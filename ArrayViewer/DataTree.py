@@ -9,6 +9,25 @@ from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import Qt
 
 
+class TreeWidget(QTreeWidget):
+    """ Overloaded QTreeWidget for the Data Tree tabs. """
+    def __init__(self, parent=None):
+        """ """
+        super().__init__(parent)
+        self.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
+        self.headerItem().setText(0, "")
+        self.headerItem().setText(1, "")
+        self.setTreePosition(1)
+        self.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.header().setStretchLastSection(False)
+        self.header().setVisible(False)
+        self.setColumnWidth(0, 10)
+        self.setColumnHidden(0, True)
+        self.currentItemChanged.connect(parent.viewer._change_tree)
+        self.resizeColumnToContents(1)
+
+
 class DataTree(QTabWidget):
     """ Class Definition for the Data Tree. """
     def __init__(self, viewer, parent=None):
@@ -19,42 +38,12 @@ class DataTree(QTabWidget):
         self.checkableItems = []
         self.changing_item = None
         self.viewer = viewer
-        self.keys = viewer.keys
-        self.noPrintTypes = viewer.noPrintTypes
 
         # Add the Tree Widgets
-        self.Tree = QTreeWidget(self)
-        self.Tree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
-        self.Tree.headerItem().setText(0, "")
-        self.Tree.headerItem().setText(1, "")
-        self.Tree.setTreePosition(1)
-        header = self.Tree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setStretchLastSection(False)
-        header.setVisible(False)
-        self.Tree.setColumnWidth(0, 10)
-        self.Tree.setColumnHidden(0, True)
-        self.Tree.currentItemChanged.connect(self.viewer._change_tree)
+        self.Tree = TreeWidget(self)
+        self.Tree.contextMenuEvent = parent.viewer._dropdown
+        self.secTree = TreeWidget(self)
         self.addTab(self.Tree, "Files")
-        self.Tree.contextMenuEvent = self.viewer._dropdown
-        self.Tree.resizeColumnToContents(1)
-
-        # Add an alternative Tree Widget
-        self.secTree = QTreeWidget(parent)
-        self.secTree.setSizePolicy(QSP(QSP.Fixed, QSP.Expanding))
-        self.secTree.headerItem().setText(0, "")
-        self.secTree.headerItem().setText(1, "")
-        self.secTree.setTreePosition(1)
-        header = self.secTree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setStretchLastSection(False)
-        header.setVisible(False)
-        self.secTree.setColumnWidth(0, 10)
-        self.secTree.setColumnHidden(0, True)
-        self.secTree.currentItemChanged.connect(self.viewer._change_tree)
-        self.secTree.resizeColumnToContents(1)
         self.addTab(self.secTree, "Data")
 
         # Connect Signal at the end to avoid errors
@@ -65,7 +54,6 @@ class DataTree(QTabWidget):
     def clear_tree(self):
         """ Clear the Tree. """
         self.checkableItems = []
-        self.keys = self.viewer.keys
         self.update_tree()
 
     def current_item(self):
@@ -80,7 +68,7 @@ class DataTree(QTabWidget):
         """ Finish the renaming of a data-key. """
         if not self.old_trace:
             return
-        new_trace = self.viewer._get_obj_trace(self.changing_item)
+        new_trace = self.viewer.get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
             return
         self.Tree.itemChanged.disconnect(self._finish_renaming)
@@ -101,9 +89,6 @@ class DataTree(QTabWidget):
             return
         # Replace the key
         self.viewer.set_data(new_trace, self.viewer.pop(self.old_trace))
-        # If element is top-level-item
-        if not self.changing_item.parent() and self.old_trace[0] in self.keys:
-            self.keys[self.keys.index(self.old_trace[0])] = new_trace[0]
         self.old_trace = []
         # Make Item non-editable
         self.changing_item.setFlags(Qt.ItemFlag(61))
@@ -119,7 +104,7 @@ class DataTree(QTabWidget):
     def rename_key(self):
         """ Start the renaming of a data-key. """
         self.changing_item = self.Tree.currentItem()
-        self.old_trace = self.viewer._get_obj_trace(self.changing_item)
+        self.old_trace = self.viewer.get_obj_trace(self.changing_item)
         # Make Item editable
         self.changing_item.setFlags(Qt.ItemFlag(63))
         self.Tree.editItem(self.changing_item, 1)
@@ -136,57 +121,40 @@ class DataTree(QTabWidget):
         if item.data(1, 0) == keypath[-1]:
             self.currentWidget().setCurrentItem(item)
 
-
-    def _update_subtree(self, item, data):
+    def _update_subtree(self, item, data, is_sec=False):
         """ Add a new subtree to the current QTreeWidgetItem. """
-        for n, k in enumerate(realsorted(data.keys(), alg=ns.IC|ns.NA)):
-            item.addChild(QTreeWidgetItem([None, k]))
-            child = item.child(n)
-            if isinstance(data[k], dict):
-                self._update_subtree(child, data[k])
-            elif not isinstance(data[k], self.noPrintTypes):
-                child.setCheckState(0, Qt.Unchecked)
-                self.checkableItems.append(child)
-
-    def _update_subtree_sec(self, item, data):
-        """ Add a new subtree to the current QTreeWidgetItem. """
-        if not isinstance(data, dict):
-            for s in self.similar_items:
-                sitem = QTreeWidgetItem([None, s])
-                sitem.setToolTip(1, s)
-                item.addChild(sitem)
-            if not isinstance(data, self.noPrintTypes):
-                for c in range(item.childCount()):
-                    item.child(c).setCheckState(0, Qt.Unchecked)
-                    self.checkableItems.append(item.child(c))
-        else:
-            for n, k in enumerate(realsorted(data.keys(), alg=ns.IC|ns.NA)):
-                item.addChild(QTreeWidgetItem([None, k]))
-                child = item.child(n)
-                if isinstance(data[k], dict):
-                    self._update_subtree(child, data[k])
-                else:
+        for k, v in realsorted(data, alg=ns.IC|ns.NA):
+            child = QTreeWidgetItem([None, k])
+            item.addChild(child)
+            if isinstance(v, tuple):
+                self._update_subtree(child, v, is_sec)
+            else:
+                if is_sec:
                     for s in self.similar_items:
                         sitem = QTreeWidgetItem([None, s])
-                        sitem.setToolTip(0, s)
+                        sitem.setToolTip(1, s)
                         child.addChild(sitem)
-                    if not isinstance(data[k], self.noPrintTypes):
+                    if not v:
                         for c in range(child.childCount()):
-                            child.child(c).setCheckState(0, Qt.Unchecked)
-                            self.checkableItems.append(child.child(c))
+                            item.child(c).setCheckState(0, Qt.Unchecked)
+                            self.checkableItems.append(item.child(c))
+                elif not v:
+                    child.setCheckState(0, Qt.Unchecked)
+                    self.checkableItems.append(child)
 
     def update_tree(self, select_key=None):
         """ Add new data to TreeWidget. """
         itemList = []
         self.checkableItems = []
-        for i in self.keys:
-            item = QTreeWidgetItem([None, i])
-            item.setToolTip(0, i)
-            self._update_subtree(item, self.viewer._data[i])
-            itemList.append(item)
-        self.Tree.clear()
-        self.Tree.addTopLevelItems(itemList)
-        if self.currentWidget() == self.secTree:
+        if self.currentWidget() == self.Tree:
+            for name, val in self.viewer.files.items():
+                item = QTreeWidgetItem([None, name])
+                item.setToolTip(0, name)
+                self._update_subtree(item, val)
+                itemList.append(item)
+            self.Tree.clear()
+            self.Tree.addTopLevelItems(itemList)
+        else:
             self._update_treetab(1)
         if select_key:
             self.select_key(select_key)
@@ -206,29 +174,23 @@ class DataTree(QTabWidget):
         # get TopLevelItem of the current item as a reference
         ref = self.Tree.currentItem()
         self.secTree.clear()
-        if ref is None:
+        if ref is None:  # If no item is selected
             ref = self.Tree.topLevelItem(0)
-            if ref is None:
+            if ref is None:  # If no item is available
                 return
         while ref.parent() is not None:
             ref = ref.parent()
-        flipped_var = self.viewer._data[ref.text(1)].keys()
+        # Get the keys of the selected item
+        flipped_var = self.viewer.files[ref.text(1)]
         # Find all with a similar structure
-        self.similar_items = []
-        for i in range(self.Tree.topLevelItemCount()):
-            top_level_key = self.Tree.topLevelItem(i).text(1)
-            if self.viewer._data[top_level_key].keys() == flipped_var:
-                self.similar_items.append(top_level_key)
+        self.similar_items = [k for k, v in self.viewer.files.items() if v == flipped_var]
         # Build the tree
+        self._update_subtree(self.secTree.invisibleRootItem(), flipped_var, True)
         itemList = []
-        for k in flipped_var:
-            item = QTreeWidgetItem([None, k])
-            self._update_subtree_sec(item, self.viewer._data[ref.text(1)][k])
-            itemList.append(item)
-        for k in self.keys:
+        for k in self.viewer.files:
             if k[:4] == "Diff":
                 item = QTreeWidgetItem([None, k])
-                self._update_subtree(item, self.viewer._data[k])
+                self._update_subtree(item, self.viewer.files[k])
                 itemList.append(item)
         self.secTree.addTopLevelItems(itemList)
 

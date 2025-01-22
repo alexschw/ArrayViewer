@@ -67,7 +67,7 @@ class ViewerWindow(QMainWindow):
         self.slices = {}
         self.operations = {}
         self.cText = []
-        self.keys = []
+        self.files = {}
         self.diffNo = 0
         self.noPrintTypes = (int, float, str, list, tuple, type(None))
         self.reload_unchanged_file = ("", "")
@@ -80,7 +80,6 @@ class ViewerWindow(QMainWindow):
         self.loader = Loader()
         self.loader.doneLoading.connect(self.on_done_loading)
         self.loader.infoMsg.connect(self.info_msg)
-        self.lMsg = 'loading...'
         self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
 
@@ -255,6 +254,17 @@ class ViewerWindow(QMainWindow):
                 return self._data[item[1]][item[0]]
             return []
 
+    def get_all_keys(self):
+        """ Return all keys from the data. """
+        def dict_keys(d):
+            """ Get all keys from a dictionary. """
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    yield k, tuple(sk for sk in dict_keys(v))
+                else:
+                    yield k, isinstance(v, self.noPrintTypes)
+        self.files = dict(dict_keys(self._data))
+
     def set_data(self, newkey, newData, *_):
         """ Sets the current data to the new data. """
         if not self._data:
@@ -262,6 +272,7 @@ class ViewerWindow(QMainWindow):
         if newkey in [0, "data", ""]:
             newkey = self.cText
         reduce(getitem, newkey[:-1], self._data)[newkey[-1]] = newData
+        self.get_all_keys()
 
     def _add_colorbar(self):
         """ Add a colorbar to the Graph Widget. """
@@ -274,7 +285,7 @@ class ViewerWindow(QMainWindow):
         checkedItems = 0
         for item in self.datatree.checkableItems:
             if item.checkState(0) == Qt.Checked:
-                text = self._get_obj_trace(item)
+                text = self.get_obj_trace(item)
                 if checkedItems == 0:
                     text0 = '[0] ' + '/'.join(text)
                     item0 = self.get(text)
@@ -285,9 +296,11 @@ class ViewerWindow(QMainWindow):
         if checkedItems != 2:
             self.info_msg(f"Checked {checkedItems} items. Should be 2!", -1)
         elif item0.shape == item1.shape:
+            textcomb = "~> Diff [0]-[1]"
             self._data[f"Diff {self.diffNo}"] = {text0: item0, text1: item1,
-                                                 "~> Diff [0]-[1]": item0 - item1}
-            self.keys.append(f"Diff {self.diffNo}")
+                                                 textcomb: item0 - item1}
+            isnpt = isinstance(item0, self.noPrintTypes)
+            self.files[f"Diff {self.diffNo}"] = ((text0, isnpt), (text1, isnpt), (textcomb, isnpt))
             self.diffNo += 1
             self.datatree.currentWidget().setColumnHidden(0, True)
             self.diffBtn.hide()
@@ -305,7 +318,7 @@ class ViewerWindow(QMainWindow):
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() == 0:
                 # Get the currently selected FigureCanvasQTAggd data recursively
-                self.cText = self._get_obj_trace(current)
+                self.cText = self.get_obj_trace(current)
                 # Update the shape widgets based on the datatype
                 if isinstance(self.get(0), self.noPrintTypes):
                     self.Shape.update_shape([0], False)
@@ -364,11 +377,11 @@ class ViewerWindow(QMainWindow):
             return
         del self._data
         del self._metadata
-        del self.keys
+        del self.files
         self._data = {}
         self._metadata = {}
         self.diffNo = 0
-        self.keys = []
+        self.files = []
         self.cText = []
         self.slices = {}
         self.datatree.clear_tree()
@@ -377,8 +390,6 @@ class ViewerWindow(QMainWindow):
     def _dropdown(self, _):
         """ Add a context menu. """
         if self.datatree.current_item():
-            if str(self.datatree.current_item().text(1)) == self.lMsg:
-                return
             self.combine_opt.setVisible(
                 self.datatree.current_item().childCount() != 0)
             self.contextMenu.popup(QCursor.pos())
@@ -386,20 +397,18 @@ class ViewerWindow(QMainWindow):
     def _delete_data(self):
         """ Delete the selected data. """
         citem = self.datatree.current_item()
-        if str(citem.text(1)) == self.lMsg:
-            return
-        dText = self._get_obj_trace(citem)
+        dText = self.get_obj_trace(citem)
         citem = self.datatree.current_item()
         del reduce(getitem, dText[:-1], self._data)[dText[-1]]
         if len(dText) == 1:
-            self.keys.remove(dText[0])
             self._metadata.pop(dText[0], None)
+        self.get_all_keys()
         self.datatree.remove_from_checkables(citem.takeChildren())
         (citem.parent() or self.datatree.root).removeChild(citem)
 
     def _dlg_combine(self):
         """ Open a dialog to combine the dataset. """
-        trace = self._get_obj_trace(self.datatree.current_item())
+        trace = self.get_obj_trace(self.datatree.current_item())
         data = self.get(trace)
         keys = realsorted(data, alg=ns.IGNORECASE|ns.NUMAFTER)
         skipkeys = []
@@ -477,7 +486,7 @@ class ViewerWindow(QMainWindow):
             self.Shape.update_shape(self.get(0).shape)
         elif key != 0:
             self._data[key] = {"Value": _data}
-            self.keys.append(key)
+            self.files[key] = ("Value", isinstance(_data, self.noPrintTypes))
             self.datatree.update_tree()
 
     def _dlg_reshape(self):
@@ -485,7 +494,7 @@ class ViewerWindow(QMainWindow):
         cTree = self.datatree.currentWidget()  # The current Tree
         if cTree.currentItem().childCount() != 0:
             # If the current item has children try to reshape all of them
-            tr = self._get_obj_trace(cTree.currentItem())
+            tr = self.get_obj_trace(cTree.currentItem())
             if self.datatree.is_files_tree():
                 keys = [tr + [k] for k in self.datatree.similar_items
                         if isinstance(self.get(tr + [k]),
@@ -548,7 +557,7 @@ class ViewerWindow(QMainWindow):
             self.txtMax.setText(self.txtMax.text()[:-1])
             self.txtMax.setStyleSheet("")
 
-    def _get_obj_trace(self, item):
+    def get_obj_trace(self, item):
         """ Returns the trace to a given item in the TreeView. """
         dText = [str(item.text(1))]
         while item.parent() is not None:
@@ -667,7 +676,7 @@ class ViewerWindow(QMainWindow):
             splitted = os.path.split(fname)
             key = f"{os.path.split(splitted[0])[1]} - {splitted[1]}"
             # Show warning if data exists
-            if key in self.keys or key in new_keys:
+            if key in self.files or key in new_keys:
                 txt = f"Data({key}) exists.\nDo you want to overwrite it?"
                 replaceBtn = QPushButton(QIcon.fromTheme("list-add"),
                                          "Add new Dataset")
@@ -679,17 +688,15 @@ class ViewerWindow(QMainWindow):
                 result = msg.exec_()
                 if result == QMessageBox.AcceptRole:
                     n = 1
-                    while f"{key}_{n}" in self.keys:
+                    while f"{key}_{n}" in self.files:
                         n += 1
                     key = f"{key}_{n}"
                 elif result != QMessageBox.Yes:
                     continue
                 else:
-                    self.keys.remove(key)
+                    self.files.remove(key)
             new_keys.append(key)
-            loadItem = QTreeWidgetItem([self.lMsg])
-            loadItem.setForeground(0, QColor("grey"))
-            self.datatree.Tree.addTopLevelItem(loadItem)
+            self.info_msg(f"Loading {fname} ...", 0)
             self.loader.load.emit(fname, key,
                                   self.config.getboolean('opt', 'first_to_last', fallback=False),
                                   self.config.getint('opt', 'max_file_size', fallback=15))
@@ -714,7 +721,7 @@ class ViewerWindow(QMainWindow):
         key = str(key)
         if key != "":
             self._data[key] = data
-            self.keys.append(key)
+            self.get_all_keys()
             self._metadata[key] = fname, os.path.getmtime(fname)
         self.datatree.update_tree(self.cText)
         self.info_msg(f"Done loading {fname}", 0)
@@ -729,7 +736,7 @@ class ViewerWindow(QMainWindow):
             if modifiers == Qt.ControlModifier:
                 sys.exit()
         elif ev.key() == Qt.Key_F5:
-            key = self._get_obj_trace(self.datatree.current_item())[0]
+            key = self.get_obj_trace(self.datatree.current_item())[0]
             fname, timestamp = self._metadata.get(key)
             if os.path.getmtime(fname) == timestamp and self.reload_unchanged_file != (fname, timestamp):
                 self.info_msg("File has not changed since last load. Press F5 again to load anyway.", 0)
@@ -740,7 +747,7 @@ class ViewerWindow(QMainWindow):
                               f"Do you want to reload the file {key}?",
                               QMessageBox.Yes | QMessageBox.No)
             if msg.exec_() == QMessageBox.Yes:
-                self.keys.remove(key)
+                self.files.pop(key, None)
                 self.loader.load.emit(
                     fname, key,
                     self.config.getboolean("opt", "first_to_last", fallback=False),
