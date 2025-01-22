@@ -295,23 +295,27 @@ class ViewerWindow(QMainWindow):
 
     def _change_tree(self, current, previous):
         """ Draw chart, if the selection has changed. """
-        if (current and current != previous and current.text(1) != self.lMsg):
+        if (current and current != previous):
+            # Control uses the same slice as before
+            old_fix_state = self.Shape.fixate_view
+            if QApplication.keyboardModifiers() & Qt.ControlModifier:
+                self.Shape.fixate_view = True
             self.Graph.set_oprdim(-1)
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
-            if current.childCount() != 0:
-                return
-            # Get the currently selected FigureCanvasQTAggd data recursively
-            self.cText = self._get_obj_trace(current)
-            # Update the shape widgets based on the datatype
-            if isinstance(self.get(0), self.noPrintTypes):
-                self.Shape.update_shape([0], False)
-                self.PrmtBtn.setEnabled(False)
-                self.edit_opt.setEnabled(False)
-            else:
-                self.Shape.update_shape(self.get(0).shape)
-                self.PrmtBtn.setEnabled(True)
-                self.edit_opt.setEnabled(True)
+            if current.childCount() == 0:
+                # Get the currently selected FigureCanvasQTAggd data recursively
+                self.cText = self._get_obj_trace(current)
+                # Update the shape widgets based on the datatype
+                if isinstance(self.get(0), self.noPrintTypes):
+                    self.Shape.update_shape([0], False)
+                    self.PrmtBtn.setEnabled(False)
+                    self.edit_opt.setEnabled(False)
+                else:
+                    self.Shape.update_shape(self.get(0).shape)
+                    self.PrmtBtn.setEnabled(True)
+                    self.edit_opt.setEnabled(True)
+            self.Shape.fixate_view = old_fix_state
 
     def _checkboxes(self, fromCheckbox):
         """ Validate the value of the checkboxes and toggle their values. """
