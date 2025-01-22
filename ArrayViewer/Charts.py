@@ -45,7 +45,7 @@ def _rows_from_dim(dim):
         rows = dim[2]
     else:
         # Get the most equal division of the last dimension
-        last_dim = np.prod(dim[2:])
+        last_dim = int(np.prod(dim[2:]))
         for n in range(int(np.sqrt(last_dim)), last_dim + 1):
             if last_dim%n == 0:
                 rows = last_dim // n
@@ -56,9 +56,9 @@ def _rows_from_dim(dim):
 def _unravel_flat_with_padding(ind, sh, pad=1):
     """ Unravel a clicked index onto its corresponding n-D-index """
     ind = [i - pad if i > pad else 0 for i in ind]
-    cols = np.prod(sh[2:]) // _rows_from_dim(sh)
+    cols = int(np.prod(sh[2:])) // _rows_from_dim(sh)
     box_index = [ind[0] // (sh[0] + pad), ind[1] // (sh[1] + pad)]
-    ind.extend(np.unravel_index(box_index[1] * cols + box_index[0], sh[2:]))
+    ind.extend(map(int, np.unravel_index(box_index[1] * cols + box_index[0], sh[2:])))
     ind[0] = ind[0] % (sh[0] + pad)
     ind[1] = ind[1] % (sh[1] + pad)
     return ind
@@ -192,8 +192,8 @@ class GraphWidget(QWidget):
         if isinstance(event.artist, Line2D):
             idx = event.ind[0]
             dat = event.artist.get_data()
-            xyz = [dat[0][idx], dat[1][idx]]
-            dat = reformat(xyz[1])
+            xyz = [int(dat[0][idx])]
+            dat = reformat(dat[1][idx])
             fstr = "x: {xyz[0]}, y: {dat}"
         elif isinstance(event.artist, AxesImage):
             xyz.append(int(np.round(event.mouseevent.xdata)))
@@ -224,7 +224,7 @@ class GraphWidget(QWidget):
         elif QApplication.keyboardModifiers() & QtCore.Qt.ControlModifier:
             # Set Values in shape to 2d if clicked with control
             self._ui.Shape.set_non_scalar_values(['', ''] + xyz[2:])
-        elif QApplication.keyboardModifiers() & QtCore.Qt.AltModifier:
+        elif QApplication.keyboardModifiers() & QtCore.Qt.AltModifier and len(xyz) > 1:
             self.spawn_micro_plot(xyz)
         else:
             # Hide or show information about the clicked location
@@ -322,7 +322,7 @@ class GraphWidget(QWidget):
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
         self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        self._set_ticks(self._tick_str[1], len(sh))
+        self._set_ticks()
         _setlocator(self._axes.xaxis, sh + (dat.shape[1],), nPad)
         sh = (sh[1], sh[0]) + sh[2:]
         _setlocator(self._axes.yaxis, sh + (dat.shape[0],), nPad)
@@ -340,7 +340,9 @@ class GraphWidget(QWidget):
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
             self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
-        self._set_ticks(self._tick_str[1])
+        self._set_ticks()
+        _setlocator(self._axes.xaxis, self.ticks[0])
+        _setlocator(self._axes.yaxis, self.ticks[1])
 
     def _n_D_scatter(self):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
@@ -357,10 +359,9 @@ class GraphWidget(QWidget):
         self._img = self._axes.scatter(self.cutout[:, 0], self.cutout[:, 1],
                                        c=col, s=siz, cmap=self._colormap)
 
-    def _set_ticks(self, s, transp=True, plotDimensions=2):
-        """ Set the ticks of plots according to the selected slices. """
-        # Calculate the ticks for the plot by checking the limits
-        slices = (slice(n, n+1) if isinstance(n, int) else n for n in s)
+    def _set_ticks(self, transp=True):
+        """ Calculate the ticks for the plot by checking the limits """
+        slices = (slice(n, n+1) if isinstance(n, int) else n for n in self._tick_str[1])
         self.ticks = []
         for n in slices:
             if isinstance(n, slice):
@@ -369,12 +370,6 @@ class GraphWidget(QWidget):
                 self.ticks.append(np.array(n))
         if transp and self._ui.Transp.isChecked():
             self.ticks[0], self.ticks[1] = self.ticks[1], self.ticks[0]
-        if plotDimensions < 3:
-            # Set the x-ticks
-            _setlocator(self._axes.xaxis, self.ticks[0])
-        if plotDimensions == 2 and not isinstance(s[1], tuple):
-            # Set the y-ticks
-            _setlocator(self._axes.yaxis, self.ticks[1])
 
     def clear(self):
         """ Clear the figure. """
@@ -479,7 +474,8 @@ class GraphWidget(QWidget):
         # Graph an 1D-cutout
         elif self.cutout.ndim == 1:
             self._img = self._axes.plot(self.cutout)
-            self._set_ticks(self._tick_str[1], False, 1)
+            self._set_ticks(False)
+            _setlocator(self._axes.xaxis, self.ticks[0])
             alim = self._axes.get_ylim()
             if alim[0] > alim[1]:
                 self._axes.invert_yaxis()
@@ -493,7 +489,8 @@ class GraphWidget(QWidget):
                     self._ui.info_msg(msg, -1)
                     return
                 self._img = self._axes.plot(self.cutout)
-                self._set_ticks(self._tick_str[1], 1)
+                self._set_ticks()
+                _setlocator(self._axes.xaxis, self.ticks[0])
             elif self._ui.PlotScat.isChecked() and self.cutout.shape[1] <= 4:
                 self._n_D_scatter()
             else:

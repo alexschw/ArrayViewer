@@ -2,7 +2,7 @@ PyQt5>=5.12
 numpy>=1.22.2
 scipy>=1.11.2
 h5py>=3.11.0
-matplotlib
+matplotlib>=3.6.0
 Pillow>=10.2
 natsort
 fonttools>=4.43.0

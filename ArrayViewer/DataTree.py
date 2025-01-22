@@ -41,7 +41,7 @@ class DataTree(QTabWidget):
 
         # Add the Tree Widgets
         self.Tree = TreeWidget(self)
-        self.Tree.contextMenuEvent = parent.viewer._dropdown
+        self.Tree.contextMenuEvent = self.viewer._dropdown
         self.secTree = TreeWidget(self)
         self.addTab(self.Tree, "Files")
         self.addTab(self.secTree, "Data")
