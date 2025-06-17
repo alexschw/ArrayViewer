@@ -13,15 +13,16 @@ from configparser import ConfigParser, MissingSectionHeaderError
 
 import os.path
 from natsort import realsorted, ns
-from PyQt5.QtGui import QColor, QCursor, QIcon
+from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QFileDialog, QGridLayout, QLabel, QLineEdit,
                              QMainWindow, QMenu, QMenuBar, QMessageBox,
-                             QPushButton, QTreeWidgetItem, QWidget)
+                             QPushButton, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 import numpy as np
-from ArrayViewer.Charts import GraphWidget, ReshapeDialog, NewDataDialog
+from ArrayViewer.Charts import GraphWidget
+from ArrayViewer.Dialogs import ReshapeDialog, NewDataDialog, show_aview_about
 from ArrayViewer.Slider import rangeSlider
 from ArrayViewer.Data import Loader, h5py
 from ArrayViewer.Style import dark_qpalette
@@ -229,6 +230,7 @@ class ViewerWindow(QMainWindow):
         menuPlot.addSeparator()
         _menu_opt(menuPlot, "Keep Slice on data change", self._set_fixate_view,
                   act_grp=ag_plt)
+        _menu_opt(menu, "?", show_aview_about)
         self.setMenuBar(menu)
 
         # Add a context menu
@@ -347,14 +349,14 @@ class ViewerWindow(QMainWindow):
             Get the maximum or minimum of the selected data and set the
             shape accordingly
         """
-        if not isinstance(self.get(0), (np.ndarray, h5py.Dataset)):
-            return
         modifiers = QApplication.keyboardModifiers()
         # Shift uses the full array instead of the current cutout
         if modifiers & Qt.ShiftModifier:
             data = self.get(0)
         else:
             data = self.Graph.cutout
+        if not isinstance(data, (np.ndarray, h5py.Dataset)) or data.size == 0:
+            return
         # Alt uses minimum Ctrl uses maximum
         if modifiers & Qt.AltModifier:
             idx = np.argmin(data)
@@ -381,7 +383,7 @@ class ViewerWindow(QMainWindow):
         self._data = {}
         self._metadata = {}
         self.diffNo = 0
-        self.files = []
+        self.files = {}
         self.cText = []
         self.slices = {}
         self.datatree.clear_tree()
@@ -492,6 +494,8 @@ class ViewerWindow(QMainWindow):
     def _dlg_reshape(self):
         """ Open the reshape box to reshape the current data. """
         cTree = self.datatree.currentWidget()  # The current Tree
+        if not cTree.currentItem():
+            return
         if cTree.currentItem().childCount() != 0:
             # If the current item has children try to reshape all of them
             tr = self.get_obj_trace(cTree.currentItem())

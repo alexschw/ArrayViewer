@@ -204,7 +204,7 @@ class ShapeSelector(QWidget):
             if isScalar:
                 scalarDims.append(n)
             shapeStr.append(val)
-        return tuple(shapeStr), np.array(scalarDims)
+        return tuple(shapeStr), np.array(scalarDims, dtype=int)
 
     def update_shape(self, shape, load_slice=True):
         """ Update the shape widgets in the window based on the new data. """
