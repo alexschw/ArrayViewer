@@ -55,7 +55,7 @@ class singleShape(QWidget):
         """ Return the values of this single Shape. """
         def clipint(x):
             """ The integer value of a string clipped to the dimensions """
-            return min(max(-maxt, int(x)), maxt-1)
+            return min(max(-maxt, int(x)), maxt - 1)
         # Get the text and the maximum value within the dimension
         txt = self.lineedit.text()
         maxt = int(self.label.text())
@@ -107,7 +107,7 @@ class singleShape(QWidget):
                 pixmap = self.dock.grab()
                 x, y = (int(pixmap.width() * 0.8), int(pixmap.height() * 0.8))
                 drag.setPixmap(pixmap.scaled(QSize(x, y)))
-                drag.setHotSpot(QPoint(x//2, y//2))
+                drag.setHotSpot(QPoint(x // 2, y // 2))
                 self.update()
                 drag.exec_()
                 self.dock.setStyleSheet(self.noDragSty)
@@ -287,7 +287,7 @@ class ShapeSelector(QWidget):
         elif modifiers & Qt.ShiftModifier:
             mod *= 100
         try:
-            from_wgt.setText(str(int(txt)+mod))
+            from_wgt.setText(str(int(txt) + mod))
         except ValueError:
             txt = txt.split(':')
             try:
@@ -300,16 +300,16 @@ class ShapeSelector(QWidget):
             if len(txt) == 1:
                 return
             if (len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
-               and modifiers & Qt.ControlModifier):
+                and modifiers & Qt.ControlModifier):
                 mod //= 10
                 mod *= int(txt[1]) - int(txt[0])
             if (len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
-               and modifiers & Qt.ControlModifier):
+                and modifiers & Qt.ControlModifier):
                 mod //= 100
                 mod *= int(txt[2])
             if txt[0] != "":
-                txt[0] = str(int(txt[0])+mod)
+                txt[0] = str(int(txt[0]) + mod)
             if txt[1] != "":
-                txt[1] = str(int(txt[1])+mod)
+                txt[1] = str(int(txt[1]) + mod)
             from_wgt.setText(':'.join(txt))
         self.parent._set_slice()
