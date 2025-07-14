@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ArrayViewer"
+version = "1.1.4b"
+authors = [
+    { name = "Alex Schwarz", email = "schwarz-alex@mail.de" },
+]
+description = "ArrayViewer"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "PyQt5>=5.12",
+    "numpy>=1.22.2",
+    "scipy>=1.11.2",
+    "h5py>=3.11.0",
+    "matplotlib>=3.6.0",
+    "Pillow>=10.2",
+    "natsort",
+    "fonttools>=4.43.0",
+]
+
+[project.license]
+text = "GPLv3"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/alexschw/ArrayViewer"
+Documentation = "https://arrayviewer.readthedocs.io/"
+
+[project.gui-scripts]
+aview = "ArrayViewer.Viewer:main"
+
+[tool.setuptools]
+script-files = ["aview"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = false
+
+[tool.setuptools.package-data]
+arrayviewer = ["*.py", "**/*.svg"]
