@@ -250,6 +250,7 @@ class ShapeSelector(QWidget):
     def set_non_scalar_values(self, new_values):
         """ Set the values of the non-scalar dimensions. """
         sh, scalar_dims = self.get_shape()
+        scalar_dims = np.concatenate((scalar_dims, self.operation_state))
         if len(sh) - len(scalar_dims) != len(new_values):
             return
         i = 0
@@ -263,7 +264,8 @@ class ShapeSelector(QWidget):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.max_dims):
             self._get(n).label.setStyleSheet("")
-        for i in self.parent.Graph.set_operation(operation):
+        self.operation_state = self.parent.Graph.set_operation(operation)
+        for i in self.operation_state:
             self._get(i).label.setStyleSheet("background-color:lightgreen;")
         self.parent._draw_data()
 

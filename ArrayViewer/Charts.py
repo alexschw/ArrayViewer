@@ -169,11 +169,16 @@ class GraphWidget(QWidget):
             dat = [reformat(v) for v in self.cutout[idx]]
             fstr = str([float(d) for d in dat])[1:-2]
         # Adjust x and y value for reshaped data
-        if len(self.ticks) > 2:
+        if self.has_operation:
+            skipdims = [o - sum(self._tick_str[0] < o) for o in self._oprdim]
+            ticks = [v for n, v in enumerate(self.ticks) if n not in skipdims]
+        else:
+            ticks = self.ticks
+        if len(ticks) > 2:
             xyz = _unravel_flat_with_padding(xyz, self.cutout.shape)
             fstr = "index: {xyz}, value: {dat}"
         # Replace index for picked values
-        for i, tick in enumerate(self.ticks):
+        for i, tick in enumerate(ticks):
             if isinstance(tick, list):
                 xyz[i] = tick[2] * xyz[i] + tick[0]
             else:
@@ -249,12 +254,12 @@ class GraphWidget(QWidget):
         else:
             sl = [None for _ in data.shape]
 
-        i = 0
-        for j, s in enumerate(sl):
-            if s is None:
-                sl[j] = location[i]
-                i += 1
-        plot_data = data[*sl[:-1]]
+        if sl.count(None) > len(location):
+            return
+
+        fill_iter = iter(location)
+        sl = [next(fill_iter) if item is None else item for item in sl]
+        plot_data = data[(*sl[:-1],)]
 
         micro_plot = MicroPlot(self, plot_data, sl[:-1], key)
         micro_plot.show()
