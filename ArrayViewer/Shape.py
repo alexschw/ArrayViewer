@@ -41,7 +41,7 @@ class singleShape(QWidget):
 
         self.dock.setLayout(layout)
 
-    @pyqtSlot(list, int)
+    @pyqtSlot(np.ndarray, int)
     def style(self, operations, animation):
         """ Set the style of the label based on the operation or animation. """
         if self.index == animation:
@@ -79,7 +79,6 @@ class singleShape(QWidget):
         """
         self.change_operation.emit(self.index)
         self.parent._set_slice()
-        self.parent._draw_data()
 
     def mousePressEvent(self, event):
         """ Catch mousePressEvent for the dragging action. """
@@ -131,7 +130,7 @@ class singleShape(QWidget):
 
 class ShapeSelector(QWidget):
     """ Array Shape selectors"""
-    state_changed = pyqtSignal(list, int)
+    state_changed = pyqtSignal(np.ndarray, int)
 
     def __init__(self, parent=None):
         super().__init__()
@@ -143,7 +142,7 @@ class ShapeSelector(QWidget):
         self.max_dims = 8
         self.active_dims = 0
         self.fixate_view = False
-        self.operation_state = []
+        self.operation_state = np.array([], dtype=int)
         self.animation_state = -1
 
         validator = QRegExpValidator(self)
@@ -178,10 +177,9 @@ class ShapeSelector(QWidget):
     @pyqtSlot(int)
     def change_operation_state(self, index):
         """ Change the operation_state of the indexed Shape. """
-        self.operation_state = list(self.parent.Graph.set_oprdim(index))
+        self.operation_state = self.parent.Graph.set_oprdim(index)
         self.animation_state = -1
         self.state_changed.emit(self.operation_state, self.animation_state)
-        self.parent._draw_data()
 
     def current_slice(self):
         """ Return the current slice, """
@@ -219,10 +217,12 @@ class ShapeSelector(QWidget):
         # Initialize the Values of those widgets. Could not be done previously
         if load_slice:
             curr_slice, curr_operations = self.parent._load_slice()
-            if curr_operations:
-                self.operation_state = curr_operations
-                self.parent.Graph.set_oprdim(curr_operations)
-                self.state_changed.emit(self.operation_state, -1)
+            if not self.fixate_view:
+                if not curr_operations is None and len(curr_operations) > 0:
+                    self.operation_state = curr_operations
+                    self.parent.Graph.set_oprdim(curr_operations)
+                else:
+                    self.operation_state = np.empty(0)
             self.parent.Prmt.setText(str(list(range(self.parent.get(0).ndim))))
         else:
             self.parent.Prmt.setText("")
@@ -230,7 +230,7 @@ class ShapeSelector(QWidget):
             self._get(n).label.setText(str(value))
             if self.fixate_view:
                 pass
-            elif load_slice and curr_slice:
+            elif load_slice and not curr_slice is None:
                 self._get(n).lineedit.setText(curr_slice[n])
             else:
                 # Just show the first two dimensions in the beginning
@@ -239,6 +239,7 @@ class ShapeSelector(QWidget):
                 else:
                     self._get(n).lineedit.clear()
         # Redraw the graph
+        self.state_changed.emit(self.operation_state, -1)
         self.parent._draw_data()
 
     def set_all_values(self, new_values):
@@ -254,7 +255,7 @@ class ShapeSelector(QWidget):
         if len(sh) - len(scalar_dims) != len(new_values):
             return
         i = 0
-        for n, value in enumerate(sh):
+        for n, _ in enumerate(sh):
             if n not in scalar_dims:
                 self._get(n).lineedit.setText(f"{new_values[i]}")
                 i += 1

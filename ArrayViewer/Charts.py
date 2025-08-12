@@ -513,15 +513,15 @@ class GraphWidget(QWidget):
             self._opr = lambda x: operations[operation](x, axis=self._oprcorr)
         return self._oprdim
 
-    def set_oprdim(self, value):
+    def set_oprdim(self, value=None):
         """ Set the operation dimension. """
-        if value == -1:
+        if value is None:
             self._oprdim = np.array([], dtype=int)
         else:
             self._oprdim = np.setxor1d(self._oprdim, value)
         if self.has_operation:
             return self._oprdim
-        return []
+        return np.empty(0)
 
     def toggle_colorbar(self):
         """ Toggle the state of the colorbar """

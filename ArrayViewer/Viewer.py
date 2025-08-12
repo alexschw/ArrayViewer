@@ -243,14 +243,14 @@ class ViewerWindow(QMainWindow):
         if item in [0, "data", ""]:
             item = self.cText
         if not self._data or not item:
-            return []
+            return np.empty(0)
         try:
             return reduce(getitem, item[:-1], self._data)[item[-1]]
         except KeyError:
             # Diff views in the DataTree
             if not self.datatree.is_files_tree() and item[1][:4] == "Diff":
                 return self._data[item[1]][item[0]]
-            return []
+            return np.empty(0)
 
     def get_all_keys(self):
         """ Return all keys from the data. """
@@ -311,7 +311,8 @@ class ViewerWindow(QMainWindow):
             old_fix_state = self.Shape.fixate_view
             if QApplication.keyboardModifiers() & Qt.ControlModifier:
                 self.Shape.fixate_view = True
-            self.Graph.set_oprdim(-1)
+            else:
+                self.Graph.set_oprdim()
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
             if current.childCount() == 0:
@@ -578,7 +579,7 @@ class ViewerWindow(QMainWindow):
     def _load_slice(self):
         """ Returns the perviously seleced slice for the current array. """
         if not self._data:
-            return None
+            return None, None
         k = self._slice_key()
         return (self.slices[k] if k in self.slices else None,
                 self.operations[k] if k in self.operations else None)
