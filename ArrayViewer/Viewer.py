@@ -102,7 +102,7 @@ class ViewerWindow(QMainWindow):
         grLayout = QGridLayout(CWgt)
 
         # Add PlotMenu
-        grLayout.addWidget(self._init_plot_menu(), 0, 0, 1, 4)
+        grLayout.addWidget(self.__init_toolbar(), 0, 0, 1, 4)
 
         # Add the Tree Widgets
         self.datatree = DataTree(self, CWgt)
@@ -152,9 +152,20 @@ class ViewerWindow(QMainWindow):
         self.Sldr.sliderReleased.connect(self._update_colorbar)
         grLayout.addWidget(self.Sldr, 1, 3, 5, 1)
 
+        # Add operations tools
+        ag_op = QActionGroup(self)
+        ag_op.setExclusionPolicy(QActionGroup.ExclusionPolicy.ExclusiveOptional)
+        tool = QToolBar()
+        tool.setStyleSheet("QToolButton { width: 20px; height 20px; }")
+        self._menu_btn(tool, "Min", "min", act_grp=ag_op).triggered.connect(lambda: self.Shape.set_operation('nanmin'))
+        self._menu_btn(tool, "Mean", "mean", act_grp=ag_op).triggered.connect(lambda: self.Shape.set_operation('nanmean'))
+        self._menu_btn(tool, "Median", "median", act_grp=ag_op).triggered.connect(lambda: self.Shape.set_operation('nanmedian'))
+        self._menu_btn(tool, "Max", "max", act_grp=ag_op).triggered.connect(lambda: self.Shape.set_operation('nanmax'))
+        grLayout.addWidget(tool, 6, 0)
+
         # Shape Widget
         self.Shape = ShapeSelector(self)
-        grLayout.addWidget(self.Shape, 6, 0, 1, 4)
+        grLayout.addWidget(self.Shape, 6, 1, 1, 3)
 
     def __initMenu(self):
         """ Setup the menu bar. """
@@ -171,44 +182,13 @@ class ViewerWindow(QMainWindow):
                   "Ctrl+X")
         _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
 
-        # Color menu
-        menuColor = QMenu("Color", menu)
-        menu.addAction(menuColor.menuAction())
-
-        _menu_opt(menuColor, "Colorbar", self._add_colorbar).setCheckable(True)
-        menuColor.addSeparator()
-
-        ag_cm = QActionGroup(self)
-        _menu_opt(menuColor, "Colormap 'jet'",
-                  lambda: self.Graph.colormap('jet'), act_grp=ag_cm)
-        _menu_opt(menuColor, "Colormap 'gray'",
-                  lambda: self.Graph.colormap('gray'), act_grp=ag_cm)
-        _menu_opt(menuColor, "Colormap 'hot'",
-                  lambda: self.Graph.colormap('hot'), act_grp=ag_cm)
-        _menu_opt(menuColor, "Colormap 'bwr'",
-                  lambda: self.Graph.colormap('bwr'), act_grp=ag_cm)
-        _menu_opt(menuColor, "Colormap 'viridis'",
-                  lambda: self.Graph.colormap('viridis'),
-                  act_grp=ag_cm).setChecked(True)
-
         # Operations menu
         menuOpr = QMenu("Operations", menu)
         menu.addAction(menuOpr.menuAction())
 
-        ag_op = QActionGroup(self)
-        _menu_opt(menuOpr, "None", lambda: self.Shape.set_operation('None'),
-                  act_grp=ag_op).setChecked(True)
-        _menu_opt(menuOpr, "Min", lambda: self.Shape.set_operation('nanmin'),
-                  act_grp=ag_op)
-        _menu_opt(menuOpr, "Mean", lambda: self.Shape.set_operation('nanmean'),
-                  act_grp=ag_op)
-        _menu_opt(menuOpr, "Median",
-                  lambda: self.Shape.set_operation('nanmedian'), act_grp=ag_op)
-        _menu_opt(menuOpr, "Max", lambda: self.Shape.set_operation('nanmax'),
-                  act_grp=ag_op)
-        menuOpr.addSeparator()
         _menu_opt(menuOpr, "Find Max", self._data_max_min, ["Ctrl+M", "Ctrl+Shift+M"])
         _menu_opt(menuOpr, "Find Min", self._data_max_min, ["Alt+M", "Alt+Shift+M"])
+        _menu_opt(menuOpr, "Colorbar", self._add_colorbar).setCheckable(True)
         _menu_opt(menuOpr, "Keep Slice on data change", self._set_fixate_view).setCheckable(True)
 
         _menu_opt(menu, "?", show_aview_about)
@@ -223,7 +203,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
 
     def _menu_btn(self, menu, text, icon, act_grp):
-        """ Build a new menu option. """
+        """ Build a new menu Icon Button. """
         btn = QAction(menu)
         btn.setToolTip(text)
         btn.setCheckable(True)
@@ -233,19 +213,28 @@ class ViewerWindow(QMainWindow):
         menu.addAction(btn)
         return btn
 
-    def _init_plot_menu(self):
-        # Plot menu
-        menuPlot = QToolBar()
+    def __init_toolbar(self):
+        """ Setup the toolbar beneath the main menu bar. """
+        bar = QToolBar()
         ag_plt = QActionGroup(self)
-        ag_plt.setExclusive(True)
+        self._menu_btn(bar, "Standard", "std", ag_plt).setChecked(True)
+        self.Plot2D = self._menu_btn(bar, "2D as plot", "plot", ag_plt)
+        self.PlotScat = self._menu_btn(bar, "2D as Scatter", "scatter", ag_plt)
+        self.MMM = self._menu_btn(bar, "min-mean-max plot", "mmm", ag_plt)
+        self.Plot3D = self._menu_btn(bar, "3D as RGB(A)", "rgb", ag_plt)
+        self.PrintFlat = self._menu_btn(bar, "Print Values as text", "text", ag_plt)
 
-        self._menu_btn(menuPlot, "Standart", "std", ag_plt).setChecked(True)
-        self.Plot2D = self._menu_btn(menuPlot, "2D as plot", "plot", ag_plt)
-        self.PlotScat = self._menu_btn(menuPlot, "2D as Scatter", "scatter", ag_plt)
-        self.MMM = self._menu_btn(menuPlot, "min-mean-max plot", "mmm", ag_plt)
-        self.Plot3D = self._menu_btn(menuPlot, "3D as RGB(A)", "rgb", ag_plt)
-        self.PrintFlat = self._menu_btn(menuPlot, "Print Values as text", "text", ag_plt)
-        return menuPlot
+        bar.addSeparator()
+        ag_cm = QActionGroup(self)
+        self._menu_btn(bar, "Colormap 'jet'", 'jet', ag_cm).triggered.connect(lambda: self.Graph.colormap('jet'))
+        self._menu_btn(bar, "Colormap 'gray'", 'gray', ag_cm).triggered.connect(lambda: self.Graph.colormap('gray'))
+        self._menu_btn(bar, "Colormap 'hot'", 'hot', ag_cm).triggered.connect(lambda: self.Graph.colormap('hot'))
+        self._menu_btn(bar, "Colormap 'bwr'", 'bwr', ag_cm).triggered.connect(lambda: self.Graph.colormap('bwr'))
+        vir = self._menu_btn(bar, "Colormap 'viridis'", 'viridis', ag_cm)
+        vir.triggered.connect(lambda: self.Graph.colormap('viridis'))
+        vir.setChecked(True)
+
+        return bar
 
     def get(self, item):
         """ Gets the current data. """

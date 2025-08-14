@@ -142,6 +142,7 @@ class ShapeSelector(QWidget):
         self.max_dims = 8
         self.active_dims = 0
         self.fixate_view = False
+        self.last_operation = "None"
         self.operation_state = np.array([], dtype=int)
         self.animation_state = -1
 
@@ -265,6 +266,9 @@ class ShapeSelector(QWidget):
         """ Make Dimension-titles (not) clickable and pass the operation. """
         for n in range(self.max_dims):
             self._get(n).label.setStyleSheet("")
+        if self.last_operation == operation:
+            operation = "None"
+        self.last_operation = operation
         self.operation_state = self.parent.Graph.set_operation(operation)
         for i in self.operation_state:
             self._get(i).label.setStyleSheet("background-color:lightgreen;")
