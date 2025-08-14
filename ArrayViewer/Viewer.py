@@ -10,13 +10,14 @@ from itertools import zip_longest
 from functools import reduce
 from operator import getitem
 from configparser import ConfigParser, MissingSectionHeaderError
+from importlib import resources
 
 import os.path
 from natsort import realsorted, ns
 from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
                              QFileDialog, QGridLayout, QLabel, QLineEdit,
-                             QMainWindow, QMenu, QMenuBar, QMessageBox,
+                             QMainWindow, QMenu, QToolBar, QMessageBox,
                              QPushButton, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
@@ -31,6 +32,7 @@ from ArrayViewer.Shape import ShapeSelector
 from ArrayViewer.Options import OptionsDialog
 from ArrayViewer.Editor import EditorDialog
 
+ICONPATH = resources.files("ArrayViewer") / 'icons'
 
 def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     """ Build a new menu option. """
@@ -55,8 +57,8 @@ class ViewerWindow(QMainWindow):
         """ Initialize the window. """
         super().__init__(parent)
         # set class variables
-        if os.path.isfile('icons/aview_logo.svg'):
-            self.setWindowIcon(QIcon('icons/aview_logo.svg'))
+        if os.path.isfile(str(ICONPATH / 'aview_logo.svg')):
+            self.setWindowIcon(QIcon(str(ICONPATH / 'aview_logo.svg')))
         self.app = application
         self.config = config
         self._data = {}
@@ -99,61 +101,64 @@ class ViewerWindow(QMainWindow):
         self.setCentralWidget(CWgt)
         grLayout = QGridLayout(CWgt)
 
+        # Add PlotMenu
+        grLayout.addWidget(self._init_plot_menu(), 0, 0, 1, 4)
+
         # Add the Tree Widgets
         self.datatree = DataTree(self, CWgt)
-        grLayout.addWidget(self.datatree, 0, 0, 1, 2)
+        grLayout.addWidget(self.datatree, 1, 0, 1, 2)
 
         # Add a hidden Diff Button
         self.diffBtn = QPushButton("Calculate the difference", CWgt)
         self.diffBtn.released.connect(self._calc_diff)
         self.diffBtn.hide()
-        grLayout.addWidget(self.diffBtn, 1, 0, 1, 2)
+        grLayout.addWidget(self.diffBtn, 2, 0, 1, 2)
 
         # Add the min and max labels
         self.txtMin = QLabel("min : ", CWgt)
         self.txtMin.mousePressEvent = self._fixMin
-        grLayout.addWidget(self.txtMin, 2, 0)
+        grLayout.addWidget(self.txtMin, 3, 0)
         self.txtMax = QLabel("max : ", CWgt)
         self.txtMax.mousePressEvent = self._fixMax
-        grLayout.addWidget(self.txtMax, 2, 1)
+        grLayout.addWidget(self.txtMax, 3, 1)
 
         # Add the "Transpose"-Checkbox
         self.Transp = QCheckBox("Transpose", CWgt)
         self.Transp.stateChanged.connect(self._draw_data)
-        grLayout.addWidget(self.Transp, 3, 0, 1, 2)
+        grLayout.addWidget(self.Transp, 4, 0, 1, 2)
 
         # Add the Permute Field
         self.Prmt = QLineEdit("", CWgt)
         self.Prmt.setSizePolicy(QSP(QSP.Fixed, QSP.Fixed))
         self.Prmt.returnPressed.connect(self._permute_data)
-        grLayout.addWidget(self.Prmt, 4, 0)
+        grLayout.addWidget(self.Prmt, 5, 0)
         self.PrmtBtn = QPushButton("Permute", CWgt)
         self.PrmtBtn.released.connect(self._permute_data)
-        grLayout.addWidget(self.PrmtBtn, 4, 1)
+        grLayout.addWidget(self.PrmtBtn, 5, 1)
 
         # Add the Basic Graph Widget
         self.Graph = GraphWidget(self)
         self.Graph.setSizePolicy(QSP.Expanding, QSP.Expanding)
-        grLayout.addWidget(self.Graph, 0, 2, 4, 1)
+        grLayout.addWidget(self.Graph, 1, 2, 4, 1)
 
         # Message Field
         self.errMsgTimer = QTimer(self)
         self.errMsg = QLabel("", CWgt)
-        grLayout.addWidget(self.errMsg, 4, 2)
+        grLayout.addWidget(self.errMsg, 5, 2)
 
         # Add the Color Slider
         self.Sldr = rangeSlider(CWgt)
         self.Sldr.setSizePolicy(QSP.Fixed, QSP.Expanding)
         self.Sldr.sliderReleased.connect(self._update_colorbar)
-        grLayout.addWidget(self.Sldr, 0, 3, 5, 1)
+        grLayout.addWidget(self.Sldr, 1, 3, 5, 1)
 
         # Shape Widget
         self.Shape = ShapeSelector(self)
-        grLayout.addWidget(self.Shape, 5, 0, 1, 4)
+        grLayout.addWidget(self.Shape, 6, 0, 1, 4)
 
     def __initMenu(self):
         """ Setup the menu bar. """
-        menu = QMenuBar(self)
+        menu = self.menuBar()
         menuStart = QMenu("Start", menu)
         menu.addAction(menuStart.menuAction())
 
@@ -204,30 +209,9 @@ class ViewerWindow(QMainWindow):
         menuOpr.addSeparator()
         _menu_opt(menuOpr, "Find Max", self._data_max_min, ["Ctrl+M", "Ctrl+Shift+M"])
         _menu_opt(menuOpr, "Find Min", self._data_max_min, ["Alt+M", "Alt+Shift+M"])
+        _menu_opt(menuOpr, "Keep Slice on data change", self._set_fixate_view).setCheckable(True)
 
-        # Plot menu
-        menuPlot = QMenu("Plot", menu)
-        menu.addAction(menuPlot.menuAction())
-        ag_plt = QActionGroup(self)
-        ag_plt.setExclusive(False)
-        self.MMM = _menu_opt(menuPlot, "min-mean-max plot",
-                             lambda: self._checkboxes(0), act_grp=ag_plt)
-        self.MMM.triggered.connect(self._draw_data)
-        self.Plot2D = _menu_opt(menuPlot, "2D as plot",
-                                lambda: self._checkboxes(1), act_grp=ag_plt)
-        self.Plot2D.triggered.connect(self._draw_data)
-        self.PlotScat = _menu_opt(menuPlot, "2D as Scatter",
-                                  lambda: self._checkboxes(2), act_grp=ag_plt)
-        self.PlotScat.triggered.connect(self._draw_data)
-        self.Plot3D = _menu_opt(menuPlot, "3D as RGB(A)", self._draw_data,
-                                act_grp=ag_plt)
-        self.PrintFlat = _menu_opt(menuPlot, "Print Values as text",
-                                   self._draw_data, act_grp=ag_plt)
-        menuPlot.addSeparator()
-        _menu_opt(menuPlot, "Keep Slice on data change", self._set_fixate_view,
-                  act_grp=ag_plt)
         _menu_opt(menu, "?", show_aview_about)
-        self.setMenuBar(menu)
 
         # Add a context menu
         self.contextMenu = QMenu(self)
@@ -237,6 +221,31 @@ class ViewerWindow(QMainWindow):
         self.combine_opt = _menu_opt(self.contextMenu, "Combine Dataset",
                                      self._dlg_combine)
         _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
+
+    def _menu_btn(self, menu, text, icon, act_grp):
+        """ Build a new menu option. """
+        btn = QAction(menu)
+        btn.setToolTip(text)
+        btn.setCheckable(True)
+        btn.triggered.connect(self._draw_data)
+        btn.setIcon(QIcon(str(ICONPATH / f"{icon}.svg")))
+        btn.setActionGroup(act_grp)
+        menu.addAction(btn)
+        return btn
+
+    def _init_plot_menu(self):
+        # Plot menu
+        menuPlot = QToolBar()
+        ag_plt = QActionGroup(self)
+        ag_plt.setExclusive(True)
+
+        self._menu_btn(menuPlot, "Standart", "std", ag_plt).setChecked(True)
+        self.Plot2D = self._menu_btn(menuPlot, "2D as plot", "plot", ag_plt)
+        self.PlotScat = self._menu_btn(menuPlot, "2D as Scatter", "scatter", ag_plt)
+        self.MMM = self._menu_btn(menuPlot, "min-mean-max plot", "mmm", ag_plt)
+        self.Plot3D = self._menu_btn(menuPlot, "3D as RGB(A)", "rgb", ag_plt)
+        self.PrintFlat = self._menu_btn(menuPlot, "Print Values as text", "text", ag_plt)
+        return menuPlot
 
     def get(self, item):
         """ Gets the current data. """
@@ -328,18 +337,6 @@ class ViewerWindow(QMainWindow):
                     self.PrmtBtn.setEnabled(True)
                     self.edit_opt.setEnabled(True)
             self.Shape.fixate_view = old_fix_state
-
-    def _checkboxes(self, fromCheckbox):
-        """ Validate the value of the checkboxes and toggle their values. """
-        if fromCheckbox == 0:
-            self.Plot2D.setChecked(False)
-            self.PlotScat.setChecked(False)
-        elif fromCheckbox == 1:
-            self.MMM.setChecked(False)
-            self.PlotScat.setChecked(False)
-        elif fromCheckbox == 2:
-            self.MMM.setChecked(False)
-            self.Plot2D.setChecked(False)
 
     def _data_max_min(self, _):
         """
