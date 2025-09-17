@@ -108,8 +108,9 @@ class EditorDialog(QDialog):
         QFra.addWidget(self.table)
 
         self.dims = QHBoxLayout()
+        self.max_dims = 8
         self.slice = []
-        for n in range(8):
+        for n in range(self.max_dims):
             self.dims.addWidget(SpinBox(self, n))
         QFra.addLayout(self.dims)
 
@@ -121,7 +122,9 @@ class EditorDialog(QDialog):
         """ Open the window to edit the currently selected data object """
         if type(data) in self.parent.noPrintTypes:
             return
-        for s in range(8):
+        for s in range(self.max_dims):
+            if self.dims.itemAt(s) is None or self.dims.itemAt(s).widget() is None:
+                continue
             if s < data.ndim:
                 self.dims.itemAt(s).widget().setValue(-1 * int(s < 2))
                 self.dims.itemAt(s).widget().setVisible(True)

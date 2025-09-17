@@ -85,9 +85,15 @@ def reformat(dat):
     """ Format the numberstrings correctly. """
     if dat is None or isinstance(dat, np.ma.core.MaskedConstant):
         return ""
-    if not 1e-5 < np.abs(dat) < 1e5:
-        return f"{dat:.5e}"
-    return f"{dat:.5f}"
+    try:
+        # Check if data is iterable
+        _ = iter(dat)
+    except TypeError:
+        if not 1e-5 < np.abs(dat) < 1e5:
+            return f"{dat:.5e}"
+        return f"{dat:.5f}"
+    else:
+        return [reformat(d) for d in dat]
 
 
 class GraphWidget(QWidget):
@@ -179,10 +185,10 @@ class GraphWidget(QWidget):
             fstr = "index: {xyz}, value: {dat}"
         # Replace index for picked values
         for i, tick in enumerate(ticks):
-            if isinstance(tick, list):
-                xyz[i] = tick[2] * xyz[i] + tick[0]
-            else:
-                with suppress(IndexError):
+            with suppress(IndexError):
+                if isinstance(tick, list):
+                    xyz[i] = tick[2] * xyz[i] + tick[0]
+                else:
                     xyz[i] = tick[xyz[i]]
 
         if QApplication.keyboardModifiers() & QtCore.Qt.ShiftModifier:
@@ -283,7 +289,10 @@ class GraphWidget(QWidget):
         if self._ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] in (3, 4):
             nPad = -1
             mm = [np.nanmin(self.cutout), np.nanmax(self.cutout)]
-            dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
+            if mm[1] - mm[0] != 0:
+                dat = np.swapaxes((self.cutout - mm[0]) / (mm[1] - mm[0]), 0, 1)
+            else:
+                dat = np.swapaxes(self.cutout, 0, 1)
         else:
             dat = _flat_with_padding(self.cutout, nPad)
         if self.cutout.dtype == np.float16:
@@ -398,6 +407,9 @@ class GraphWidget(QWidget):
         self._axes.clear()
         data = self._ui.get(0)
         self._anim_timer.stop()
+        if data.size == 0:
+            self._ui.info_msg("Empty dataset!", -1)
+            return
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             self._axes.text(-0.1, 1.1, str(data), va='top', wrap=True)
@@ -432,6 +444,7 @@ class GraphWidget(QWidget):
         # Check for empty dimensions
         if 0 in self.cutout.shape:
             self._axes.clear()
+            self._img = None
             return
         # Print the Value(s) directly
         if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
@@ -491,7 +504,7 @@ class GraphWidget(QWidget):
         if isinstance(self._img, list):
             for i in self._img:
                 i.set_picker(5.)
-        else:
+        elif self._img is not None:
             self._img.set_picker(True)
         self._cursor = Cursor(self._axes, useblit=False, color='red', linewidth=1)
         if self._ui.config.getboolean('opt', 'cursor', fallback=False):
