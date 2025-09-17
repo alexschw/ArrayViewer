@@ -42,7 +42,7 @@ class singleShape(QWidget):
         self.dock.setLayout(layout)
 
     @pyqtSlot(np.ndarray, int)
-    def style(self, operations, animation):
+    def _style(self, operations, animation):
         """ Set the style of the label based on the operation or animation. """
         if self.index == animation:
             self.label.setStyleSheet("background-color:orange;")
@@ -152,7 +152,7 @@ class ShapeSelector(QWidget):
         for i in range(self.max_dims):
             shape = singleShape(validator, self, i)
             layout.addWidget(shape)
-            self.state_changed.connect(shape.style)
+            self.state_changed.connect(shape._style)
             shape.change_animation.connect(self.change_animation_state)
             shape.change_operation.connect(self.change_operation_state)
             shape.hide()
@@ -219,7 +219,7 @@ class ShapeSelector(QWidget):
         if load_slice:
             curr_slice, curr_operations = self.parent._load_slice()
             if not self.fixate_view:
-                if not curr_operations is None and len(curr_operations) > 0:
+                if curr_operations is not None and len(curr_operations) > 0:
                     self.operation_state = curr_operations
                     self.parent.Graph.set_oprdim(curr_operations)
                 else:
@@ -231,7 +231,7 @@ class ShapeSelector(QWidget):
             self._get(n).label.setText(str(value))
             if self.fixate_view:
                 pass
-            elif load_slice and not curr_slice is None:
+            elif load_slice and curr_slice is not None:
                 self._get(n).lineedit.setText(curr_slice[n])
             else:
                 # Just show the first two dimensions in the beginning

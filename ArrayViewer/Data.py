@@ -135,6 +135,10 @@ class Loader(QObject):
     def _add_data(self, fname, key, switch_to_last=False, max_file_size=15):
         """ Add a new data to the dataset. Ask if the data already exists. """
         self.switch_to_last = switch_to_last
+        if not os.path.exists(fname):
+            self.doneLoading.emit({}, '', '')
+            self.infoMsg.emit(f"File not found: {fname}.", -1)
+            return False
         # Check if the File is bigger than max_file_size in GB, than it will not be loaded
         if os.path.getsize(fname) > max_file_size * 1e9:
             self.infoMsg.emit(f"File bigger than {max_file_size}GB. Not loading!", -1)

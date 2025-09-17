@@ -1,3 +1,8 @@
 include requirements.txt
 include LICENSE
-include aview_logo.svg
+prune tests
+prune docs
+exclude MANIFEST.in
+exclude debug.py
+exclude release.sh
+exclude .readthedocs.yml

@@ -298,7 +298,8 @@ class ViewerWindow(QMainWindow):
             isnpt = isinstance(item0, self.noPrintTypes)
             self.files[f"Diff {self.diffNo}"] = ((text0, isnpt), (text1, isnpt), (textcomb, isnpt))
             self.diffNo += 1
-            self.datatree.currentWidget().setColumnHidden(0, True)
+            if self.datatree.currentWidget() is not None:
+                self.datatree.currentWidget().setColumnHidden(0, True)
             self.diffBtn.hide()
             self.datatree.update_tree()
 
@@ -419,7 +420,8 @@ class ViewerWindow(QMainWindow):
         keepBtn = msg.addButton("Yes but keep Elements", QMessageBox.YesRole)
         msg.addButton(QMessageBox.No)
         msg.setDefaultButton(QMessageBox.Yes)
-        result = msg.exec_()
+        msg.exec()
+        result = msg.clickedBtn()
         if result == QMessageBox.No:
             return
 
@@ -471,13 +473,13 @@ class ViewerWindow(QMainWindow):
             self.Shape.update_shape(self.get(0).shape)
         elif key != 0:
             self._data[key] = {"Value": _data}
-            self.files[key] = ("Value", isinstance(_data, self.noPrintTypes))
+            self.files[key] = (("Value", isinstance(_data, self.noPrintTypes)),)
             self.datatree.update_tree()
 
     def _dlg_reshape(self):
         """ Open the reshape box to reshape the current data. """
         cTree = self.datatree.currentWidget()  # The current Tree
-        if not cTree.currentItem():
+        if cTree is None or cTree.currentItem() is None:
             return
         if cTree.currentItem().childCount() != 0:
             # If the current item has children try to reshape all of them
@@ -639,6 +641,8 @@ class ViewerWindow(QMainWindow):
 
     def _start_diff(self):
         """ Start the diff view. """
+        if self.datatree.currentWidget() is None:
+            return
         if self.diffBtn.isVisible():
             self.diffBtn.hide()
             self.datatree.currentWidget().setColumnHidden(0, True)
@@ -681,7 +685,7 @@ class ViewerWindow(QMainWindow):
                 elif result != QMessageBox.Yes:
                     continue
                 else:
-                    self.files.remove(key)
+                    _ = self.files.pop(key, None)
             new_keys.append(key)
             self.info_msg(f"Loading {fname} ...", 0)
             self.loader.load.emit(fname, key,
@@ -700,7 +704,7 @@ class ViewerWindow(QMainWindow):
             self.errMsg.setStyleSheet("QLabel { color : green; }")
         elif warn_level == 1:
             print(text)
-        self.errMsgTimer.singleShot(2000, lambda: self.errMsg.setText(""))
+        self.errMsgTimer.singleShot(3000, lambda: self.errMsg.setText(""))
 
     @pyqtSlot(dict, str, str)
     def on_done_loading(self, data, key, fname):
@@ -724,7 +728,7 @@ class ViewerWindow(QMainWindow):
                 sys.exit()
         elif ev.key() == Qt.Key_F5:
             key = self.get_obj_trace(self.datatree.current_item())[0]
-            fname, timestamp = self._metadata.get(key)
+            fname, timestamp = self._metadata.get(key, (None, None))
             if os.path.getmtime(fname) == timestamp and self.reload_unchanged_file != (fname, timestamp):
                 self.info_msg("File has not changed since last load. Press F5 again to load anyway.", 0)
                 self.reload_unchanged_file = (fname, timestamp)
