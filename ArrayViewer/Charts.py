@@ -365,7 +365,7 @@ class GraphWidget(QWidget):
                 vmax=_vmax if self._fix_limits[1] is None else self._fix_limits[1]
             )
         if not self.has_cb:
-            if self._cb:
+            if self._cb is not None:
                 self._cb.remove()
                 self._cb = None
         elif self._cb is None:
@@ -379,7 +379,7 @@ class GraphWidget(QWidget):
         if not isinstance(self._img, AxesImage):
             return
         if self._cb:
-            self._cb.mappable.set_cmap(mapname)
+            self._cb.mappable.set_cmap(self._colormap)
         self._img.set_cmap(self._colormap)
         self._canv.draw()
 

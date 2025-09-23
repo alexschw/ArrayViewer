@@ -202,12 +202,13 @@ class ViewerWindow(QMainWindow):
                                      self._dlg_combine)
         _menu_opt(self.contextMenu, "Delete Data", self._delete_data)
 
-    def _menu_btn(self, menu, text, icon, act_grp):
+    def _menu_btn(self, menu, text, icon, act_grp, redraw=True):
         """ Build a new menu Icon Button. """
         btn = QAction(menu)
         btn.setToolTip(text)
         btn.setCheckable(True)
-        btn.triggered.connect(self._draw_data)
+        if redraw:
+            btn.triggered.connect(self._draw_data)
         btn.setIcon(QIcon(str(ICONPATH / f"{icon}.svg")))
         btn.setActionGroup(act_grp)
         menu.addAction(btn)
@@ -226,11 +227,11 @@ class ViewerWindow(QMainWindow):
 
         bar.addSeparator()
         ag_cm = QActionGroup(self)
-        self._menu_btn(bar, "Colormap 'jet'", 'jet', ag_cm).triggered.connect(lambda: self.Graph.colormap('jet'))
-        self._menu_btn(bar, "Colormap 'gray'", 'gray', ag_cm).triggered.connect(lambda: self.Graph.colormap('gray'))
-        self._menu_btn(bar, "Colormap 'hot'", 'hot', ag_cm).triggered.connect(lambda: self.Graph.colormap('hot'))
-        self._menu_btn(bar, "Colormap 'bwr'", 'bwr', ag_cm).triggered.connect(lambda: self.Graph.colormap('bwr'))
-        vir = self._menu_btn(bar, "Colormap 'viridis'", 'viridis', ag_cm)
+        self._menu_btn(bar, "Colormap 'jet'", 'jet', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('jet'))
+        self._menu_btn(bar, "Colormap 'gray'", 'gray', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('gray'))
+        self._menu_btn(bar, "Colormap 'hot'", 'hot', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('hot'))
+        self._menu_btn(bar, "Colormap 'bwr'", 'bwr', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('bwr'))
+        vir = self._menu_btn(bar, "Colormap 'viridis'", 'viridis', ag_cm, False)
         vir.triggered.connect(lambda: self.Graph.colormap('viridis'))
         vir.setChecked(True)
 
@@ -274,7 +275,6 @@ class ViewerWindow(QMainWindow):
         """ Add a colorbar to the Graph Widget. """
         self.Graph.toggle_colorbar()
         self.Sldr.set_enabled(self.Graph.has_cb)
-        self._update_colorbar()
 
     def _calc_diff(self):
         """ Calculate the difference and end the diff view. """
@@ -421,7 +421,7 @@ class ViewerWindow(QMainWindow):
         msg.addButton(QMessageBox.No)
         msg.setDefaultButton(QMessageBox.Yes)
         msg.exec()
-        result = msg.clickedBtn()
+        result = msg.clickedButton()
         if result == QMessageBox.No:
             return
 
@@ -526,7 +526,6 @@ class ViewerWindow(QMainWindow):
         shapeStr, scalarDims = self.Shape.get_shape()
         if shapeStr or self.get(0).shape == (1,):
             self.Graph.renewPlot(shapeStr, scalarDims)
-            self._update_colorbar()
 
     def _fixMin(self, _):
         is_fixed = self.Graph.fix_limit(0)
