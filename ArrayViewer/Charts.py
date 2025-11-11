@@ -429,7 +429,9 @@ class GraphWidget(QWidget):
             self.renew_cutout(data, s)
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
-                self._oprcorr = tuple(b - (scalDims <= b).sum() for b in a)
+                len_co = len(self.cutout.shape)
+                new_opr = a - (scalDims[:,None] <= a).sum(0)
+                self._oprcorr = tuple(int(b) for b in new_opr if b < len_co)
                 self.cutout = self._opr(self.cutout)
             else:
                 self._oprcorr = None

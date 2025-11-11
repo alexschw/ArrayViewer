@@ -220,8 +220,8 @@ class ShapeSelector(QWidget):
             curr_slice, curr_operations = self.parent._load_slice()
             if not self.fixate_view:
                 if curr_operations is not None and len(curr_operations) > 0:
-                    self.operation_state = curr_operations
-                    self.parent.Graph.set_oprdim(curr_operations)
+                    self.operation_state = np.array(curr_operations)
+                    self.parent.Graph.set_oprdim(self.operation_state)
                 else:
                     self.operation_state = np.empty(0)
             self.parent.Prmt.setText(str(list(range(self.parent.get(0).ndim))))

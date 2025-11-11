@@ -145,7 +145,7 @@ class Loader(QObject):
             self.doneLoading.emit({}, '', '')
             return False
         # Load the different data types
-        if fname.endswith('.hdf5'):
+        if h5py.is_hdf5(fname):
             data = self._validate(h5py.File(str(fname), 'r'))
         elif fname.endswith('.mat'):
             try:

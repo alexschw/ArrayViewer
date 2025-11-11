@@ -416,13 +416,13 @@ class ViewerWindow(QMainWindow):
         # Show a dialog asking if the combination should be done.
         txt = f"Combine {len(keys)} elements into {mshape} shape?"
         msg = QMessageBox(QMessageBox.Information, "Info", txt)
-        msg.addButton(QMessageBox.Yes)
+        yesBtn = msg.addButton(QMessageBox.Yes)
         keepBtn = msg.addButton("Yes but keep Elements", QMessageBox.YesRole)
-        msg.addButton(QMessageBox.No)
-        msg.setDefaultButton(QMessageBox.Yes)
+        noBtn = msg.addButton(QMessageBox.No)
+        msg.setDefaultButton(yesBtn)
         msg.exec()
         result = msg.clickedButton()
-        if result == QMessageBox.No:
+        if result == noBtn:
             return
 
         # Perform the combination
