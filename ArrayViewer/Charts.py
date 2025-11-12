@@ -115,6 +115,7 @@ class GraphWidget(QWidget):
         self._cb = None
         self.has_cb = False
         self.has_operation = False
+        self.has_legend = False
         self._colormap = 'viridis'
         self._opr = (lambda x: x)
         self._oprdim = np.array([], dtype=int)
@@ -307,10 +308,18 @@ class GraphWidget(QWidget):
         """ Plot 2-dimensional data. """
         if self._ui.MMM.isChecked():
             self._img = []
+            mean = np.nanmean(self.cutout, axis=0)
+            sd = np.nanstd(self.cutout, axis=0)
             self._img += self._axes.plot(np.nanmax(self.cutout, axis=0), 'r')
-            self._img += self._axes.plot(np.nanmean(self.cutout, axis=0), 'k')
+            self._img += self._axes.plot(mean, 'k')
             self._img += self._axes.plot(np.nanmin(self.cutout, axis=0), 'b')
-            self._axes.legend(["Max", "Mean", "Min"])
+            if len(mean) >= 20:
+                self._axes.fill_between(np.arange(len(mean)), mean+sd, mean-sd,
+                    color='k', alpha=0.2, interpolate=True, ec=None)
+            else:
+                self._axes.errorbar(np.arange(len(mean)), mean, yerr=sd, color='k', capsize=5)
+
+            self._axes.legend(["Max", "Mean", "Min"], loc='upper right')
         else:
             dat = self.cutout.T
             if self.cutout.dtype == np.float16:
@@ -391,6 +400,19 @@ class GraphWidget(QWidget):
         """ Check if the operation is None. """
         return self.has_operation
 
+    def legend(self):
+        """ Generate a legend for small plots """
+        if isinstance(self._img, (AxesImage, PathCollection)) or self._ui.MMM.isChecked() or self._img is None:
+            return
+        if self.has_legend and len(self._img) <= 10:
+            ticks = list(self.ticks[1])
+            if ticks[1] == -1:
+                ticks[1] = ticks[2]*len(self._img)+ticks[0]
+            self._axes.legend(self._img, range(*ticks), loc='upper right')
+        elif self._axes.get_legend():
+            self._axes.get_legend().remove()
+        self._canv.draw()
+
     def renew_cutout(self, data, slices):
         """ Renew the value of self.cutout with the given data and slices """
         newslice = []
@@ -451,6 +473,7 @@ class GraphWidget(QWidget):
         # Print the Value(s) directly
         if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
             self._axes.set_ylim([0, 1])
+            self._img = None
             self._axes.text(-0.1, 1.1, str(self.cutout), va='top', wrap=True)
             self._axes.axis('off')
         # Graph an 1D-cutout
@@ -458,6 +481,7 @@ class GraphWidget(QWidget):
             self._img = self._axes.plot(self.cutout)
             self._set_ticks(False)
             _setlocator(self._axes.xaxis, self.ticks[0])
+            self.legend()
             alim = self._axes.get_ylim()
             if alim[0] > alim[1]:
                 self._axes.invert_yaxis()
@@ -491,6 +515,7 @@ class GraphWidget(QWidget):
         # axes were not cleared everytime.
         self.colorbar()
         self.colormap()
+        self.legend()
         if self.cutout.size > 0:
             self._clim = (np.nanmin(self.cutout), np.nanmax(self.cutout))
             # Set the minimum and maximum values from the data
@@ -542,6 +567,11 @@ class GraphWidget(QWidget):
         """ Toggle the state of the colorbar """
         self.has_cb = not self.has_cb
         self.colorbar()
+
+    def toggle_legend(self):
+        """ Toggle the state of the legend """
+        self.has_legend = not self.has_legend
+        self.legend()
 
 
 class MicroPlot(QDialog):

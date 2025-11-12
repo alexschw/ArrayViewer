@@ -189,6 +189,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuOpr, "Find Max", self._data_max_min, ["Ctrl+M", "Ctrl+Shift+M"])
         _menu_opt(menuOpr, "Find Min", self._data_max_min, ["Alt+M", "Alt+Shift+M"])
         _menu_opt(menuOpr, "Colorbar", self._add_colorbar).setCheckable(True)
+        _menu_opt(menuOpr, "Legend for small plots", self.Graph.toggle_legend).setCheckable(True)
         _menu_opt(menuOpr, "Keep Slice on data change", self._set_fixate_view).setCheckable(True)
 
         _menu_opt(menu, "?", show_aview_about)
