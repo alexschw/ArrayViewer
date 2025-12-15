@@ -70,6 +70,16 @@ class singleShape(QWidget):
                 tpl = tuple(dict.fromkeys(clipint(x) for x in txt.split(',') if x))
                 self.lineedit.setText(str(tpl)[1:-1].replace(" ", ""))
                 return tpl, False
+            if txt == "+":
+                data = self.parent.get(0)
+                newid = int(np.unravel_index(np.nanargmax(data), data.shape)[self.index])
+                self.lineedit.setText(str(newid))
+                return newid, True
+            if txt == "-":
+                data = self.parent.get(0)
+                newid = int(np.unravel_index(np.nanargmin(data), data.shape)[self.index])
+                self.lineedit.setText(str(newid))
+                return newid, True
             return slice(*(int(x) if x else None for x in txt.split(':'))), False
 
     def _perform_operation(self, _):
@@ -221,6 +231,7 @@ class ShapeSelector(QWidget):
             if not self.fixate_view:
                 if curr_operations is not None and len(curr_operations) > 0:
                     self.operation_state = np.array(curr_operations)
+                    self.parent.Graph.set_oprdim(None) # Clear oprdim
                     self.parent.Graph.set_oprdim(self.operation_state)
                 else:
                     self.operation_state = np.empty(0)
