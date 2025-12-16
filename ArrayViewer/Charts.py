@@ -168,6 +168,8 @@ class GraphWidget(QWidget):
             xyz.append(int(np.round(event.mouseevent.xdata)))
             xyz.append(int(np.round(event.mouseevent.ydata)))
             dat = reformat(event.artist.get_array()[xyz[1], xyz[0]])
+            if self._ui.Transp.isChecked():
+                xyz[0], xyz[1] = xyz[1], xyz[0]
             fstr = "x: {xyz[0]}, y: {xyz[1]}, z: {dat}"
         elif isinstance(event.artist, PathCollection):
             xyz.append(event.mouseevent.xdata)
@@ -402,13 +404,17 @@ class GraphWidget(QWidget):
 
     def legend(self):
         """ Generate a legend for small plots """
-        if isinstance(self._img, (AxesImage, PathCollection)) or self._ui.MMM.isChecked() or self._img is None:
+        if isinstance(self._img, (AxesImage, PathCollection, type(None))) or self._ui.MMM.isChecked():
             return
-        if self.has_legend and len(self._img) <= 10:
-            ticks = list(self.ticks[1])
-            if ticks[1] == -1:
-                ticks[1] = ticks[2]*len(self._img)+ticks[0]
-            self._axes.legend(self._img, range(*ticks), loc='upper right')
+        if self.has_legend and 1 < len(self._img) <= 10:
+            if isinstance(self.ticks[1], list):
+                ticks = list(self.ticks[1])
+                if ticks[1] == -1:
+                    ticks[1] = ticks[2]*len(self._img)+ticks[0]
+                ticks = range(*ticks)
+            else:
+                ticks = self.ticks[1].tolist()
+            self._axes.legend(self._img, ticks, loc='upper right')
         elif self._axes.get_legend():
             self._axes.get_legend().remove()
         self._canv.draw()

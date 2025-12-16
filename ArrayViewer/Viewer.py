@@ -186,8 +186,8 @@ class ViewerWindow(QMainWindow):
         menuOpr = QMenu("Operations", menu)
         menu.addAction(menuOpr.menuAction())
 
-        _menu_opt(menuOpr, "Find Max", self._data_max_min, ["Ctrl+M", "Ctrl+Shift+M"])
-        _menu_opt(menuOpr, "Find Min", self._data_max_min, ["Alt+M", "Alt+Shift+M"])
+        _menu_opt(menuOpr, "Find Max", lambda: self._data_max_min(False), ["Ctrl+M", "Ctrl+Shift+M"])
+        _menu_opt(menuOpr, "Find Min", lambda: self._data_max_min(True), ["Alt+M", "Alt+Shift+M"])
         _menu_opt(menuOpr, "Colorbar", self._add_colorbar).setCheckable(True)
         _menu_opt(menuOpr, "Legend for small plots", self.Graph.toggle_legend).setCheckable(True)
         _menu_opt(menuOpr, "Keep Slice on data change", self._set_fixate_view).setCheckable(True)
@@ -311,7 +311,7 @@ class ViewerWindow(QMainWindow):
             old_fix_state = self.Shape.fixate_view
             if QApplication.keyboardModifiers() & Qt.ControlModifier:
                 self.Shape.fixate_view = True
-            else:
+            elif not old_fix_state:
                 self.Graph.set_oprdim()
             self.Graph.clear()
             # Only bottom level nodes contain data -> skip if node has children
@@ -329,7 +329,7 @@ class ViewerWindow(QMainWindow):
                     self.edit_opt.setEnabled(True)
             self.Shape.fixate_view = old_fix_state
 
-    def _data_max_min(self, _):
+    def _data_max_min(self, is_minimum):
         """
             Get the maximum or minimum of the selected data and set the
             shape accordingly
@@ -343,7 +343,7 @@ class ViewerWindow(QMainWindow):
         if not isinstance(data, (np.ndarray, h5py.Dataset)) or data.size == 0:
             return
         # Alt uses minimum Ctrl uses maximum
-        if modifiers & Qt.AltModifier:
+        if is_minimum:
             idx = np.argmin(data)
         else:
             idx = np.argmax(data)
@@ -580,8 +580,8 @@ class ViewerWindow(QMainWindow):
         if chkstr != [str(_a) for _a in range(self.get(0).ndim)]:
             self.info_msg("Shape is not matching dimensions. Aborting!", -1)
             return
-        new_order = tuple(np.array(content.split(","), dtype="i"))
-        if new_order == tuple(sorted(new_order)):
+        new_order = np.array(content.split(","), dtype="i")
+        if all(new_order == sorted(new_order)):
             return
         self.transpose_data(new_order)
 
@@ -592,8 +592,7 @@ class ViewerWindow(QMainWindow):
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
         if self._slice_key() in self.operations:
-            self.operations[self._slice_key()] = [
-                new_order[i] for i in self.operations[self._slice_key()]]
+            self.operations[self._slice_key()] = new_order[self.operations[self._slice_key()]]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
         self.info_msg(f"Permuted from {tuple(sh[o] for o in new_order)} to {sh}", 0)
@@ -729,6 +728,8 @@ class ViewerWindow(QMainWindow):
         elif ev.key() == Qt.Key_F5:
             key = self.get_obj_trace(self.datatree.current_item())[0]
             fname, timestamp = self._metadata.get(key, (None, None))
+            if fname is None:
+                return
             if os.path.getmtime(fname) == timestamp and self.reload_unchanged_file != (fname, timestamp):
                 self.info_msg("File has not changed since last load. Press F5 again to load anyway.", 0)
                 self.reload_unchanged_file = (fname, timestamp)

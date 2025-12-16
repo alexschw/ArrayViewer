@@ -71,6 +71,7 @@ class DataTree(QTabWidget):
             return
         new_trace = self.viewer.get_obj_trace(self.changing_item)
         if new_trace == self.old_trace:
+            self.old_trace = []
             return
         self.Tree.itemChanged.disconnect(self._finish_renaming)
         # Check if the name exists in siblings
@@ -90,6 +91,8 @@ class DataTree(QTabWidget):
             return
         # Replace the key
         self.viewer.set_data(new_trace, self.viewer.pop(self.old_trace))
+        if self.old_trace[0] != new_trace[0]:
+            self.viewer._metadata[new_trace[0]] = self.viewer._metadata.pop(self.old_trace[0])
         self.old_trace = []
         # Make Item non-editable
         self.changing_item.setFlags(Qt.ItemFlag(61))
