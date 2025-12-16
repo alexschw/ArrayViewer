@@ -1,5 +1,6 @@
 include requirements.txt
 include LICENSE
+recursive-include ArrayViewer/icons *.svg
 prune tests
 prune docs
 exclude MANIFEST.in

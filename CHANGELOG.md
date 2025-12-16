@@ -1,3 +1,21 @@
+# 1.1.4
+ - Plot Menu, colormaps and operations in iconbar
+ - Keep operation dimensions on data switch too
+ - Installer now using pyproject.toml instead of setup.py
+ - Option to add legend to plots with less then 10 lines
+ - Support all h5py datatypes
+ - Refactor Dialogs
+ - Lots of Bugfixes
+
+# 1.1.3
+ - Keep slice when using Ctrl+Click in Tree
+ - Reload feature using the F5-Key
+ - Add MicroPlot on Alt-Click in Graph view
+ - RGBA image support instead of just RGB
+ - Numpy 2.0 compatibility
+ - Keep last selected item open when loading new data
+ - Refactor DataTree
+
 # 1.1.2
 - Get maximum or minimum of the selected or full data
 - Set values in shape on shift and ctrl click
