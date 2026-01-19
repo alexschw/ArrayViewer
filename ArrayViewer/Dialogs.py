@@ -9,7 +9,7 @@ from packaging.version import parse as parse_version
 from itertools import combinations
 import numpy as np
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QCompleter, QDialog, QGridLayout, QLabel, QLineEdit, QMessageBox, QTextEdit, QVBoxLayout
+from PyQt5.QtWidgets import QCompleter, QDialog, QGridLayout, QLabel, QLineEdit, QMessageBox, QTextEdit, QHBoxLayout, QVBoxLayout, QWidget
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 
 from ArrayViewer import __version__
@@ -47,6 +47,14 @@ def _suggestion(previous_val, value):
     factors = list(set(factors))
     factors.sort(reverse=True)
     return [previous_val + f"{i}," for i in factors]
+
+
+def _split_keys(text):
+	""" Split the keys into their sequence """
+	if "+" in text and text != "Enter '+'": # Linux/Windows
+		return text.split("+")
+	else: # iOS and single buttons
+		return [text]
 
 
 def show_aview_about():
@@ -235,3 +243,78 @@ class NewDataDialog(QDialog):
                     return 1, self.data[self.returnVal]
                 return str(self.cmd.text()), self.data[self.returnVal]
             return 0, []
+
+class PrintKeyboardShortcut(QWidget):
+    def __init__(self, sequence, parent=None):
+        super().__init__(parent)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        for key in _split_keys(sequence):
+            label = QLabel(key)
+            label.setStyleSheet("QLabel {border: 1px solid; border-radius: 4px; padding: 3px; background: #DDF} ")
+            layout.addWidget(label)
+
+        layout.addStretch()
+
+
+class KeyboardHelpDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        shortcuts = {
+                "General": [
+                    ("Ctrl+O", "Load data from file"),
+                    ("Ctrl+S", "Save current plot to file"),
+                    ("Ctrl+N", "Create New Data from dialog"),
+                    ("Ctrl+R", "Reshape the selected data"),
+                    ("Ctrl+D", "Difference beween two selected data"),
+                    ("Ctrl+X", "Delete All Data from the Tree View"),
+                    ("Ctrl+M", "Find Max of current cutout"),
+                    ("Ctrl+Shift+M", "Find Max of current data"),
+                    ("Alt+M", "Find Min of current cutout"),
+                    ("Alt+Shift+M", "Find Min of current data"),
+                    ("F5", "Reload the current file"),
+                    ("Ctrl+C", "Close the ArrayViewer"),
+                    ],
+                "In the Tree/Data Browser": [
+                    ("Ctrl+Click", "Keep slice when changing data"),
+                    ("Delete", "Delete current data"),
+                    ],
+                "In the Graph": [
+                    ("Click", "View value of selection"),
+                    ("Ctrl+Click", "Show first two dimensions of selection (>=3D)"),
+                    ("Alt+Click", "Show plot over the last dimension of selection"),
+                    ("Shift+Click", "Switch view to only show selection"),
+                    ],
+                "On the shape selectors": [
+                    ("Click(On label)", "Select dimension for operation"),
+                    ("Right-click(On label)", "Show animation over dimension"),
+                    ("Enter '+'", "Find maximum of this dimension"),
+                    ("Enter '-'", "Find minimum of this dimension"),
+                    ("Scroll", "Move step-by-step through dimension"),
+                    ("Ctrl+Scroll", "Move 10 steps through dimension"),
+                    ("Shift+Scroll", "Move 100 steps through dimension"),
+                    ]
+        }
+
+        self.setWindowTitle("Keyboard shortcuts")
+        layout = QGridLayout(self)
+        columns = 2
+        i = 0
+        for section, command_list in shortcuts.items():
+            title = QLabel(section)
+            title.setStyleSheet("font-weight: bold;")
+            layout.addWidget(title, i//(columns*2), 0, 1, -1, QtCore.Qt.AlignLeft)
+            i += columns*2
+            l = (len(command_list)-1)//columns+1
+            for keys, txt in command_list:
+                layout.addWidget(PrintKeyboardShortcut(keys), i//(2*columns), 2*(i%(2*columns)))
+                layout.addWidget(QLabel(txt), i//(2*columns), 2*(i%(2*columns)+1))
+                i += 2
+            i = ((i-1)//(columns*2)+1)*columns*2
+
+    def show(self, _=None):
+        self.exec_()

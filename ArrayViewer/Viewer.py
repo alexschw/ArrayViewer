@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 import numpy as np
 from ArrayViewer.Charts import GraphWidget
-from ArrayViewer.Dialogs import ReshapeDialog, NewDataDialog, show_aview_about
+from ArrayViewer.Dialogs import ReshapeDialog, NewDataDialog, show_aview_about, KeyboardHelpDialog
 from ArrayViewer.Slider import rangeSlider
 from ArrayViewer.Data import Loader, h5py
 from ArrayViewer.Style import dark_qpalette
@@ -74,6 +74,7 @@ class ViewerWindow(QMainWindow):
         self.newDataBox = NewDataDialog()
         self.optionsBox = OptionsDialog(self)
         self.editorBox = EditorDialog(self)
+        self.keyboardBox = KeyboardHelpDialog(self)
 
         # set the loader from a separate class
         self.loader = Loader()
@@ -181,6 +182,7 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuStart, "Delete All Data", self._delete_all_data,
                   "Ctrl+X")
         _menu_opt(menuStart, "Options", self.optionsBox.adapt_options)
+        _menu_opt(menuStart, "Keyboard hints", self.keyboardBox.show)
 
         # Operations menu
         menuOpr = QMenu("Operations", menu)
