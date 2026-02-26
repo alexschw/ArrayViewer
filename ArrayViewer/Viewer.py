@@ -140,6 +140,7 @@ class ViewerWindow(QMainWindow):
 
         # Add the "Keep Slice"-Checkbox
         keepslicebox = QCheckBox("Keep Slice", CWgt)
+        keepslicebox.setChecked(self.config.getboolean("opt", "keep_slice", fallback=False))
         keepslicebox.stateChanged.connect(self._set_fixate_view)
         grLayout.addWidget(keepslicebox, 4, 1)
 
@@ -641,6 +642,7 @@ class ViewerWindow(QMainWindow):
 
     def _set_fixate_view(self, new_val):
         self.Shape.fixate_view = new_val
+        self.config.set("opt", "keep_slice", str(bool(new_val)))
 
     def set_slice(self):
         """ Get the current slice in the window and save it in a dict. """
@@ -780,6 +782,7 @@ def main():
         config.set('opt', 'anim_speed', '300')
         config.set('opt', 'cursor', 'False')
         config.set('opt', 'unsave', 'False')
+        config.set('opt', 'keep_slice', 'False')
         config.set('opt', 'max_file_size', '15')
     window = ViewerWindow(app, config)
     fnames = [os.path.abspath(new_file) for new_file in sys.argv[1:]]
