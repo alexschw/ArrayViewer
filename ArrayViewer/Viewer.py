@@ -624,7 +624,7 @@ class ViewerWindow(QMainWindow):
     def _set_fixate_view(self, new_val):
         self.Shape.fixate_view = new_val
 
-    def _set_slice(self):
+    def set_slice(self):
         """ Get the current slice in the window and save it in a dict. """
         if isinstance(self.get(0), self.noPrintTypes):
             return

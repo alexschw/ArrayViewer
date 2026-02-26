@@ -2,9 +2,9 @@
 Slice Selectors for the ArrayViewer
 """
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
-from PyQt5.QtGui import QDrag, QRegExpValidator
+from PyQt5.QtGui import QDrag, QRegExpValidator, QKeySequence
 from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
-                             QVBoxLayout, QWidget)
+                             QShortcut, QVBoxLayout, QWidget)
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QMimeData, QPoint, QRegExp,
                           QSize, Qt)
 import numpy as np
@@ -36,8 +36,16 @@ class singleShape(QWidget):
 
         self.lineedit = QLineEdit(self)
         self.lineedit.setValidator(validator)
-        self.lineedit.editingFinished.connect(self.parent._set_slice)
+        self.lineedit.editingFinished.connect(self.parent.set_slice)
         layout.addWidget(self.lineedit)
+
+        # Ctrl+Up and Ctrl+Down need to be overridden to work as expected
+        up_shortcut = QShortcut(QKeySequence("Ctrl+Up"), self.lineedit)
+        up_shortcut.setContext(Qt.WidgetShortcut)
+        up_shortcut.activated.connect(lambda: self.keyPressEvent(up_shortcut))
+        down_shortcut = QShortcut(QKeySequence("Ctrl+Down"), self.lineedit)
+        down_shortcut.setContext(Qt.WidgetShortcut)
+        down_shortcut.activated.connect(lambda: self.keyPressEvent(down_shortcut))
 
         self.dock.setLayout(layout)
 
@@ -88,7 +96,7 @@ class singleShape(QWidget):
         again the operation will be undone.
         """
         self.change_operation.emit(self.index)
-        self.parent._set_slice()
+        self.parent.set_slice()
 
     def mousePressEvent(self, event):
         """ Catch mousePressEvent for the dragging action. """
@@ -136,6 +144,51 @@ class singleShape(QWidget):
         new_order = np.arange(self.parent.get(0).ndim)
         new_order[id_from], new_order[id_to] = id_to, id_from
         self.parent.transpose_data(new_order)
+
+    def keyPressEvent(self, ev):
+        """ Catch keyPressEvents of Arrows. """
+        if ev.key() in (Qt.Key_Up, QKeySequence("Ctrl+Up")):
+            self.change_value(1)
+        if ev.key() in (Qt.Key_Down, QKeySequence("Ctrl+Down")):
+            self.change_value(-1)
+
+    def change_value(self, mod):
+        """ Increment/Decrement the value of the textedit by 1, 10 or 100."""
+        txt = self.lineedit.text()
+        if "," in txt:
+            return
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers & Qt.ControlModifier:
+            mod *= 10
+        elif modifiers & Qt.ShiftModifier:
+            mod *= 100
+        try:
+            self.lineedit.setText(str(int(txt) + mod))
+        except ValueError:
+            txt = txt.split(':')
+            try:
+                for t in txt:
+                    if t != "":
+                        int(t)
+            except ValueError:
+                self.parent.info_msg("Could not convert value to int.", -1)
+                return
+            if len(txt) == 1:
+                return
+            if (len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
+                and modifiers & Qt.ControlModifier):
+                mod //= 10
+                mod *= int(txt[1]) - int(txt[0])
+            if (len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
+                and modifiers & Qt.ControlModifier):
+                mod //= 100
+                mod *= int(txt[2])
+            if txt[0] != "":
+                txt[0] = str(int(txt[0]) + mod)
+            if txt[1] != "":
+                txt[1] = str(int(txt[1]) + mod)
+            self.lineedit.setText(':'.join(txt))
+        self.parent.set_slice()
 
 
 class ShapeSelector(QWidget):
@@ -294,40 +347,5 @@ class ShapeSelector(QWidget):
                 break
         if onField < 0:
             return
-        from_wgt = self._get(onField).lineedit
-        txt = from_wgt.text()
-        if "," in txt:
-            return
-        modifiers = QApplication.keyboardModifiers()
-        mod = np.sign(event.angleDelta().y())
-        if modifiers & Qt.ControlModifier:
-            mod *= 10
-        elif modifiers & Qt.ShiftModifier:
-            mod *= 100
-        try:
-            from_wgt.setText(str(int(txt) + mod))
-        except ValueError:
-            txt = txt.split(':')
-            try:
-                for t in txt:
-                    if t != "":
-                        int(t)
-            except ValueError:
-                self.parent.info_msg("Could not convert value to int.", -1)
-                return
-            if len(txt) == 1:
-                return
-            if (len(txt) == 2 and txt[1] != "" and modifiers & Qt.ShiftModifier
-                and modifiers & Qt.ControlModifier):
-                mod //= 10
-                mod *= int(txt[1]) - int(txt[0])
-            if (len(txt) == 3 and txt[2] != "" and modifiers & Qt.ShiftModifier
-                and modifiers & Qt.ControlModifier):
-                mod //= 100
-                mod *= int(txt[2])
-            if txt[0] != "":
-                txt[0] = str(int(txt[0]) + mod)
-            if txt[1] != "":
-                txt[1] = str(int(txt[1]) + mod)
-            from_wgt.setText(':'.join(txt))
-        self.parent._set_slice()
+        from_wgt = self._get(onField)
+        from_wgt.change_value(np.sign(event.angleDelta().y()))
