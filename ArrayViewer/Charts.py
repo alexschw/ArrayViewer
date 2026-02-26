@@ -89,9 +89,13 @@ def reformat(dat):
         # Check if data is iterable
         _ = iter(dat)
     except TypeError:
-        if not 1e-5 < np.abs(dat) < 1e5:
-            return f"{dat:.5e}"
-        return f"{dat:.5f}"
+        try:
+            x = float(dat)
+        except (TypeError, ValueError):
+            return str(dat)
+        if not 1e-5 < np.abs(x) < 1e5:
+            return f"{x:.5e}"
+        return f"{x:.5f}"
     else:
         return [reformat(d) for d in dat]
 
@@ -366,7 +370,7 @@ class GraphWidget(QWidget):
 
     def colorbar(self, minmax=None):
         """ Add a colorbar to the graph or remove it, if it is existing. """
-        if not isinstance(self._img, AxesImage):
+        if not isinstance(self._img, AxesImage) or self._axes is None:
             return
         if minmax is not None and not isinstance(self._clim[0], bool):
             _vmin = minmax[0] * (self._clim[1] - self._clim[0]) + self._clim[0]
@@ -435,13 +439,14 @@ class GraphWidget(QWidget):
         self._axes.clear()
         data = self._ui.get(0)
         self._anim_timer.stop()
-        if data.size == 0:
-            self._ui.info_msg("Empty dataset!", -1)
-            return
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
             self._axes.text(-0.1, 1.1, str(data), va='top', wrap=True)
             self._axes.axis('off')
+            self._canv.draw()
+        elif data.size == 0:
+            self._ui.info_msg("Empty dataset!", -1)
+            return
         elif isinstance(data, Dataset) and data.shape == ():
             # Print single values of h5py arrays to the graph directly
             self._axes.text(-0.1, 1.1, data[()], va='top', wrap=True)

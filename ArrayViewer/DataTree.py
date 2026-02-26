@@ -140,6 +140,8 @@ class DataTree(QTabWidget):
                         child.addChild(sitem)
                     if not v:
                         for c in range(child.childCount()):
+                            if item.child(c) is None:
+                                continue
                             item.child(c).setCheckState(0, Qt.Unchecked)
                             self.checkableItems.append(item.child(c))
                 elif not v:

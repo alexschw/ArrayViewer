@@ -593,7 +593,7 @@ class ViewerWindow(QMainWindow):
         if self._slice_key() in self.slices:
             self.slices[self._slice_key()] = [
                 self.slices[self._slice_key()][i] for i in new_order]
-        if self._slice_key() in self.operations:
+        if self._slice_key() in self.operations and self.operations[self._slice_key()].size > 0:
             self.operations[self._slice_key()] = new_order[self.operations[self._slice_key()]]
         self.Shape.update_shape(self.get(0).shape)
         sh = self.get(0).shape
