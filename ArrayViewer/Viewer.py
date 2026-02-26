@@ -16,9 +16,9 @@ import os.path
 from natsort import realsorted, ns
 from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QCheckBox,
-                             QFileDialog, QGridLayout, QLabel, QLineEdit,
-                             QMainWindow, QMenu, QToolBar, QMessageBox,
-                             QPushButton, QWidget)
+                             QFileDialog, QGridLayout, QGroupBox, QLabel,
+                             QLineEdit, QMainWindow, QMenu, QToolBar,
+                             QMessageBox, QPushButton, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 import numpy as np
@@ -49,6 +49,16 @@ def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
         btn.setCheckable(True)
     menu.addAction(btn)
     return btn
+
+def _toolbar_box(bar):
+    """ Generate a box around multiple toolbar icons """
+    box = QGroupBox("")
+    b = QVBoxLayout(box)
+    b.addWidget(bar)
+    b.setSpacing(0)
+    b.setContentsMargins(8, 2, 8, 0)
+    b.addWidget(QLabel("Plot Style", alignment=Qt.AlignHCenter))
+    return box
 
 
 class ViewerWindow(QMainWindow):
@@ -126,7 +136,12 @@ class ViewerWindow(QMainWindow):
         # Add the "Transpose"-Checkbox
         self.Transp = QCheckBox("Transpose", CWgt)
         self.Transp.stateChanged.connect(self._draw_data)
-        grLayout.addWidget(self.Transp, 4, 0, 1, 2)
+        grLayout.addWidget(self.Transp, 4, 0)
+
+        # Add the "Keep Slice"-Checkbox
+        keepslicebox = QCheckBox("Keep Slice", CWgt)
+        keepslicebox.stateChanged.connect(self._set_fixate_view)
+        grLayout.addWidget(keepslicebox, 4, 1)
 
         # Add the Permute Field
         self.Prmt = QLineEdit("", CWgt)
@@ -192,7 +207,6 @@ class ViewerWindow(QMainWindow):
         _menu_opt(menuOpr, "Find Min", lambda: self._data_max_min(True), ["Alt+M", "Alt+Shift+M"])
         _menu_opt(menuOpr, "Colorbar", self._add_colorbar).setCheckable(True)
         _menu_opt(menuOpr, "Legend for small plots", self.Graph.toggle_legend).setCheckable(True)
-        _menu_opt(menuOpr, "Keep Slice on data change", self._set_fixate_view).setCheckable(True)
 
         _menu_opt(menu, "?", show_aview_about)
 
@@ -219,16 +233,19 @@ class ViewerWindow(QMainWindow):
 
     def __init_toolbar(self):
         """ Setup the toolbar beneath the main menu bar. """
-        bar = QToolBar()
+        toolbar = QToolBar(self)
+        toolbar.setStyleSheet("QToolBar { margin: 0px; }")
+        bar_plt = QToolBar()
         ag_plt = QActionGroup(self)
-        self._menu_btn(bar, "Standard", "std", ag_plt).setChecked(True)
-        self.Plot2D = self._menu_btn(bar, "2D as plot", "plot", ag_plt)
-        self.PlotScat = self._menu_btn(bar, "2D as Scatter", "scatter", ag_plt)
-        self.MMM = self._menu_btn(bar, "min-mean-max plot", "mmm", ag_plt)
-        self.Plot3D = self._menu_btn(bar, "3D as RGB(A)", "rgb", ag_plt)
-        self.PrintFlat = self._menu_btn(bar, "Print Values as text", "text", ag_plt)
+        self._menu_btn(bar_plt, "Standard", "std", ag_plt).setChecked(True)
+        self.Plot2D = self._menu_btn(bar_plt, "2D as plot", "plot", ag_plt)
+        self.PlotScat = self._menu_btn(bar_plt, "2D as Scatter", "scatter", ag_plt)
+        self.MMM = self._menu_btn(bar_plt, "min-mean-max plot", "mmm", ag_plt)
+        self.Plot3D = self._menu_btn(bar_plt, "3D as RGB(A)", "rgb", ag_plt)
+        self.PrintFlat = self._menu_btn(bar_plt, "Print Values as text", "text", ag_plt)
+        toolbar.addWidget(_toolbar_box(bar_plt))
 
-        bar.addSeparator()
+        bar = QToolBar()
         ag_cm = QActionGroup(self)
         self._menu_btn(bar, "Colormap 'jet'", 'jet', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('jet'))
         self._menu_btn(bar, "Colormap 'gray'", 'gray', ag_cm, False).triggered.connect(lambda: self.Graph.colormap('gray'))
@@ -237,8 +254,9 @@ class ViewerWindow(QMainWindow):
         vir = self._menu_btn(bar, "Colormap 'viridis'", 'viridis', ag_cm, False)
         vir.triggered.connect(lambda: self.Graph.colormap('viridis'))
         vir.setChecked(True)
+        toolbar.addWidget(_toolbar_box(bar))
 
-        return bar
+        return toolbar
 
     def get(self, item):
         """ Gets the current data. """
