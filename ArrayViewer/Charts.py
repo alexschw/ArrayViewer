@@ -339,16 +339,18 @@ class GraphWidget(QWidget):
         """ Plot up to four rows as a scatter (x, y, size, color)"""
         if self.cutout.shape[1] < 4:
             col = 'b'
+            cmap = None
         else:
             col = self.cutout[:, 3] - np.nanmin(self.cutout[:, 3])
             col /= np.nanmax(col)
+            cmap = self._colormap
         if self.cutout.shape[1] < 3:
             siz = 25
         else:
             siz = self.cutout[:, 2] - np.nanmin(self.cutout[:, 2])
             siz = 1 + 100 * siz / np.nanmax(siz)
         self._img = self._axes.scatter(self.cutout[:, 0], self.cutout[:, 1],
-                                       c=col, s=siz, cmap=self._colormap)
+                                       c=col, s=siz, cmap=cmap)
 
     def _set_ticks(self, transp=True):
         """ Calculate the ticks for the plot by checking the limits """

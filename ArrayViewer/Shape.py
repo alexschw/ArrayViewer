@@ -149,8 +149,10 @@ class singleShape(QWidget):
         """ Catch keyPressEvents of Arrows. """
         if ev.key() in (Qt.Key_Up, QKeySequence("Ctrl+Up")):
             self.change_value(1)
-        if ev.key() in (Qt.Key_Down, QKeySequence("Ctrl+Down")):
+        elif ev.key() in (Qt.Key_Down, QKeySequence("Ctrl+Down")):
             self.change_value(-1)
+        else:
+            self.parent.keyPressEvent(ev)
 
     def change_value(self, mod):
         """ Increment/Decrement the value of the textedit by 1, 10 or 100."""
