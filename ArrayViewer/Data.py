@@ -47,7 +47,7 @@ class Loader(QObject):
             # Run the validation again for each subelement in the dict
             data = {str(key): self._validate(data[key]) for key in data.keys()
                     if str(key)[:2] != "__"}
-        elif isinstance(data, list):
+        elif isinstance(data, (set, list)):
             data = self._validate_list(data)
         elif isinstance(data, scipy.io.matlab.mat_struct):
             # Create a dictionary from matlab structs
@@ -73,6 +73,8 @@ class Loader(QObject):
 
     def _validate_list(self, data):
         """ Validate the elements of a list. Reformating uneven lists. """
+        if isinstance(data, set):
+            data = list(data)
         if data != [] and not isinstance(data[0], str):
             # not all elements in the list have the same length
             if isinstance(data[0], list) and len(set(map(len, data))) != 1:
@@ -81,11 +83,10 @@ class Loader(QObject):
             try:
                 dat = np.array(data)
                 if dat.dtype == "O":
-                    data = self._validate({str(k): v for k, v in enumerate(data)})
-                else:
-                    data = dat
+                    return self._validate({str(k): v for k, v in enumerate(data)})
+                return dat
             except ValueError:
-                data = self._validate({str(k): v for k, v in enumerate(data)})
+                return self._validate({str(k): v for k, v in enumerate(data)})
         return data
 
     def _get_h5py_dict_data(self, file):
@@ -119,7 +120,7 @@ class Loader(QObject):
                 except (OSError, TypeError):
                     data = self._h5py_val(data[()])
             else:
-                data = np.array(data)
+                data = data[()] if not data.shape else np.array(data)
         elif isinstance(data, h5py.Group):
             data = self._get_h5py_dict_data(data)
         elif isinstance(data, np.ndarray):

@@ -50,11 +50,11 @@ def _suggestion(previous_val, value):
 
 
 def _split_keys(text):
-	""" Split the keys into their sequence """
-	if "+" in text and text != "Enter '+'": # Linux/Windows
-		return text.split("+")
-	else: # iOS and single buttons
-		return [text]
+    """ Split the keys into their sequence """
+    if "+" in text and text != "Enter '+'": # Linux/Windows
+        return text.split("+")
+    else: # iOS and single buttons
+        return [text]
 
 
 def show_aview_about():

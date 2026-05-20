@@ -416,24 +416,50 @@ class ViewerWindow(QMainWindow):
 
     def _dlg_combine(self):
         """ Open a dialog to combine the dataset. """
+        def get_keys(local_data):
+            return realsorted(local_data, alg=ns.IGNORECASE|ns.NUMAFTER)
+
+        def find_shape(data):
+            # Find the biggest shape in the dataset and drop unusable keys
+            keys = get_keys(data)
+            skipkeys = []
+            dshape = set()
+            for k in keys:
+                try:
+                    if isinstance(data[k], dict):
+                        local_shape, sk = find_shape(data[k])
+                        if not sk:
+                            dshape.add(local_shape)
+                    else:
+                        dshape.add(data[k].shape)
+                except ValueError:
+                    # For h5py dictionaries
+                    dshape.add(data.get(k)[()].shape)
+                except AttributeError:
+                    # uncombinable types
+                    skipkeys.append(k)
+            keys = [k for k in keys if k not in skipkeys]
+            mshape = tuple(np.max(list(dshape), axis=0).tolist()) + (len(keys),)
+            return mshape, skipkeys
+
+        def combine(d):
+            newd = []
+            for k in get_keys(d):
+                try:
+                    newd.append(d[k].flatten())
+                except AttributeError:
+                    # Dictionaries
+                    newd.append(combine(d[k]).flatten())
+                except ValueError:
+                    # For h5py dictionaries
+                    newd.append(d.get(k)[()].flatten())
+            return np.array(list(zip_longest(*newd)), dtype=float)
+
         trace = self.get_obj_trace(self.datatree.current_item())
         data = self.get(trace)
-        keys = realsorted(data, alg=ns.IGNORECASE|ns.NUMAFTER)
-        skipkeys = []
+        keys = get_keys(data)
 
-        # Find the biggest shape in the dataset and drop unusable keys
-        dshape = set()
-        for k in keys:
-            try:
-                dshape.add(data[k].shape)
-            except ValueError:
-                # For h5py dictionaries
-                dshape.add(data.get(k)[()].shape)
-            except AttributeError:
-                # uncombinable types
-                skipkeys.append(k)
-        keys = [k for k in keys if k not in skipkeys]
-        mshape = tuple(np.max(list(set(dshape)), axis=0)) + (len(keys),)
+        mshape, skipkeys = find_shape(data)
 
         # Show a dialog asking if the combination should be done.
         txt = f"Combine {len(keys)} elements into {mshape} shape?"
@@ -448,12 +474,7 @@ class ViewerWindow(QMainWindow):
             return
 
         # Perform the combination
-        try:
-            newd = [data[k].flatten() for k in keys]
-        except ValueError:
-            # For h5py dictionaries
-            newd = [data.get(k)[()].flatten() for k in keys]
-        combined = np.array(list(zip_longest(*newd)), dtype=float)
+        combined = combine(data)
         try:
             combined = np.reshape(combined, mshape)
         except ValueError:
@@ -470,8 +491,8 @@ class ViewerWindow(QMainWindow):
     def _dlg_load_data(self):
         """ Open file-dialog to choose one or multiple files. """
         FD = QFileDialog(self, 'Open data file', '.',
-                         """Raw data (*.data *.hdf5 *.mat *.npy *.txt *.csv *.bin);;
-                          Images (*.jpg *.bmp *.png *.tiff *.gif);;
+                         """Raw data (*.data *.hdf5 *.mat *.npy *.npz *.txt *.csv *.bin);;
+                          Images (*.jpg *.bmp *.png *.tiff *.webp *.gif);;
                           All (*)""")
         FD.setOptions(QFileDialog.DontUseNativeDialog)
         FD.setFileMode(QFileDialog.ExistingFiles)
