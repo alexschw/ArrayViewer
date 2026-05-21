@@ -186,6 +186,7 @@ class ViewerWindow(QMainWindow):
 
         # Shape Widget
         self.Shape = ShapeSelector(self)
+        keepslicebox.stateChanged.emit(keepslicebox.checkState())
         grLayout.addWidget(self.Shape, 6, 1, 1, 3)
 
     def __initMenu(self):
@@ -787,6 +788,7 @@ class ViewerWindow(QMainWindow):
             if os.path.getmtime(fname) == timestamp and self.reload_unchanged_file != (fname, timestamp):
                 self.info_msg("File has not changed since last load. Press F5 again to load anyway.", 0)
                 self.reload_unchanged_file = (fname, timestamp)
+                self.errMsgTimer.singleShot(3000, lambda: setattr(self, "reload_unchanged_file", ("", "")))
                 return
             self.reload_unchanged_file = ("", "")
             msg = QMessageBox(
