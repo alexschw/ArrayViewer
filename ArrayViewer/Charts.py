@@ -1,6 +1,7 @@
 """
 GraphWidget for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 from contextlib import suppress
 from PyQt5.QtWidgets import QApplication, QDialog, QLabel, QSizePolicy, QVBoxLayout, QWidget
@@ -17,9 +18,9 @@ from h5py._hl.dataset import Dataset
 
 
 def _flat_with_padding(Array, padding=1, fill=np.nan):
-    """ Flatten ND array into a 2D array and add a padding with given fill """
+    """Flatten ND array into a 2D array and add a padding with given fill"""
     # Reshape the array to 3D
-    Arr = np.reshape(Array, Array.shape[:2] + (-1, ))
+    Arr = np.reshape(Array, Array.shape[:2] + (-1,))
     rows = _rows_from_dim(Array.shape)
     # Add the padding to the right and bottom of the arrays
     A0 = np.ones([padding, Arr.shape[1], Arr.shape[2]]) * fill
@@ -35,22 +36,22 @@ def _flat_with_padding(Array, padding=1, fill=np.nan):
 
 
 def _rows_from_dim(dim):
-    """ Returns a reasonable row count for the given dimensionality """
-    if (len(dim) == 4 and .18 < 1.0 * dim[2] / dim[3] < 5.5):
+    """Returns a reasonable row count for the given dimensionality"""
+    if len(dim) == 4 and 0.18 < 1.0 * dim[2] / dim[3] < 5.5:
         # If the Array is 4D and has reasonable ratio, keep that ratio.
         rows = dim[2]
     else:
         # Get the most equal division of the last dimension
         last_dim = int(np.prod(dim[2:]))
         for n in range(int(np.sqrt(last_dim)), last_dim + 1):
-            if last_dim%n == 0:
+            if last_dim % n == 0:
                 rows = last_dim // n
                 break
     return rows
 
 
 def _unravel_flat_with_padding(ind, sh, pad=1):
-    """ Unravel a clicked index onto its corresponding n-D-index """
+    """Unravel a clicked index onto its corresponding n-D-index"""
     ind = [i - pad if i > pad else 0 for i in ind]
     cols = int(np.prod(sh[2:])) // _rows_from_dim(sh)
     box_index = [ind[0] // (sh[0] + pad), ind[1] // (sh[1] + pad)]
@@ -61,7 +62,7 @@ def _unravel_flat_with_padding(ind, sh, pad=1):
 
 
 def _setlocator(axis, lim, nPad=None):
-    """ Set the locator of an axis with the given limits and set the ticks """
+    """Set the locator of an axis with the given limits and set the ticks"""
     if isinstance(lim, list):
         loc = axis.get_major_locator()()
         axis.set_major_locator(FixedLocator(loc))
@@ -82,7 +83,7 @@ def _setlocator(axis, lim, nPad=None):
 
 
 def reformat(dat):
-    """ Format the numberstrings correctly. """
+    """Format the numberstrings correctly."""
     if dat is None or isinstance(dat, np.ma.core.MaskedConstant):
         return ""
     try:
@@ -101,13 +102,14 @@ def reformat(dat):
 
 
 class GraphWidget(QWidget):
-    """ Draws the data graph. """
+    """Draws the data graph."""
+
     def __init__(self, parent=None):
-        """ Initialize the figure. """
+        """Initialize the figure."""
         super().__init__(parent)
 
         # Setup the canvas, figure and axes
-        self._figure = Figure(facecolor='white')
+        self._figure = Figure(facecolor="white")
         self._axes = self._figure.add_subplot(111)
         self._canv = FigureCanvasQTAgg(self._figure)
         self._canv.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -120,8 +122,8 @@ class GraphWidget(QWidget):
         self.has_cb = False
         self.has_operation = False
         self.has_legend = False
-        self._colormap = 'viridis'
-        self._opr = (lambda x: x)
+        self._colormap = "viridis"
+        self._opr = lambda x: x
         self._oprdim = np.array([], dtype=int)
         self._oprcorr = None
         self.cutout = np.array([])
@@ -129,17 +131,16 @@ class GraphWidget(QWidget):
         self._tick_str = [0, 0]
 
         # Add a cursor
-        self._cursor = Cursor(self._axes, color='red', linewidth=1)
-        if self._ui.config.getboolean('opt', 'cursor', fallback=False):
+        self._cursor = Cursor(self._axes, color="red", linewidth=1)
+        if self._ui.config.getboolean("opt", "cursor", fallback=False):
             self._cursor.visible = False
         self.last_clicked = (None, None)
         self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False)
-        self._canv.mpl_connect('pick_event', self.onclick)
+        self._canv.mpl_connect("pick_event", self.onclick)
 
         # Animation
         self._anim_timer = QtCore.QTimer()
-        self._anim_timer.setInterval(parent.config.getint('opt', 'anim_speed',
-                                                          fallback=300))
+        self._anim_timer.setInterval(parent.config.getint("opt", "anim_speed", fallback=300))
         self._anim_timer.timeout.connect(self._animate)
         self._anim_step = 0
         self._anim_dim = None
@@ -152,11 +153,11 @@ class GraphWidget(QWidget):
         self._layout = QVBoxLayout(self)
         self._layout.addWidget(self._canv)
         self._txt = QLabel(self)
-        self._txt.setText('')
+        self._txt.setText("")
         self._layout.addWidget(self._txt)
 
     def onclick(self, event):
-        """ Override the existing onclick function to display value under cursor. """
+        """Override the existing onclick function to display value under cursor."""
         # Only react to clicks if not in Animation mode
         if self._anim_dim is not None:
             return
@@ -203,7 +204,7 @@ class GraphWidget(QWidget):
             self._ui.Shape.set_non_scalar_values(xyz)
         elif QApplication.keyboardModifiers() & QtCore.Qt.ControlModifier:
             # Set Values in shape to 2d if clicked with control
-            self._ui.Shape.set_non_scalar_values(['', ''] + xyz[2:])
+            self._ui.Shape.set_non_scalar_values(["", ""] + xyz[2:])
         elif QApplication.keyboardModifiers() & QtCore.Qt.AltModifier and len(xyz) > 1:
             self.spawn_micro_plot(xyz)
         else:
@@ -219,7 +220,7 @@ class GraphWidget(QWidget):
         self._canv.draw()
 
     def fix_limit(self, idx):
-        """ Fix the current value of the minimum(idx 0) or maximum(idx 1). """
+        """Fix the current value of the minimum(idx 0) or maximum(idx 1)."""
         if self._fix_limits[idx] is None:
             self._fix_limits[idx] = self._clim[idx]
             return 1
@@ -227,7 +228,7 @@ class GraphWidget(QWidget):
         return 0
 
     def start_animation(self, dim=None):
-        """ Start the animation over the given dimension. """
+        """Start the animation over the given dimension."""
         if dim in self._tick_str[0]:
             return False
         if dim in self._oprdim:
@@ -247,19 +248,19 @@ class GraphWidget(QWidget):
         return True
 
     def stop_animation(self):
-        """ Stop the animation and set the cutout back to its original form. """
+        """Stop the animation and set the cutout back to its original form."""
         self._anim_dim = None
         if self._anim_timer.isActive():
             self._anim_timer.stop()
             self.cutout = self._anim_cutout
 
     def set_anim_speed(self):
-        """ Set the timeout time of the animation timer. """
-        anim_speed = self._ui.config.getint('opt', 'anim_speed', fallback=300)
+        """Set the timeout time of the animation timer."""
+        anim_speed = self._ui.config.getint("opt", "anim_speed", fallback=300)
         self._anim_timer.setInterval(anim_speed)
 
     def spawn_micro_plot(self, location):
-        """ Show a small window with the timecourse of selected location. """
+        """Show a small window with the timecourse of selected location."""
         key = self._ui._slice_key()
         data = self._ui.get(0)
         if key in self._ui.slices:
@@ -278,7 +279,7 @@ class GraphWidget(QWidget):
         micro_plot.show()
 
     def _animate(self):
-        """ Perform one animation step. """
+        """Perform one animation step."""
         if self._anim_dim >= self._anim_cutout.ndim:
             self.stop_animation()
             return
@@ -290,7 +291,7 @@ class GraphWidget(QWidget):
         self._canv.draw()
 
     def _n_D_plot(self):
-        """ Plot multi-dimensional data. """
+        """Plot multi-dimensional data."""
         sh = self.cutout.shape
         nPad = sh[0] // 100 + 1
         if self._ui.Plot3D.isChecked() and self.cutout.ndim == 3 and sh[2] in (3, 4):
@@ -304,41 +305,41 @@ class GraphWidget(QWidget):
             dat = _flat_with_padding(self.cutout, nPad)
         if self.cutout.dtype == np.float16:
             dat = dat.astype(np.float32)
-        self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
+        self._img = self._axes.imshow(dat, interpolation="none", aspect="auto")
         self._set_ticks()
         _setlocator(self._axes.xaxis, sh + (dat.shape[1],), nPad)
         sh = (sh[1], sh[0]) + sh[2:]
         _setlocator(self._axes.yaxis, sh + (dat.shape[0],), nPad)
 
     def _two_D_plot(self):
-        """ Plot 2-dimensional data. """
+        """Plot 2-dimensional data."""
         if self._ui.MMM.isChecked():
             self._img = []
             mean = np.nanmean(self.cutout, axis=0)
             sd = np.nanstd(self.cutout, axis=0)
-            self._img += self._axes.plot(np.nanmax(self.cutout, axis=0), 'r')
-            self._img += self._axes.plot(mean, 'k')
-            self._img += self._axes.plot(np.nanmin(self.cutout, axis=0), 'b')
+            self._img += self._axes.plot(np.nanmax(self.cutout, axis=0), "r")
+            self._img += self._axes.plot(mean, "k")
+            self._img += self._axes.plot(np.nanmin(self.cutout, axis=0), "b")
             if len(mean) >= 20:
-                self._axes.fill_between(np.arange(len(mean)), mean+sd, mean-sd,
-                    color='k', alpha=0.2, interpolate=True, ec=None)
+                self._axes.fill_between(np.arange(len(mean)), mean + sd, mean - sd,
+                    color="k", alpha=0.2, interpolate=True, ec=None)
             else:
-                self._axes.errorbar(np.arange(len(mean)), mean, yerr=sd, color='k', capsize=5)
+                self._axes.errorbar(np.arange(len(mean)), mean, yerr=sd, color="k", capsize=5)
 
-            self._axes.legend(["Max", "Mean", "Min"], loc='upper right')
+            self._axes.legend(["Max", "Mean", "Min"], loc="upper right")
         else:
             dat = self.cutout.T
             if self.cutout.dtype == np.float16:
                 dat = dat.astype(np.float32)
-            self._img = self._axes.imshow(dat, interpolation='none', aspect='auto')
+            self._img = self._axes.imshow(dat, interpolation="none", aspect="auto")
         self._set_ticks()
         _setlocator(self._axes.xaxis, self.ticks[0])
         _setlocator(self._axes.yaxis, self.ticks[1])
 
     def _n_D_scatter(self):
-        """ Plot up to four rows as a scatter (x, y, size, color)"""
+        """Plot up to four rows as a scatter (x, y, size, color)"""
         if self.cutout.shape[1] < 4:
-            col = 'b'
+            col = "b"
             cmap = None
         else:
             col = self.cutout[:, 3] - np.nanmin(self.cutout[:, 3])
@@ -349,12 +350,11 @@ class GraphWidget(QWidget):
         else:
             siz = self.cutout[:, 2] - np.nanmin(self.cutout[:, 2])
             siz = 1 + 100 * siz / np.nanmax(siz)
-        self._img = self._axes.scatter(self.cutout[:, 0], self.cutout[:, 1],
-                                       c=col, s=siz, cmap=cmap)
+        self._img = self._axes.scatter(self.cutout[:, 0], self.cutout[:, 1], c=col, s=siz, cmap=cmap)
 
     def _set_ticks(self, transp=True):
-        """ Calculate the ticks for the plot by checking the limits """
-        slices = (slice(n, n+1) if isinstance(n, int) else n for n in self._tick_str[1])
+        """Calculate the ticks for the plot by checking the limits"""
+        slices = (slice(n, n + 1) if isinstance(n, int) else n for n in self._tick_str[1])
         self.ticks = []
         for n in slices:
             if isinstance(n, slice):
@@ -365,13 +365,13 @@ class GraphWidget(QWidget):
             self.ticks[0], self.ticks[1] = self.ticks[1], self.ticks[0]
 
     def clear(self):
-        """ Clear the figure. """
+        """Clear the figure."""
         self._cb = None
         self._figure.clear()
         self._axes = self._figure.gca()
 
     def colorbar(self, minmax=None):
-        """ Add a colorbar to the graph or remove it, if it is existing. """
+        """Add a colorbar to the graph or remove it, if it is existing."""
         if not isinstance(self._img, AxesImage) or self._axes is None:
             return
         if minmax is not None and not isinstance(self._clim[0], bool):
@@ -379,7 +379,7 @@ class GraphWidget(QWidget):
             _vmax = minmax[1] * self._clim[1]
             self._img.set_clim(
                 vmin=_vmin if self._fix_limits[0] is None else self._fix_limits[0],
-                vmax=_vmax if self._fix_limits[1] is None else self._fix_limits[1]
+                vmax=_vmax if self._fix_limits[1] is None else self._fix_limits[1],
             )
         if not self.has_cb:
             if self._cb is not None:
@@ -390,7 +390,7 @@ class GraphWidget(QWidget):
         self._canv.draw()
 
     def colormap(self, mapname=None):
-        """ Replace colormap with the given one. """
+        """Replace colormap with the given one."""
         if mapname:
             self._colormap = mapname
         if not isinstance(self._img, AxesImage):
@@ -401,32 +401,32 @@ class GraphWidget(QWidget):
         self._canv.draw()
 
     def figure(self):
-        """ Return the local figure variable. """
+        """Return the local figure variable."""
         return self._figure
 
     def has_opr(self):
-        """ Check if the operation is None. """
+        """Check if the operation is None."""
         return self.has_operation
 
     def legend(self):
-        """ Generate a legend for small plots """
+        """Generate a legend for small plots"""
         if isinstance(self._img, (AxesImage, PathCollection, type(None))) or self._ui.MMM.isChecked():
             return
         if self.has_legend and 1 < len(self._img) <= 10:
             if isinstance(self.ticks[1], list):
                 ticks = list(self.ticks[1])
                 if ticks[1] == -1:
-                    ticks[1] = ticks[2]*len(self._img)+ticks[0]
+                    ticks[1] = ticks[2] * len(self._img) + ticks[0]
                 ticks = range(*ticks)
             else:
                 ticks = self.ticks[1].tolist()
-            self._axes.legend(self._img, ticks, loc='upper right')
+            self._axes.legend(self._img, ticks, loc="upper right")
         elif self._axes.get_legend():
             self._axes.get_legend().remove()
         self._canv.draw()
 
     def renew_cutout(self, data, slices):
-        """ Renew the value of self.cutout with the given data and slices """
+        """Renew the value of self.cutout with the given data and slices"""
         newslice = []
         for i, sli in enumerate(slices):
             if isinstance(sli, tuple):
@@ -437,22 +437,22 @@ class GraphWidget(QWidget):
         self.cutout = data[tuple(newslice)].squeeze()
 
     def renewPlot(self, s, scalDims):
-        """ Draw given data. """
+        """Draw given data."""
         self._axes.clear()
         data = self._ui.get(0)
         self._anim_timer.stop()
         if isinstance(data, self.noPrintTypes):
             # Print strings or lists of strings to the graph directly
-            self._axes.text(-0.1, 1.1, str(data), va='top', wrap=True)
-            self._axes.axis('off')
+            self._axes.text(-0.1, 1.1, str(data), va="top", wrap=True)
+            self._axes.axis("off")
             self._canv.draw()
         elif data.size == 0:
             self._ui.info_msg("Empty dataset!", -1)
             return
         elif isinstance(data, Dataset) and data.shape == ():
             # Print single values of h5py arrays to the graph directly
-            self._axes.text(-0.1, 1.1, data[()], va='top', wrap=True)
-            self._axes.axis('off')
+            self._axes.text(-0.1, 1.1, data[()], va="top", wrap=True)
+            self._axes.axis("off")
         elif isinstance(data[0], list):
             # If there is an array of lists plot each element as a graph
             self._img = [self._axes.plot(lst) for lst in data]
@@ -465,7 +465,7 @@ class GraphWidget(QWidget):
             if len(self._oprdim) and not all(np.isin(self._oprdim, scalDims)):
                 a = np.setdiff1d(self._oprdim, scalDims)
                 len_co = len(self.cutout.shape)
-                new_opr = a - (scalDims[:,None] <= a).sum(0)
+                new_opr = a - (scalDims[:, None] <= a).sum(0)
                 self._oprcorr = tuple(int(b) for b in new_opr if b < len_co)
                 self.cutout = self._opr(self.cutout)
             else:
@@ -477,7 +477,7 @@ class GraphWidget(QWidget):
             self.reapply_setup()
 
     def plot(self):
-        """ Draw one plot step """
+        """Draw one plot step"""
         # Check for empty dimensions
         if 0 in self.cutout.shape:
             self._axes.clear()
@@ -487,8 +487,8 @@ class GraphWidget(QWidget):
         if self.cutout.ndim == 0 or self._ui.PrintFlat.isChecked():
             self._axes.set_ylim([0, 1])
             self._img = None
-            self._axes.text(-0.1, 1.1, str(self.cutout), va='top', wrap=True)
-            self._axes.axis('off')
+            self._axes.text(-0.1, 1.1, str(self.cutout), va="top", wrap=True)
+            self._axes.axis("off")
         # Graph an 1D-cutout
         elif self.cutout.ndim == 1:
             self._img = self._axes.plot(self.cutout)
@@ -501,7 +501,7 @@ class GraphWidget(QWidget):
         # 2D-cutout will be shown using imshow, scatter or plot
         elif self.cutout.ndim == 2:
             if self._ui.Plot2D.isChecked():
-                unsave = self._ui.config.getboolean('opt', 'unsave', fallback=False)
+                unsave = self._ui.config.getboolean("opt", "unsave", fallback=False)
                 if self.cutout.shape[1] > 500 and not unsave:
                     msg = "You are trying to plot more than 500 lines!"
                     msg += " (change to 'unsave' mode in options to plot them anyway)"
@@ -521,8 +521,8 @@ class GraphWidget(QWidget):
 
     def reapply_setup(self):
         """
-            Reapply the basic setup such that the colorbar, colormap,
-            limits, cursor and annotations are in the usual position.
+        Reapply the basic setup such that the colorbar, colormap,
+        limits, cursor and annotations are in the usual position.
         """
         # Reset the colorbar. A better solution would be possible, if the
         # axes were not cleared everytime.
@@ -538,36 +538,39 @@ class GraphWidget(QWidget):
                 self._ui.txtMax.setText(f"max : {reformat(self._clim[1])}")
         else:
             # Reset the minimum and maximum text
-            self._ui.txtMin.setText('min : ')
-            self._ui.txtMax.setText('max : ')
+            self._ui.txtMin.setText("min : ")
+            self._ui.txtMax.setText("max : ")
 
         if isinstance(self._img, list):
             for i in self._img:
-                i.set_picker(5.)
+                i.set_picker(5.0)
         elif self._img is not None:
             self._img.set_picker(True)
-        self._cursor = Cursor(self._axes, useblit=False, color='red', linewidth=1)
-        if self._ui.config.getboolean('opt', 'cursor', fallback=False):
+        self._cursor = Cursor(self._axes, useblit=False, color="red", linewidth=1)
+        if self._ui.config.getboolean("opt", "cursor", fallback=False):
             self._cursor.visible = False
         self.annotation.remove()
-        self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False,
-                                            backgroundcolor="silver")
-        self._canv.mpl_connect('pick_event', self.onclick)
+        self.annotation = self._figure.text(0.3, 0.95, "0, 0", visible=False, backgroundcolor="silver")
+        self._canv.mpl_connect("pick_event", self.onclick)
 
     def set_operation(self, operation="None"):
-        """ Set an operation to be performed on click on a dimension. """
-        self.has_operation = (operation != "None")
+        """Set an operation to be performed on click on a dimension."""
+        self.has_operation = operation != "None"
         if not self.has_operation:
             self._oprdim = np.array([], dtype=int)
-            self._opr = (lambda x: x)
+            self._opr = lambda x: x
         else:
-            operations = {'nanmin': np.nanmin, 'nanmax': np.nanmax,
-                          'nanmean': np.nanmean, 'nanmedian': np.nanmedian}
+            operations = {
+                "nanmin": np.nanmin,
+                "nanmax": np.nanmax,
+                "nanmean": np.nanmean,
+                "nanmedian": np.nanmedian,
+            }
             self._opr = lambda x: operations[operation](x, axis=self._oprcorr)
         return self._oprdim
 
     def set_oprdim(self, value=None):
-        """ Set the operation dimension. """
+        """Set the operation dimension."""
         if value is None:
             self._oprdim = np.array([], dtype=int)
         else:
@@ -577,12 +580,12 @@ class GraphWidget(QWidget):
         return np.empty(0)
 
     def toggle_colorbar(self):
-        """ Toggle the state of the colorbar """
+        """Toggle the state of the colorbar"""
         self.has_cb = not self.has_cb
         self.colorbar()
 
     def toggle_legend(self):
-        """ Toggle the state of the legend """
+        """Toggle the state of the legend"""
         self.has_legend = not self.has_legend
         self.legend()
 

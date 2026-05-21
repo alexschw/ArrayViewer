@@ -2,16 +2,18 @@
 # Create a custom Slider with minimum and maximum for the color values.
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 """
+
 import sys
 from PyQt5 import QtCore, QtWidgets
 
 
 class rangeSlider(QtWidgets.QWidget):
-    """ Combination of two sliders that return a range tuple """
+    """Combination of two sliders that return a range tuple"""
+
     sliderReleased = QtCore.pyqtSignal()
 
     def __init__(self, parent=None, minmax=(0, 1)):
-        """ Initialize the Slider """
+        """Initialize the Slider"""
         super().__init__(parent)
         # Set internal variables
         self._nSteps = 100
@@ -40,21 +42,21 @@ class rangeSlider(QtWidgets.QWidget):
         self.maxSlide.sliderReleased.connect(self.sliderReleased.emit)
 
     def _max_restict(self, value):
-        """ Restricts the maximum slider to be more than the minimum slider """
+        """Restricts the maximum slider to be more than the minimum slider"""
         if value < self.minSlide.value() + 1:
             self.maxSlide.setSliderPosition(self.minSlide.value() + 1)
 
     def _min_restict(self, value):
-        """ Restricts the minimum slider to be less than the maximum slider """
+        """Restricts the minimum slider to be less than the maximum slider"""
         if value > self.maxSlide.value() - 1:
             self.minSlide.setSliderPosition(self.maxSlide.value() - 1)
 
     def print_val(self):
-        """ Prints the tuple of the current value of both sliders """
+        """Prints the tuple of the current value of both sliders"""
         print(self.value())
 
     def set_enabled(self, status):
-        """ Enable/Disable the slider. """
+        """Enable/Disable the slider."""
         self.minSlide.setSliderPosition(0)
         self.maxSlide.setSliderPosition(self._nSteps)
         self.minSlide.setEnabled(status)
@@ -62,12 +64,14 @@ class rangeSlider(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot()
     def value(self):
-        """ Returns a tuple of the current value of both sliders """
-        return (self.minSlide.value() * self._scaling + self._minVal,
-                self.maxSlide.value() * self._scaling + self._minVal)
+        """Returns a tuple of the current value of both sliders"""
+        return (
+            self.minSlide.value() * self._scaling + self._minVal,
+            self.maxSlide.value() * self._scaling + self._minVal,
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = QtWidgets.QMainWindow()
     window.resize(100, 600)

@@ -1,16 +1,17 @@
 """
 Data Tree for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 from natsort import realsorted, ns
-from PyQt5.QtWidgets import (QHeaderView, QTabWidget, QTreeWidget,
-                             QTreeWidgetItem)
+from PyQt5.QtWidgets import QHeaderView, QTabWidget, QTreeWidget, QTreeWidgetItem
 from PyQt5.QtWidgets import QSizePolicy as QSP
 from PyQt5.QtCore import Qt
 
 
 class TreeWidget(QTreeWidget):
-    """ Overloaded QTreeWidget for the Data Tree tabs. """
+    """Overloaded QTreeWidget for the Data Tree tabs."""
+
     def __init__(self, parent=None):
         """ """
         super().__init__(parent)
@@ -30,9 +31,10 @@ class TreeWidget(QTreeWidget):
 
 
 class DataTree(QTabWidget):
-    """ Class Definition for the Data Tree. """
+    """Class Definition for the Data Tree."""
+
     def __init__(self, viewer, parent=None):
-        """ Initialize the Datatree """
+        """Initialize the Datatree"""
         super().__init__(parent)
         self.old_trace = []
         self.similar_items = []
@@ -53,20 +55,20 @@ class DataTree(QTabWidget):
         self.setAcceptDrops(True)
 
     def clear_tree(self):
-        """ Clear the Tree. """
+        """Clear the Tree."""
         self.checkableItems = []
         self.update_tree()
 
     def current_item(self):
-        """ Return the currently selected Item. """
+        """Return the currently selected Item."""
         return self.currentWidget().currentItem()
 
     def is_files_tree(self):
-        """ Return True if the currently open Tree is the "Files"-Tree. """
+        """Return True if the currently open Tree is the "Files"-Tree."""
         return self.currentWidget() == self.Tree
 
     def _finish_renaming(self):
-        """ Finish the renaming of a data-key. """
+        """Finish the renaming of a data-key."""
         if not self.old_trace:
             return
         new_trace = self.viewer.get_obj_trace(self.changing_item)
@@ -98,7 +100,7 @@ class DataTree(QTabWidget):
         self.changing_item.setFlags(Qt.ItemFlag(61))
 
     def remove_from_checkables(self, item_list):
-        """ Remove items from the checkableItems list. As it causes errors. """
+        """Remove items from the checkableItems list. As it causes errors."""
         for item in item_list:
             if item in self.checkableItems:
                 self.checkableItems.remove(item)
@@ -106,7 +108,7 @@ class DataTree(QTabWidget):
                 self.remove_from_checkables(item.takeChildren())
 
     def rename_key(self):
-        """ Start the renaming of a data-key. """
+        """Start the renaming of a data-key."""
         self.changing_item = self.Tree.currentItem()
         self.old_trace = self.viewer.get_obj_trace(self.changing_item)
         # Make Item editable
@@ -115,7 +117,7 @@ class DataTree(QTabWidget):
         self.Tree.itemChanged.connect(self._finish_renaming)
 
     def select_key(self, keypath):
-        """ Select the key with the given path. """
+        """Select the key with the given path."""
         item = self.currentWidget().invisibleRootItem()
         for key in keypath:
             for c_no in range(item.childCount()):
@@ -126,8 +128,8 @@ class DataTree(QTabWidget):
             self.currentWidget().setCurrentItem(item)
 
     def _update_subtree(self, item, data, is_sec=False):
-        """ Add a new subtree to the current QTreeWidgetItem. """
-        for k, v in realsorted(data, alg=ns.IC|ns.NA):
+        """Add a new subtree to the current QTreeWidgetItem."""
+        for k, v in realsorted(data, alg=ns.IC | ns.NA):
             child = QTreeWidgetItem([None, k])
             item.addChild(child)
             if isinstance(v, tuple):
@@ -149,7 +151,7 @@ class DataTree(QTabWidget):
                     self.checkableItems.append(child)
 
     def update_tree(self, select_key=None):
-        """ Add new data to TreeWidget. """
+        """Add new data to TreeWidget."""
         itemList = []
         self.checkableItems = []
         if self.currentWidget() == self.Tree:
@@ -166,7 +168,7 @@ class DataTree(QTabWidget):
             self.select_key(select_key)
 
     def _update_treetab(self, index):
-        """ Update the currently selected treetab, on switching. """
+        """Update the currently selected treetab, on switching."""
         if self.viewer.diffBtn.isVisible():
             self.viewer._start_diff()
         if index == 1:
@@ -175,7 +177,7 @@ class DataTree(QTabWidget):
             self.update_tree()
 
     def _update_tree_sec(self):
-        """ Generate the data tree. """
+        """Generate the data tree."""
         self.checkableItems = []
         # get TopLevelItem of the current item as a reference
         ref = self.Tree.currentItem()
@@ -201,12 +203,12 @@ class DataTree(QTabWidget):
         self.secTree.addTopLevelItems(itemList)
 
     def dragEnterEvent(self, ev):
-        """ Catch dragEnterEvents for file dropdown. """
+        """Catch dragEnterEvents for file dropdown."""
         if ev.mimeData().hasUrls():
             ev.acceptProposedAction()
 
     def dropEvent(self, ev):
-        """ Catch dropEvent to load the dropped file. """
+        """Catch dropEvent to load the dropped file."""
         fnames = []
         for url in ev.mimeData().urls():
             fnames.append(url.toLocalFile())

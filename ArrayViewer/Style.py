@@ -1,12 +1,14 @@
 """
 Color Palette for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 
 from PyQt5.QtGui import QColor, QPalette
 
+
 def dark_qpalette():
-    """ Create a dark palette for a dark mode. """
+    """Create a dark palette for a dark mode."""
     dark = QColor(25, 35, 45)
     base = QColor(40, 50, 60)
     high = QColor(42, 130, 200)

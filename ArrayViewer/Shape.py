@@ -1,17 +1,17 @@
 """
 Slice Selectors for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 from PyQt5.QtGui import QDrag, QRegExpValidator, QKeySequence
-from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QHBoxLayout,
-                             QShortcut, QVBoxLayout, QWidget)
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QMimeData, QPoint, QRegExp,
-                          QSize, Qt)
+from PyQt5.QtWidgets import QApplication, QLabel, QLineEdit, QHBoxLayout, QShortcut, QVBoxLayout, QWidget
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QMimeData, QPoint, QRegExp, QSize, Qt
 import numpy as np
 
 
 class singleShape(QWidget):
-    """ A single Shape widget with one label and one lineedit. """
+    """A single Shape widget with one label and one lineedit."""
+
     change_animation = pyqtSignal(int)
     change_operation = pyqtSignal(int)
 
@@ -51,7 +51,7 @@ class singleShape(QWidget):
 
     @pyqtSlot(np.ndarray, int)
     def _style(self, operations, animation):
-        """ Set the style of the label based on the operation or animation. """
+        """Set the style of the label based on the operation or animation."""
         if self.index == animation:
             self.label.setStyleSheet("background-color:orange;")
         elif self.index in operations:
@@ -60,10 +60,12 @@ class singleShape(QWidget):
             self.label.setStyleSheet("")
 
     def get_value(self):
-        """ Return the values of this single Shape. """
+        """Return the values of this single Shape."""
+
         def clipint(x):
-            """ The integer value of a string clipped to the dimensions """
+            """The integer value of a string clipped to the dimensions"""
             return min(max(-maxt, int(x)), maxt - 1)
+
         # Get the text and the maximum value within the dimension
         txt = self.lineedit.text()
         maxt = int(self.label.text())
@@ -75,7 +77,7 @@ class singleShape(QWidget):
             return int(txt), True
         except ValueError:
             if "," in txt:
-                tpl = tuple(dict.fromkeys(clipint(x) for x in txt.split(',') if x))
+                tpl = tuple(dict.fromkeys(clipint(x) for x in txt.split(",") if x))
                 self.lineedit.setText(str(tpl)[1:-1].replace(" ", ""))
                 return tpl, False
             if txt == "+":
@@ -88,7 +90,7 @@ class singleShape(QWidget):
                 newid = int(np.unravel_index(np.nanargmin(data), data.shape)[self.index])
                 self.lineedit.setText(str(newid))
                 return newid, True
-            return slice(*(int(x) if x else None for x in txt.split(':'))), False
+            return slice(*(int(x) if x else None for x in txt.split(":"))), False
 
     def _perform_operation(self, _):
         """
@@ -99,14 +101,14 @@ class singleShape(QWidget):
         self.parent.set_slice()
 
     def mousePressEvent(self, event):
-        """ Catch mousePressEvent for the dragging action. """
+        """Catch mousePressEvent for the dragging action."""
         if event.button() == Qt.LeftButton:
             self.start = event.pos()
             self.dragging = False
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        """ Chatch mouseReleaseEvent and perform operation if not dragged. """
+        """Chatch mouseReleaseEvent and perform operation if not dragged."""
         if event.button() == Qt.RightButton:
             self.change_animation.emit(self.index)
         elif not self.dragging:
@@ -114,7 +116,7 @@ class singleShape(QWidget):
         event.accept()
 
     def mouseMoveEvent(self, event):
-        """ Catch mouseMoveEvent and start dragging when needed. """
+        """Catch mouseMoveEvent and start dragging when needed."""
         if not self.dragging:
             diff = (event.pos() - self.start).manhattanLength()
             if diff > QApplication.startDragDistance():
@@ -132,21 +134,21 @@ class singleShape(QWidget):
         event.accept()
 
     def dragEnterEvent(self, event):
-        """ Catch dragEnterEvents only for other widgets. """
+        """Catch dragEnterEvents only for other widgets."""
         if not event.source() == self:
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        """ Catch dropEvents to permute the dimensions. """
+        """Catch dropEvents to permute the dimensions."""
         id_from, id_to = event.source().index, self.index
         new_order = np.arange(self.parent.get(0).ndim)
         new_order[id_from], new_order[id_to] = id_to, id_from
         self.parent.transpose_data(new_order)
 
     def keyPressEvent(self, ev):
-        """ Catch keyPressEvents of Arrows. """
+        """Catch keyPressEvents of Arrows."""
         if ev.key() in (Qt.Key_Up, QKeySequence("Ctrl+Up")):
             self.change_value(1)
         elif ev.key() in (Qt.Key_Down, QKeySequence("Ctrl+Down")):
@@ -155,7 +157,7 @@ class singleShape(QWidget):
             self.parent.keyPressEvent(ev)
 
     def change_value(self, mod):
-        """ Increment/Decrement the value of the textedit by 1, 10 or 100."""
+        """Increment/Decrement the value of the textedit by 1, 10 or 100."""
         txt = self.lineedit.text()
         if "," in txt:
             return
@@ -167,7 +169,7 @@ class singleShape(QWidget):
         try:
             self.lineedit.setText(str(int(txt) + mod))
         except ValueError:
-            txt = txt.split(':')
+            txt = txt.split(":")
             try:
                 for t in txt:
                     if t != "":
@@ -189,12 +191,13 @@ class singleShape(QWidget):
                 txt[0] = str(int(txt[0]) + mod)
             if txt[1] != "":
                 txt[1] = str(int(txt[1]) + mod)
-            self.lineedit.setText(':'.join(txt))
+            self.lineedit.setText(":".join(txt))
         self.parent.set_slice()
 
 
 class ShapeSelector(QWidget):
-    """ Array Shape selectors"""
+    """Array Shape selectors"""
+
     state_changed = pyqtSignal(np.ndarray, int)
 
     def __init__(self, parent=None):
@@ -229,7 +232,7 @@ class ShapeSelector(QWidget):
 
     @pyqtSlot(int)
     def change_animation_state(self, index):
-        """ Change the animation_state of indexed Shape. """
+        """Change the animation_state of indexed Shape."""
         if self.animation_state != -1:  # Was already animated. Turn off.
             self.parent.Graph.stop_animation()
         if self.animation_state == index:  # same dimension clicked twice
@@ -242,24 +245,24 @@ class ShapeSelector(QWidget):
 
     @pyqtSlot(int)
     def change_operation_state(self, index):
-        """ Change the operation_state of the indexed Shape. """
+        """Change the operation_state of the indexed Shape."""
         self.operation_state = self.parent.Graph.set_oprdim(index)
         self.animation_state = -1
         self.state_changed.emit(self.operation_state, self.animation_state)
 
     def current_slice(self):
-        """ Return the current slice, """
+        """Return the current slice,"""
         return [self._get(n).lineedit.text() for n in range(self.active_dims)]
 
     def get_index(self, widget):
-        """ Get the index of one of the subwidgets. """
+        """Get the index of one of the subwidgets."""
         for n in range(self.max_dims):
             if self._get(n).layout().indexOf(widget) != -1:
                 return n
         return -1
 
     def get_shape(self):
-        """ Get the values of all non-hidden widgets."""
+        """Get the values of all non-hidden widgets."""
         shapeStr = []
         scalarDims = []  # scalar Dimensions
         # For all (non-hidden) widgets
@@ -271,7 +274,7 @@ class ShapeSelector(QWidget):
         return tuple(shapeStr), np.array(scalarDims, dtype=int)
 
     def update_shape(self, shape, load_slice=True):
-        """ Update the shape widgets in the window based on the new data. """
+        """Update the shape widgets in the window based on the new data."""
         # Show a number of widgets equal to the dimension, hide the others
         self.active_dims = len(shape)
         for n in range(self.max_dims):
@@ -286,7 +289,7 @@ class ShapeSelector(QWidget):
             if not self.fixate_view:
                 if curr_operations is not None and len(curr_operations) > 0:
                     self.operation_state = np.array(curr_operations)
-                    self.parent.Graph.set_oprdim(None) # Clear oprdim
+                    self.parent.Graph.set_oprdim(None)  # Clear oprdim
                     self.parent.Graph.set_oprdim(self.operation_state)
                 else:
                     self.operation_state = np.empty(0)
@@ -310,13 +313,13 @@ class ShapeSelector(QWidget):
         self.parent._draw_data()
 
     def set_all_values(self, new_values):
-        """ Set all selected values """
+        """Set all selected values"""
         for n, value in enumerate(new_values):
             self._get(n).lineedit.setText(f"{value}")
         self.parent._draw_data()
 
     def set_non_scalar_values(self, new_values):
-        """ Set the values of the non-scalar dimensions. """
+        """Set the values of the non-scalar dimensions."""
         sh, scalar_dims = self.get_shape()
         scalar_dims = np.concatenate((scalar_dims, self.operation_state))
         if len(sh) - len(scalar_dims) != len(new_values):
@@ -329,7 +332,7 @@ class ShapeSelector(QWidget):
         self.parent._draw_data()
 
     def set_operation(self, operation="None"):
-        """ Make Dimension-titles (not) clickable and pass the operation. """
+        """Make Dimension-titles (not) clickable and pass the operation."""
         for n in range(self.max_dims):
             self._get(n).label.setStyleSheet("")
         if self.last_operation == operation:
@@ -341,7 +344,7 @@ class ShapeSelector(QWidget):
         self.parent._draw_data()
 
     def wheelEvent(self, event):
-        """ Catch wheelEvents on the Shape widgets making them scrollable. """
+        """Catch wheelEvents on the Shape widgets making them scrollable."""
         onField = -1
         for n in range(self.active_dims):
             if self._get(n).lineedit.underMouse():

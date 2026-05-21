@@ -1,6 +1,7 @@
 """
 Editor for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 import sys
 import numpy as np
@@ -11,30 +12,31 @@ from PyQt5.QtGui import QRegExpValidator
 
 
 class dataModel(QAbstractTableModel):
-    """ Custom Data Model for the Editor Table. """
+    """Custom Data Model for the Editor Table."""
+
     def __init__(self, _data, parent=None):
         QAbstractTableModel.__init__(self, parent.table)
         self._data = _data
         self.dataChanged.connect(parent.data_changed)
 
     def flags(self, index):
-        """ Set the enabled and editable flags at the given index. """
+        """Set the enabled and editable flags at the given index."""
         if not index.isValid():
             return Qt.ItemIsEnabled
         return QAbstractTableModel.flags(self, index) | Qt.ItemIsEditable
 
     def rowCount(self, _):
-        """ Returns the number of rows. """
+        """Returns the number of rows."""
         return self._data.shape[0]
 
     def columnCount(self, _):
-        """ Returns the number of columns. """
+        """Returns the number of columns."""
         if len(self._data.shape) < 2:
             return 1
         return self._data.shape[1]
 
     def setData(self, index, value, role=Qt.EditRole):
-        """ Change the value of a single datum at the given index. """
+        """Change the value of a single datum at the given index."""
         if role != Qt.EditRole:
             return False
         try:
@@ -48,7 +50,7 @@ class dataModel(QAbstractTableModel):
             return False
 
     def set_full_data(self, data, changes):
-        """ Reset the full data of the dataModel. """
+        """Reset the full data of the dataModel."""
         self.beginResetModel()
         self._data = np.array(data, ndmin=2)
         for key, value in changes.items():
@@ -58,7 +60,7 @@ class dataModel(QAbstractTableModel):
         self.endResetModel()
 
     def data(self, index, role=Qt.DisplayRole):
-        """ Returns a datum at the given index. """
+        """Returns a datum at the given index."""
         # Precise values for editing
         if index.isValid() and role == Qt.EditRole:
             return QVariant(str(self._data[index.row()][index.column()]))
@@ -70,7 +72,8 @@ class dataModel(QAbstractTableModel):
 
 
 class SpinBox(QSpinBox):
-    """ Spinner Box with empty value. """
+    """Spinner Box with empty value."""
+
     def __init__(self, parent, index):
         super().__init__()
         self.validator = QRegExpValidator(QRegExp(r"^[0-9]*|\s?"))
@@ -82,18 +85,19 @@ class SpinBox(QSpinBox):
         self.valueChanged.connect(lambda x: parent.spin_box_change(self, x))
 
     def validate(self, text, pos):
-        """ Overload the internal validator to allow empty strings as input """
+        """Overload the internal validator to allow empty strings as input"""
         return self.validator.validate(text, pos)
 
     def valueFromText(self, txt):
-        """ Overload to return -1 on empty string """
+        """Overload to return -1 on empty string"""
         if not txt.strip():
             return -1
         return int(txt)
 
 
 class EditorDialog(QDialog):
-    """ A dialog to edit data. """
+    """A dialog to edit data."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -119,7 +123,7 @@ class EditorDialog(QDialog):
         QFra.addWidget(pushBtn)
 
     def open_editor(self, data):
-        """ Open the window to edit the currently selected data object """
+        """Open the window to edit the currently selected data object"""
         if type(data) in self.parent.noPrintTypes:
             return
         for s in range(self.max_dims):
@@ -128,7 +132,7 @@ class EditorDialog(QDialog):
             if s < data.ndim:
                 self.dims.itemAt(s).widget().setValue(-1 * int(s < 2))
                 self.dims.itemAt(s).widget().setVisible(True)
-                self.dims.itemAt(s).widget().setMaximum(data.shape[s]-1)
+                self.dims.itemAt(s).widget().setMaximum(data.shape[s] - 1)
             else:
                 self.dims.itemAt(s).widget().setVisible(False)
         self.original_data = data
@@ -136,14 +140,14 @@ class EditorDialog(QDialog):
         if data.ndim == 1:
             self.slice = [slice(None)]
         else:
-            self.slice = [slice(None)]*2 + [0]*(data.ndim-2)
+            self.slice = [slice(None)] * 2 + [0] * (data.ndim - 2)
         self.model.set_full_data(data[(*self.slice,)], self.local_changes())
         self.table.resizeColumnsToContents()
 
         self.exec_()
 
     def save_data(self):
-        """ Save the changed dataset to the original data object """
+        """Save the changed dataset to the original data object"""
         # Only set data if it has changed.
         if not self.changed_data:
             return
@@ -159,7 +163,7 @@ class EditorDialog(QDialog):
         self.accept()
 
     def local_changes(self):
-        """ Returns only localized changes of the current slice """
+        """Returns only localized changes of the current slice"""
         loc_changes = {}
         for key, value in self.changed_data.items():
             if all(x == y or isinstance(y, slice) for x, y in zip(key, self.slice)):
@@ -169,7 +173,7 @@ class EditorDialog(QDialog):
 
     @pyqtSlot(SpinBox, int)
     def spin_box_change(self, box, val):
-        """ Change the Matrix on spin box change """
+        """Change the Matrix on spin box change"""
         if self.slice[box.index] == val:
             return
         if val == -1 and not isinstance(self.slice[box.index], slice):
@@ -184,7 +188,7 @@ class EditorDialog(QDialog):
         self.model.set_full_data(curr_data, self.local_changes())
 
     def data_changed(self, index, index2):
-        """ Function is called on data_changed """
+        """Function is called on data_changed"""
         if index != index2:
             return
         if self.model.rowCount(None) == 1:
@@ -204,8 +208,9 @@ class EditorDialog(QDialog):
             self.changed_data[tuple(full_idx)] = data
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from PyQt5.QtCore import pyqtRemoveInputHook
+
     pyqtRemoveInputHook()
     app = QApplication(sys.argv)
     window = QMainWindow()

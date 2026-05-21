@@ -50,3 +50,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ArrayViewer*"]
+
+[tool.black]
+line-length = 110
+target-version = ['py39', 'py310', 'py311', 'py312']

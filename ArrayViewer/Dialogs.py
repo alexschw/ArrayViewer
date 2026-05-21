@@ -1,6 +1,7 @@
 """
 InfoBoxes and Dialogs for the ArrayViewer
 """
+
 # Author: Alex Schwarz <alex.schwarz@informatik.tu-chemnitz.de>
 import re
 import json
@@ -9,7 +10,10 @@ from packaging.version import parse as parse_version
 from itertools import combinations
 import numpy as np
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QCompleter, QDialog, QGridLayout, QLabel, QLineEdit, QMessageBox, QTextEdit, QHBoxLayout, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QCompleter, QDialog, QGridLayout, QLabel, QLineEdit, QMessageBox, QTextEdit,
+    QHBoxLayout, QVBoxLayout, QWidget
+)
 from PyQt5.QtWidgets import QDialogButtonBox as DBB
 
 from ArrayViewer import __version__
@@ -20,12 +24,11 @@ def _get_shape_from_str(string):
     Returns an array with the elements of the string. All brackets are
     removed as well as empty elements in the array.
     """
-    return np.array([_f for _f in string.strip("()[]").split(",") if _f],
-                    dtype=int)
+    return np.array([_f for _f in string.strip("()[]").split(",") if _f], dtype=int)
 
 
 def _suggestion(previous_val, value):
-    """ Returns all possible factors """
+    """Returns all possible factors"""
     pfactors = []
     divisor = 2
     while value > 1:
@@ -50,10 +53,10 @@ def _suggestion(previous_val, value):
 
 
 def _split_keys(text):
-    """ Split the keys into their sequence """
-    if "+" in text and text != "Enter '+'": # Linux/Windows
+    """Split the keys into their sequence"""
+    if "+" in text and text != "Enter '+'":  # Linux/Windows
         return text.split("+")
-    else: # iOS and single buttons
+    else:  # iOS and single buttons
         return [text]
 
 
@@ -75,9 +78,10 @@ def show_aview_about():
 
 
 class ReshapeDialog(QDialog):
-    """ A Dialog for Reshaping the Array. """
+    """A Dialog for Reshaping the Array."""
+
     def __init__(self, parent=None):
-        """ Initialize. """
+        """Initialize."""
         super().__init__(parent)
 
         # Setup the basic window
@@ -106,16 +110,16 @@ class ReshapeDialog(QDialog):
         gridLayout.addWidget(self.txtNew, 1, 1, 1, 1)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
-        self.buttonBox = DBB(DBB.Cancel|DBB.Ok, QtCore.Qt.Horizontal)
+        self.buttonBox = DBB(DBB.Cancel | DBB.Ok, QtCore.Qt.Horizontal)
         gridLayout.addWidget(self.buttonBox, 3, 1, 1, 1)
         self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
         self.buttonBox.button(DBB.Ok).clicked.connect(self.accept)
 
     def _key_press(self, keyEv):
-        """ Whenever a key is pressed check for comma and set autofill data."""
-        if keyEv and keyEv[-1] == ',':
+        """Whenever a key is pressed check for comma and set autofill data."""
+        if keyEv and keyEv[-1] == ",":
             shape = _get_shape_from_str(str(keyEv))
-            if self.prodShape%shape.prod() == 0:
+            if self.prodShape % shape.prod() == 0:
                 rest = self.prodShape // shape.prod()
                 self.cmpl.model().setStringList(_suggestion(keyEv, rest))
             else:
@@ -123,7 +127,7 @@ class ReshapeDialog(QDialog):
         return keyEv
 
     def reshape_array(self, data):
-        """ Reshape the currently selected array. """
+        """Reshape the currently selected array."""
         while True:
             # Open a dialog to reshape
             self.txtCurrent.setText(str(data.shape))
@@ -148,9 +152,10 @@ class ReshapeDialog(QDialog):
 
 
 class NewDataDialog(QDialog):
-    """ A Dialog for Creating new Data. """
+    """A Dialog for Creating new Data."""
+
     def __init__(self, parent=None):
-        """ Initialize. """
+        """Initialize."""
         super().__init__(parent)
 
         # Setup the basic window
@@ -163,10 +168,11 @@ class NewDataDialog(QDialog):
 
         # Add the current and new shape boxes and their labels
         label = QLabel(self)
-        label.setText(("Use 'this' to reference the current data and 'cutout' "
-                       + "for the current view.\nBefore saving enter the "
-                       + "variable you want to save.\n"
-                       + "Otherwise the original data will be overwritten."))
+        label.setText(
+            "Use 'this' to reference the current data and 'cutout' for the "
+            + "current view.\nBefore saving enter the variable you want to save."
+            + "\nOtherwise the original data will be overwritten."
+        )
         Layout.addWidget(label)
         self.history = QTextEdit(self)
         self.history.setEnabled(False)
@@ -179,18 +185,18 @@ class NewDataDialog(QDialog):
         Layout.addWidget(self.err)
 
         # Add a button Box with "OK" and "Cancel"-Buttons
-        self.buttonBox = DBB(DBB.Cancel|DBB.Ok|DBB.Save, QtCore.Qt.Horizontal)
+        self.buttonBox = DBB(DBB.Cancel | DBB.Ok | DBB.Save, QtCore.Qt.Horizontal)
         Layout.addWidget(self.buttonBox)
         self.buttonBox.button(DBB.Cancel).clicked.connect(self.reject)
         self.buttonBox.button(DBB.Ok).clicked.connect(self._on_accept)
         self.buttonBox.button(DBB.Save).clicked.connect(self._on_save)
 
     def _on_accept(self):
-        """ Try to run the command and append the history on pressing 'OK'. """
+        """Try to run the command and append the history on pressing 'OK'."""
         try:
             var, value = self._parsecmd(str(self.cmd.text()))
-            methods = {'np': np, 'self': self}
-            self.data[var] = eval(value, {'__buildins__': None}, methods)
+            methods = {"np": np, "self": self}
+            self.data[var] = eval(value, {"__buildins__": None}, methods)
         except Exception as err:
             self.err.setText(str(err))
             return
@@ -199,7 +205,7 @@ class NewDataDialog(QDialog):
         self.cmd.setText("")
 
     def _on_save(self):
-        """ Return the object currently in the textBox to the Viewer. """
+        """Return the object currently in the textBox to the Viewer."""
         if re.findall(r"\=", self.cmd.text()):
             return
         if self.cmd.text() == "":
@@ -213,13 +219,12 @@ class NewDataDialog(QDialog):
                 return
 
     def _parsecmd(self, cmd):
-        """ Parse the command given by the user. """
+        """Parse the command given by the user."""
         try:
             var, expr = cmd.split("=", 1)
         except ValueError as e:
             raise ValueError("No '=' in expression") from e
-        for op in ['(', ')', '[', ']', '{', '}', ',',
-                   '+', '-', '*', '/', '%', '^']:
+        for op in ["(", ")", "[", "]", "{", "}", ",", "+", "-", "*", "/", "%", "^"]:
             expr = expr.replace(op, f" {op} ")
         expr = " " + expr + " "
         for datum in self.data:
@@ -227,8 +232,8 @@ class NewDataDialog(QDialog):
         return var.strip(), expr.replace(" ", "")
 
     def new_data(self, data, cutout):
-        """ Generate New Data (maybe using the currently selected array). """
-        self.data = {'this': data, 'cutout': cutout}
+        """Generate New Data (maybe using the currently selected array)."""
+        self.data = {"this": data, "cutout": cutout}
         self.history.clear()
         while True:
             # Open a dialog to reshape
@@ -236,13 +241,13 @@ class NewDataDialog(QDialog):
             self.cmd.setFocus()
             # If "Save" is pressed
             if self.exec_() or self.returnVal is not None:
-                if self.data['this'] is None:
-                    return (re.split(r"\=", self.lastText)[0].strip(),
-                            self.data[self.returnVal])
+                if self.data["this"] is None:
+                    return (re.split(r"\=", self.lastText)[0].strip(), self.data[self.returnVal])
                 if self.cmd.text() == "":
                     return 1, self.data[self.returnVal]
                 return str(self.cmd.text()), self.data[self.returnVal]
             return 0, []
+
 
 class PrintKeyboardShortcut(QWidget):
     def __init__(self, sequence, parent=None):
@@ -265,39 +270,39 @@ class KeyboardHelpDialog(QDialog):
         super().__init__(parent)
 
         shortcuts = {
-                "General": [
-                    ("Ctrl+O", "Load data from file"),
-                    ("Ctrl+S", "Save current plot to file"),
-                    ("Ctrl+N", "Create New Data from dialog"),
-                    ("Ctrl+R", "Reshape the selected data"),
-                    ("Ctrl+D", "Difference beween two selected data"),
-                    ("Ctrl+X", "Delete All Data from the Tree View"),
-                    ("Ctrl+M", "Find Max of current cutout"),
-                    ("Ctrl+Shift+M", "Find Max of current data"),
-                    ("Alt+M", "Find Min of current cutout"),
-                    ("Alt+Shift+M", "Find Min of current data"),
-                    ("F5", "Reload the current file"),
-                    ("Ctrl+C", "Close the ArrayViewer"),
-                    ],
-                "In the Tree/Data Browser": [
-                    ("Ctrl+Click", "Keep slice when changing data"),
-                    ("Delete", "Delete current data"),
-                    ],
-                "In the Graph": [
-                    ("Click", "View value of selection"),
-                    ("Ctrl+Click", "Show first two dimensions of selection (>=3D)"),
-                    ("Alt+Click", "Show plot over the last dimension of selection"),
-                    ("Shift+Click", "Switch view to only show selection"),
-                    ],
-                "On the shape selectors": [
-                    ("Click(On label)", "Select dimension for operation"),
-                    ("Right-click(On label)", "Show animation over dimension"),
-                    ("Enter '+'", "Find maximum of this dimension"),
-                    ("Enter '-'", "Find minimum of this dimension"),
-                    ("Scroll", "Move step-by-step through dimension"),
-                    ("Ctrl+Scroll", "Move 10 steps through dimension"),
-                    ("Shift+Scroll", "Move 100 steps through dimension"),
-                    ]
+            "General": [
+                ("Ctrl+O", "Load data from file"),
+                ("Ctrl+S", "Save current plot to file"),
+                ("Ctrl+N", "Create New Data from dialog"),
+                ("Ctrl+R", "Reshape the selected data"),
+                ("Ctrl+D", "Difference beween two selected data"),
+                ("Ctrl+X", "Delete All Data from the Tree View"),
+                ("Ctrl+M", "Find Max of current cutout"),
+                ("Ctrl+Shift+M", "Find Max of current data"),
+                ("Alt+M", "Find Min of current cutout"),
+                ("Alt+Shift+M", "Find Min of current data"),
+                ("F5", "Reload the current file"),
+                ("Ctrl+C", "Close the ArrayViewer"),
+            ],
+            "In the Tree/Data Browser": [
+                ("Ctrl+Click", "Keep slice when changing data"),
+                ("Delete", "Delete current data"),
+            ],
+            "In the Graph": [
+                ("Click", "View value of selection"),
+                ("Ctrl+Click", "Show first two dimensions of selection (>=3D)"),
+                ("Alt+Click", "Show plot over the last dimension of selection"),
+                ("Shift+Click", "Switch view to only show selection"),
+            ],
+            "On the shape selectors": [
+                ("Click(On label)", "Select dimension for operation"),
+                ("Right-click(On label)", "Show animation over dimension"),
+                ("Enter '+'", "Find maximum of this dimension"),
+                ("Enter '-'", "Find minimum of this dimension"),
+                ("Scroll", "Move step-by-step through dimension"),
+                ("Ctrl+Scroll", "Move 10 steps through dimension"),
+                ("Shift+Scroll", "Move 100 steps through dimension"),
+            ],
         }
 
         self.setWindowTitle("Keyboard shortcuts")
@@ -307,14 +312,15 @@ class KeyboardHelpDialog(QDialog):
         for section, command_list in shortcuts.items():
             title = QLabel(section)
             title.setStyleSheet("font-weight: bold;")
-            layout.addWidget(title, i//(columns*2), 0, 1, -1, QtCore.Qt.AlignLeft)
-            i += columns*2
-            l = (len(command_list)-1)//columns+1
+            layout.addWidget(title, i // (columns * 2), 0, 1, -1, QtCore.Qt.AlignLeft)
+            i += columns * 2
             for keys, txt in command_list:
-                layout.addWidget(PrintKeyboardShortcut(keys), i//(2*columns), 2*(i%(2*columns)))
-                layout.addWidget(QLabel(txt), i//(2*columns), 2*(i%(2*columns)+1))
+                m = i // (2 * columns)
+                n = 2 * (i % (2 * columns))
+                layout.addWidget(PrintKeyboardShortcut(keys), m, n)
+                layout.addWidget(QLabel(txt), m, n + 2)
                 i += 2
-            i = ((i-1)//(columns*2)+1)*columns*2
+            i = ((i - 1) // (columns * 2) + 1) * columns * 2
 
     def show(self, _=None):
         self.exec_()
