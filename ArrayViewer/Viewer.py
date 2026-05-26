@@ -53,14 +53,14 @@ def _menu_opt(menu, text, function, shortcut=None, act_grp=None):
     return btn
 
 
-def _toolbar_box(bar):
+def _toolbar_box(bar, label):
     """Generate a box around multiple toolbar icons"""
     box = QGroupBox("")
     b = QVBoxLayout(box)
     b.addWidget(bar)
     b.setSpacing(0)
     b.setContentsMargins(8, 2, 8, 0)
-    b.addWidget(QLabel("Plot Style", alignment=Qt.AlignHCenter))
+    b.addWidget(QLabel(label, alignment=Qt.AlignHCenter))
     return box
 
 
@@ -106,8 +106,7 @@ class ViewerWindow(QMainWindow):
         # Initialize the menu
         self.__initMenu()
 
-        if self.config.getboolean("opt", "darkmode", fallback=False):
-            self._set_dark_mode(True)
+        self._set_dark_mode(self.config.getboolean("opt", "darkmode", fallback=False))
 
     def __addWidgets(self):
         """Add the widgets in the main Window."""
@@ -247,7 +246,7 @@ class ViewerWindow(QMainWindow):
         self.MMM = self._menu_btn(bar_plt, "min-mean-max plot", "mmm", ag_plt)
         self.Plot3D = self._menu_btn(bar_plt, "3D as RGB(A)", "rgb", ag_plt)
         self.PrintFlat = self._menu_btn(bar_plt, "Print Values as text", "text", ag_plt)
-        toolbar.addWidget(_toolbar_box(bar_plt))
+        toolbar.addWidget(_toolbar_box(bar_plt, "Plot Style"))
 
         bar = QToolBar()
         ag_cm = QActionGroup(self)
@@ -258,7 +257,7 @@ class ViewerWindow(QMainWindow):
         vir = self._menu_btn(bar, "Colormap 'viridis'", "viridis", ag_cm, False)
         vir.triggered.connect(lambda: self.Graph.colormap("viridis"))
         vir.setChecked(True)
-        toolbar.addWidget(_toolbar_box(bar))
+        toolbar.addWidget(_toolbar_box(bar, "Colormap"))
 
         return toolbar
 
@@ -779,7 +778,7 @@ class ViewerWindow(QMainWindow):
         elif ev.key() == Qt.Key_C:
             modifiers = QApplication.keyboardModifiers()
             if modifiers == Qt.ControlModifier:
-                sys.exit()
+                self.close()
         elif ev.key() == Qt.Key_F5:
             key = self.get_obj_trace(self.datatree.current_item())[0]
             fname, timestamp = self._metadata.get(key, (None, None))

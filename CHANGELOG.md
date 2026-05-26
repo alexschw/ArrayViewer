@@ -1,3 +1,11 @@
+# 1.1.5
+ - Add ability to combine nested dicts in one step
+ - Add a cheat sheet with commonly used keyboard shortcuts
+ - Value of "Keep Slice"-state is saved for next startup
+ - Beautify Toolbar and KeepSlice Checkbox
+ - Values in the ShapeBox can be in-/decreased with Down-/Up-Keys
+ - Bugfixes for None type, F5 reload and warning on scatter
+
 # 1.1.4
  - Plot Menu, colormaps and operations in iconbar
  - Keep operation dimensions on data switch too
