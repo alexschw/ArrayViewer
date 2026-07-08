@@ -82,7 +82,7 @@ class ViewerWindow(QMainWindow):
         self.cText = []
         self.files = {}
         self.diffNo = 0
-        self.noPrintTypes = (int, float, str, list, tuple, type(None))
+        self.noPrintTypes = (int, float, str, list, tuple, dict, type(None))
         self.reload_unchanged_file = ("", "")
         self.reshapeBox = ReshapeDialog(self)
         self.newDataBox = NewDataDialog()
@@ -93,6 +93,7 @@ class ViewerWindow(QMainWindow):
         # set the loader from a separate class
         self.loader = Loader()
         self.loader.doneLoading.connect(self.on_done_loading)
+        self.loader.keyValidated.connect(self.on_done_validate)
         self.loader.infoMsg.connect(self.info_msg)
         self.emptylabel = QLabel()
         self.previous_opr_widget = self.emptylabel
@@ -268,7 +269,10 @@ class ViewerWindow(QMainWindow):
         if not self._data or not item:
             return np.empty(0)
         try:
-            return reduce(getitem, item[:-1], self._data)[item[-1]]
+            value = reduce(getitem, item[:-1], self._data)[item[-1]]
+            if value is None and tuple(item) in self.loader._futures:
+                value = self.loader.validate_key_now(item)
+            return value
         except KeyError:
             # Diff views in the DataTree
             if not self.datatree.is_files_tree() and item[1][:4] == "Diff":
@@ -769,6 +773,11 @@ class ViewerWindow(QMainWindow):
             self._metadata[key] = fname, os.path.getmtime(fname)
         self.datatree.update_tree(self.cText)
         self.info_msg(f"Done loading {fname}", 0)
+
+    @pyqtSlot(tuple, object)
+    def on_done_validate(self, key, data):
+        """Set the data into the global _data list one verified."""
+        reduce(getitem, key[:-1], self._data)[key[-1]] = data
 
     ## Overloaded PyQt Methods
     def keyPressEvent(self, ev):
